@@ -20,6 +20,7 @@ import {
   ArrowUp,
   ArrowDown,
   AlertTriangle,
+  HelpCircle,
 } from 'lucide-react';
 import { Project } from '../types/project';
 import { ProjectState } from '../types/lifecycle';
@@ -84,8 +85,15 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
   const [stateFilter, setStateFilter] = useState('');
   const [budgetLineFilter, setBudgetLineFilter] = useState('');
   const [myProjectsOnly, setMyProjectsOnly] = useState(false);
+  const [bonusedOnly, setBonusedOnly] = useState(false);
 
-  const hasActiveFilters = Boolean(searchQuery.trim() || stateFilter || budgetLineFilter || myProjectsOnly);
+  const hasActiveFilters = Boolean(
+    searchQuery.trim() || stateFilter || budgetLineFilter || myProjectsOnly || bonusedOnly
+  );
+
+  // Références de lignes pour le défilement automatique
+  const rowRefs = useRef<Map<string, HTMLTableRowElement>>(new Map());
+  const lastScrolledBreachKeyRef = useRef<string | null>(null);
 
   // Tri du tableau des projets
   const [sortColumn, setSortColumn] = useState<SortColumn>('id');
@@ -281,9 +289,15 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
         if (uEmail !== pm && uEmail !== dep) return false;
       }
 
+      // Projets bonussés uniquement
+      if (bonusedOnly) {
+        const b = getProjectBonus(p);
+        if (typeof b !== 'number' || isNaN(b) || b <= 0) return false;
+      }
+
       return true;
     });
-  }, [projects, searchQuery, stateFilter, budgetLineFilter, myProjectsOnly, activeUser]);
+  }, [projects, searchQuery, stateFilter, budgetLineFilter, myProjectsOnly, bonusedOnly, activeUser, localBonuses]);
 
   const getStateName = (stateId: string) => {
     const s = projectStates.find((st) => st.id === stateId);
@@ -411,7 +425,8 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
         firstBreachingProjectId: null,
         firstBreachingProjectName: '',
         breachReason: '',
-        breachingProjectsMap: new Map<string, string>(),
+        breachingProjectsMap: new Map<string, { reason: string; labels: string[] }>(),
+        breachingProjectsCount: 0,
         totalBonusedProjects: 0,
         totalDistributedBonus: 0,
       };
@@ -422,7 +437,7 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
     let firstBreachingProjectId: string | null = null;
     let firstBreachingProjectName = '';
     let breachReason = '';
-    const breachingProjectsMap = new Map<string, string>();
+    const breachingProjectsMap = new Map<string, { reason: string; labels: string[] }>();
 
     // On parcourt les projets dans l'ordre du tri effectué
     for (const p of sortedProjects) {
@@ -433,40 +448,44 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
         distributedPoints += bonus;
 
         const breaches: string[] = [];
+        const labels: string[] = [];
 
-        // 1. Dépassement points max par projet
+        // a) "Bonus projet > ..." si c'est le nombre de point attribué à ce projet qui est trop élevé
         if (
           bonusConfig.maxBonusPointsPerProject !== null &&
           bonus > bonusConfig.maxBonusPointsPerProject
         ) {
+          labels.push(`Bonus projet > ${bonusConfig.maxBonusPointsPerProject}`);
           breaches.push(
             `Bonus (${bonus} pts) supérieur au plafond par projet (${bonusConfig.maxBonusPointsPerProject} pts)`
           );
         }
 
-        // 2. Dépassement nombre max de projets bonussés
-        if (
-          bonusConfig.maxBonusedProjects !== null &&
-          bonusedCount > bonusConfig.maxBonusedProjects
-        ) {
-          breaches.push(
-            `${bonusedCount}e projet bonussé (quota max : ${bonusConfig.maxBonusedProjects} projets)`
-          );
-        }
-
-        // 3. Dépassement total points de bonus à distribuer
+        // b) "Total bonus > ..." si c'est le total de points distribué sur les projets précédents qui dépasse le seuil total fixé en paramètre
         if (
           bonusConfig.maxTotalBonusPoints !== null &&
           distributedPoints > bonusConfig.maxTotalBonusPoints
         ) {
+          labels.push(`Total bonus > ${bonusConfig.maxTotalBonusPoints}`);
           breaches.push(
             `Total cumulé (${distributedPoints} pts) supérieur à l'enveloppe globale (${bonusConfig.maxTotalBonusPoints} pts)`
           );
         }
 
-        if (breaches.length > 0) {
+        // c) "Nb. bonus > ..." si c'est le nombre de bonus distribués sur les projets précédents
+        if (
+          bonusConfig.maxBonusedProjects !== null &&
+          bonusedCount > bonusConfig.maxBonusedProjects
+        ) {
+          labels.push(`Nb. bonus > ${bonusConfig.maxBonusedProjects}`);
+          breaches.push(
+            `${bonusedCount}e projet bonussé (quota max : ${bonusConfig.maxBonusedProjects} projets)`
+          );
+        }
+
+        if (labels.length > 0) {
           const reason = breaches.join(' • ');
-          breachingProjectsMap.set(p.id, reason);
+          breachingProjectsMap.set(p.id, { reason, labels });
           if (!firstBreachingProjectId) {
             firstBreachingProjectId = p.id;
             firstBreachingProjectName = p.name;
@@ -481,11 +500,74 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
       firstBreachingProjectId,
       firstBreachingProjectName,
       breachReason,
+      breachingProjectsCount: breachingProjectsMap.size,
       breachingProjectsMap,
       totalBonusedProjects: bonusedCount,
       totalDistributedBonus: distributedPoints,
     };
   }, [sortedProjects, bonusConfig]);
+
+  // Classement des projets par ordre décroissant de ROI (pour la colonne PRIORITE)
+  const projectRoiRanks = useMemo(() => {
+    const listWithRoi: { id: string; roi: number; projectNumber: number }[] = [];
+    for (const p of projects) {
+      const roi = getProjectEffectiveRoi(p);
+      if (roi !== null) {
+        listWithRoi.push({ id: p.id, roi, projectNumber: p.projectNumber || 0 });
+      }
+    }
+    // Tri décroissant selon le ROI (et par #ID pour départager en cas d'égalité)
+    listWithRoi.sort((a, b) => {
+      const diff = b.roi - a.roi;
+      if (diff !== 0) return diff;
+      return a.projectNumber - b.projectNumber;
+    });
+
+    const rankMap = new Map<string, number>();
+    listWithRoi.forEach((item, index) => {
+      rankMap.set(item.id, index + 1);
+    });
+    return rankMap;
+  }, [projects, criteria, projectStates, bonusConfig, localBonuses]);
+
+  // Défilement automatique pour que le premier projet en dépassement apparaisse en 2ème ligne
+  useEffect(() => {
+    if (!bonusConfig.checkQuotas || !bonusQuotaAnalysis.hasAlert || !bonusQuotaAnalysis.firstBreachingProjectId) {
+      lastScrolledBreachKeyRef.current = null;
+      return;
+    }
+
+    const breachId = bonusQuotaAnalysis.firstBreachingProjectId;
+    const breachIndex = sortedProjects.findIndex((p) => p.id === breachId);
+    if (breachIndex === -1) return;
+
+    // Pour que le premier projet en dépassement apparaisse en 2ème ligne :
+    // On cible la ligne précédente (breachIndex - 1) si elle existe, sinon la ligne 0
+    const targetProject = breachIndex > 0 ? sortedProjects[breachIndex - 1] : sortedProjects[0];
+    const targetId = targetProject.id;
+
+    const scrollKey = `${breachId}_${targetId}_${sortColumn}_${sortDirection}_${sortedProjects.length}`;
+    if (lastScrolledBreachKeyRef.current === scrollKey) {
+      return;
+    }
+    lastScrolledBreachKeyRef.current = scrollKey;
+
+    const timer = setTimeout(() => {
+      const targetElement = rowRefs.current.get(targetId);
+      if (targetElement) {
+        targetElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }, 200);
+
+    return () => clearTimeout(timer);
+  }, [
+    bonusConfig.checkQuotas,
+    bonusQuotaAnalysis.hasAlert,
+    bonusQuotaAnalysis.firstBreachingProjectId,
+    sortedProjects,
+    sortColumn,
+    sortDirection,
+  ]);
 
   return (
     <div className="space-y-6">
@@ -620,6 +702,7 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
                 setStateFilter('');
                 setBudgetLineFilter('');
                 setMyProjectsOnly(false);
+                setBonusedOnly(false);
               }}
               className="text-indigo-600 hover:text-indigo-800 hover:underline flex items-center gap-1.5 cursor-pointer text-xs font-semibold"
             >
@@ -630,135 +713,194 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
         </div>
       </div>
 
-      {/* Encart Paramètres des Bonus (répliqué depuis l'onglet Critères - format compact en ligne) */}
-      <div className="bg-white px-4 py-3 rounded-xl border border-slate-200 shadow-2xs flex flex-col xl:flex-row xl:items-center justify-between gap-3">
-        {/* Titre de l'encart à gauche */}
-        <div className="flex items-center gap-2.5 shrink-0">
-          <div className="p-1.5 bg-teal-50 text-teal-700 rounded-lg border border-teal-200">
-            <Coins className="w-4 h-4 text-teal-600" />
-          </div>
-          <div>
-            <span className="text-xs font-bold text-slate-900 block leading-tight">
-              Paramètres des bonus
-            </span>
-            {!canToggleBonus && (
-              <span className="text-[10px] text-slate-500 flex items-center gap-1 mt-0.5 font-medium">
-                <Lock className="w-3 h-3 text-slate-400 shrink-0" />
-                <span>Modification réservée au Value Management Officer</span>
-              </span>
-            )}
-          </div>
-        </div>
+      {/* Encart Prise en compte des bonus */}
+      {(() => {
+        const hasQuotaAlert = bonusConfig.checkQuotas && bonusQuotaAnalysis.hasAlert;
+        return (
+          <div
+            className={`rounded-xl transition-all shadow-xs p-4 space-y-3.5 ${
+              hasQuotaAlert
+                ? 'bg-amber-50/90 border-2 border-amber-300 text-amber-950'
+                : 'bg-white border border-slate-200'
+            }`}
+          >
+            <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-3">
+              {/* Titre de l'encart à gauche (pictogramme vert par défaut conservé en permanence) */}
+              <div className="flex items-center gap-2.5 shrink-0">
+                <div className="p-1.5 bg-teal-50 text-teal-700 rounded-lg border border-teal-200 shrink-0">
+                  <Coins className="w-4 h-4 text-teal-600" />
+                </div>
+                <div>
+                  <span className="text-base font-bold text-slate-900 block leading-tight">
+                    Prise en compte des bonus
+                  </span>
+                  {!canToggleBonus && (
+                    <span className="text-[10px] text-slate-500 flex items-center gap-1 mt-0.5 font-medium">
+                      <Lock className="w-3 h-3 text-slate-400 shrink-0" />
+                      <span>Modification réservée au Value Management Officer</span>
+                    </span>
+                  )}
+                </div>
+              </div>
 
-        {/* Les 2 paramètres à droite du titre, sans boîte autour */}
-        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-8 xl:justify-end">
-          {/* Paramètre 1 : Bonus actifs */}
-          <div className="flex items-start gap-2.5 select-none">
-            <input
-              type="checkbox"
-              id="projects-checkbox-bonus-active"
-              checked={bonusConfig.isBonusActive}
-              disabled={!canToggleBonus || savingBonus}
-              onChange={(e) => {
-                e.stopPropagation();
-                handleToggleBonusActive();
-              }}
-              className="mt-0.5 h-4 w-4 rounded border-slate-300 text-teal-600 focus:ring-teal-500 cursor-pointer disabled:cursor-not-allowed shrink-0"
-            />
-            <div>
-              <label
-                htmlFor="projects-checkbox-bonus-active"
-                className={`text-xs font-bold block leading-tight ${
-                  canToggleBonus ? 'cursor-pointer hover:text-teal-700' : 'cursor-default'
-                } ${bonusConfig.isBonusActive ? 'text-teal-950' : 'text-slate-800'}`}
-              >
-                Bonus actifs
-              </label>
-              <p className="text-[11px] text-slate-500 mt-0.5 leading-snug">
-                {bonusConfig.isBonusActive ? (
-                  <span className="text-teal-900 font-medium">
-                    Prend en compte les bonus projet<br />dans le calcul du ROI
-                  </span>
-                ) : (
-                  <span className="text-slate-500">
-                    Ne prend pas en compte les bonus<br />dans le calcul du ROI
-                  </span>
-                )}
-              </p>
-            </div>
-          </div>
+              {/* Les 3 boîtes à cocher avec pictogrammes (?) et bulles d'information au survol */}
+              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-6 xl:gap-8 xl:justify-end flex-wrap">
+                {/* Boîte à cocher 1 : Bonus actifs */}
+                <div className="flex items-center gap-2 select-none">
+                  <input
+                    type="checkbox"
+                    id="projects-checkbox-bonus-active"
+                    checked={bonusConfig.isBonusActive}
+                    disabled={!canToggleBonus || savingBonus}
+                    onChange={(e) => {
+                      e.stopPropagation();
+                      handleToggleBonusActive();
+                    }}
+                    className="h-4 w-4 rounded border-slate-300 text-teal-600 focus:ring-teal-500 cursor-pointer disabled:cursor-not-allowed shrink-0"
+                  />
+                  <div className="flex items-center gap-1.5">
+                    <label
+                      htmlFor="projects-checkbox-bonus-active"
+                      className={`text-xs font-bold leading-tight ${
+                        canToggleBonus ? 'cursor-pointer hover:text-teal-700' : 'cursor-default'
+                      } ${bonusConfig.isBonusActive ? 'text-teal-950' : 'text-slate-800'}`}
+                    >
+                      Bonus actifs
+                    </label>
+                    <div className="relative inline-flex items-center group">
+                      <span
+                        tabIndex={0}
+                        role="button"
+                        className="text-slate-400 hover:text-slate-600 focus:text-slate-600 cursor-help inline-flex items-center"
+                        title={
+                          bonusConfig.isBonusActive
+                            ? 'Prend en compte les bonus projet dans le calcul du ROI'
+                            : 'Ne prend pas en compte les bonus dans le calcul du ROI'
+                        }
+                      >
+                        <HelpCircle className="w-3.5 h-3.5" />
+                      </span>
+                      <div className="absolute right-0 bottom-full mb-2 hidden group-hover:flex group-focus-within:flex flex-col items-end z-30 pointer-events-none w-56">
+                        <div className="bg-slate-900 text-white text-[11px] leading-snug rounded-lg px-2.5 py-1.5 shadow-lg text-center">
+                          {bonusConfig.isBonusActive
+                            ? 'Prend en compte les bonus projet dans le calcul du ROI'
+                            : 'Ne prend pas en compte les bonus dans le calcul du ROI'}
+                        </div>
+                        <div className="w-2 h-2 bg-slate-900 rotate-45 -mt-1 mr-1.5"></div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
 
-          {/* Paramètre 2 : Vérification des quotas de bonus */}
-          <div className="flex items-start gap-2.5 select-none">
-            <input
-              type="checkbox"
-              id="projects-checkbox-bonus-quotas"
-              checked={bonusConfig.checkQuotas}
-              disabled={!canToggleBonus || savingBonus}
-              onChange={(e) => {
-                e.stopPropagation();
-                handleToggleCheckQuotas();
-              }}
-              className="mt-0.5 h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer disabled:cursor-not-allowed shrink-0"
-            />
-            <div>
-              <label
-                htmlFor="projects-checkbox-bonus-quotas"
-                className={`text-xs font-bold block leading-tight ${
-                  canToggleBonus ? 'cursor-pointer hover:text-indigo-700' : 'cursor-default'
-                } ${bonusConfig.checkQuotas ? 'text-indigo-950' : 'text-slate-800'}`}
-              >
-                Vérification des quotas de bonus
-              </label>
-              <p className="text-[11px] text-slate-500 mt-0.5 leading-snug">
-                {bonusConfig.checkQuotas ? (
-                  <span className="text-indigo-900 font-medium">
-                    Contrôle les quotas et alerte<br />au premier dépassement selon le tri
-                  </span>
-                ) : (
-                  <span className="text-slate-500">
-                    Ne vérifie pas les quotas<br />de bonus
-                  </span>
-                )}
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
+                {/* Boîte à cocher 2 : Vérification des quotas de bonus */}
+                <div className="flex items-center gap-2 select-none">
+                  <input
+                    type="checkbox"
+                    id="projects-checkbox-bonus-quotas"
+                    checked={bonusConfig.checkQuotas}
+                    disabled={!canToggleBonus || savingBonus}
+                    onChange={(e) => {
+                      e.stopPropagation();
+                      handleToggleCheckQuotas();
+                    }}
+                    className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer disabled:cursor-not-allowed shrink-0"
+                  />
+                  <div className="flex items-center gap-1.5">
+                    <label
+                      htmlFor="projects-checkbox-bonus-quotas"
+                      className={`text-xs font-bold leading-tight ${
+                        canToggleBonus ? 'cursor-pointer hover:text-indigo-700' : 'cursor-default'
+                      } ${bonusConfig.checkQuotas ? 'text-indigo-950' : 'text-slate-800'}`}
+                    >
+                      Vérification des quotas de bonus
+                    </label>
+                    <div className="relative inline-flex items-center group">
+                      <span
+                        tabIndex={0}
+                        role="button"
+                        className="text-slate-400 hover:text-slate-600 focus:text-slate-600 cursor-help inline-flex items-center"
+                        title={
+                          bonusConfig.checkQuotas
+                            ? 'Contrôle les quotas et alerte en cas de dépassement selon le tri actif'
+                            : 'Ne vérifie pas les quotas de bonus'
+                        }
+                      >
+                        <HelpCircle className="w-3.5 h-3.5" />
+                      </span>
+                      <div className="absolute right-0 bottom-full mb-2 hidden group-hover:flex group-focus-within:flex flex-col items-end z-30 pointer-events-none w-56">
+                        <div className="bg-slate-900 text-white text-[11px] leading-snug rounded-lg px-2.5 py-1.5 shadow-lg text-center">
+                          {bonusConfig.checkQuotas
+                            ? 'Contrôle les quotas et alerte en cas de dépassement selon le tri actif'
+                            : 'Ne vérifie pas les quotas de bonus'}
+                        </div>
+                        <div className="w-2 h-2 bg-slate-900 rotate-45 -mt-1 mr-1.5"></div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
 
-      {/* Alerte dépassement quota de bonus (selon le tri effectué) */}
-      {bonusConfig.checkQuotas && bonusQuotaAnalysis.hasAlert && (
-        <div className="p-4 bg-amber-50/90 border-2 border-amber-300 rounded-xl shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-amber-950 animate-in fade-in">
-          <div className="flex items-start gap-3">
-            <div className="p-2 bg-amber-100 rounded-lg text-amber-700 shrink-0 mt-0.5">
-              <AlertTriangle className="w-5 h-5 text-amber-600" />
+                {/* Boîte à cocher 3 : Projets bonussés uniquement */}
+                <div className="flex items-center gap-2 select-none">
+                  <input
+                    type="checkbox"
+                    id="projects-checkbox-bonused-only"
+                    checked={bonusedOnly}
+                    onChange={(e) => {
+                      e.stopPropagation();
+                      setBonusedOnly(e.target.checked);
+                    }}
+                    className="h-4 w-4 rounded border-slate-300 text-teal-600 focus:ring-teal-500 cursor-pointer shrink-0"
+                  />
+                  <div className="flex items-center gap-1.5">
+                    <label
+                      htmlFor="projects-checkbox-bonused-only"
+                      className={`text-xs font-bold leading-tight cursor-pointer ${
+                        bonusedOnly ? 'text-teal-950' : 'text-slate-800 hover:text-teal-700'
+                      }`}
+                    >
+                      Projets bonussés uniquement
+                    </label>
+                    <div className="relative inline-flex items-center group">
+                      <span
+                        tabIndex={0}
+                        role="button"
+                        className="text-slate-400 hover:text-slate-600 focus:text-slate-600 cursor-help inline-flex items-center"
+                        title="Filtre la liste des projets pour ne faire apparaître que ceux ayant un bonus"
+                      >
+                        <HelpCircle className="w-3.5 h-3.5" />
+                      </span>
+                      <div className="absolute right-0 bottom-full mb-2 hidden group-hover:flex group-focus-within:flex flex-col items-end z-30 pointer-events-none w-56">
+                        <div className="bg-slate-900 text-white text-[11px] leading-snug rounded-lg px-2.5 py-1.5 shadow-lg text-center">
+                          Filtre la liste des projets pour ne faire apparaître que les projets avec un bonus
+                        </div>
+                        <div className="w-2 h-2 bg-slate-900 rotate-45 -mt-1 mr-1.5"></div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
-            <div>
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="font-bold text-xs text-amber-900 uppercase tracking-wider">
-                  Alerte Quota de Bonus
+
+            {/* Message d'alerte des quotas de bonus (format direct et compact sur la même ligne) */}
+            {hasQuotaAlert && (
+              <div className="pt-3 border-t border-amber-200/90 flex items-center gap-2 flex-wrap text-xs text-amber-950 animate-in fade-in">
+                <div className="p-1 bg-amber-100 rounded text-amber-700 shrink-0">
+                  <AlertTriangle className="w-3.5 h-3.5 text-amber-600" />
+                </div>
+                <span className="font-bold text-amber-900 uppercase tracking-wider">
+                  ALERTE QUOTA DE BONUS :
                 </span>
-                <span className="text-[11px] font-medium bg-amber-200/80 text-amber-900 px-2 py-0.5 rounded-full">
-                  Tri actif : {sortColumn === 'roi' ? 'ROI' : sortColumn === 'bonus' ? 'Bonus' : sortColumn} ({sortDirection === 'asc' ? 'croissant' : 'décroissant'})
+                <span className="font-medium bg-amber-200/80 text-amber-900 px-2 py-0.5 rounded-full text-[11px]">
+                  Tri actif : {sortColumn === 'roi' ? 'Priorité' : sortColumn === 'bonus' ? 'Bonus' : sortColumn === 'id' ? '#ID' : sortColumn === 'name' ? 'Nom' : sortColumn === 'state' ? 'Cycle de vie' : sortColumn === 'pm' ? 'Chef de projet' : 'Ligne budgétaire'} ({sortDirection === 'asc' ? 'croissant' : 'décroissant'})
+                </span>
+                <span className="font-semibold text-amber-950">
+                  {bonusQuotaAnalysis.breachingProjectsCount} projet{bonusQuotaAnalysis.breachingProjectsCount > 1 ? 's' : ''} en dépassement sur {bonusQuotaAnalysis.totalBonusedProjects} projet{bonusQuotaAnalysis.totalBonusedProjects > 1 ? 's' : ''} bonussé{bonusQuotaAnalysis.totalBonusedProjects > 1 ? 's' : ''} ({bonusQuotaAnalysis.totalDistributedBonus} point{bonusQuotaAnalysis.totalDistributedBonus > 1 ? 's' : ''} distribué{bonusQuotaAnalysis.totalDistributedBonus > 1 ? 's' : ''})
                 </span>
               </div>
-              <p className="text-xs text-amber-900 mt-1 leading-relaxed">
-                Le <strong>premier projet en dépassement</strong> est{' '}
-                <span className="font-bold underline decoration-amber-500">
-                  « {bonusQuotaAnalysis.firstBreachingProjectName} »
-                </span>{' '}
-                : {bonusQuotaAnalysis.breachReason}
-              </p>
-            </div>
+            )}
           </div>
-          <div className="sm:text-right shrink-0 bg-white/80 p-2.5 rounded-lg border border-amber-200">
-            <div className="text-[11px] text-amber-800 font-medium">Cumul sur la sélection :</div>
-            <div className="text-xs font-mono font-bold text-amber-950">
-              {bonusQuotaAnalysis.totalBonusedProjects} projet(s) bonussé(s) • {bonusQuotaAnalysis.totalDistributedBonus} pts
-            </div>
-          </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* Table des projets */}
       <div className="bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden">
@@ -806,14 +948,15 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
                     </div>
                   </th>
 
-                  {/* ROI */}
+                  {/* PRIORITE */}
                   <th
                     scope="col"
                     onClick={() => handleSort('roi')}
-                    className="py-3 px-4 w-28 text-center cursor-pointer select-none group hover:bg-slate-200/60 transition-colors"
+                    className="py-3 px-4 w-32 text-center cursor-pointer select-none group hover:bg-slate-200/60 transition-colors"
+                    title="Trier par priorité (rang selon ROI décroissant)"
                   >
                     <div className="flex items-center justify-center gap-1.5">
-                      <span>ROI</span>
+                      <span>PRIORITE</span>
                       {renderSortIcon('roi')}
                     </div>
                   </th>
@@ -889,16 +1032,20 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
                   const userCanEdit = canEdit(p);
                   const projectRoi = getProjectEffectiveRoi(p);
                   const breachInfo = bonusQuotaAnalysis.breachingProjectsMap.get(p.id);
-                  const isFirstBreach = p.id === bonusQuotaAnalysis.firstBreachingProjectId;
-                  const isBreaching = Boolean(breachInfo);
+                  const isBreaching = bonusConfig.checkQuotas && Boolean(breachInfo);
                   return (
                     <tr
                       key={p.id}
-                      className={`transition-colors ${
-                        isFirstBreach
+                      ref={(el) => {
+                        if (el) {
+                          rowRefs.current.set(p.id, el);
+                        } else {
+                          rowRefs.current.delete(p.id);
+                        }
+                      }}
+                      className={`scroll-mt-28 transition-colors ${
+                        isBreaching
                           ? 'bg-amber-50/80 hover:bg-amber-100/80 border-l-4 border-l-amber-500'
-                          : isBreaching
-                          ? 'bg-amber-50/30 hover:bg-amber-50/60'
                           : 'hover:bg-slate-50/70'
                       }`}
                     >
@@ -909,12 +1056,17 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
                         </span>
                       </td>
 
-                      {/* Colonne 2 : ROI (Valeur / Coût) */}
+                      {/* Colonne 2 : PRIORITE (Rang dans bulle et ROI calculé entre parenthèses à l'extérieur) */}
                       <td className="py-3 px-4 text-center whitespace-nowrap">
                         {projectRoi !== null ? (
-                          <span className="font-mono font-bold text-xs px-2.5 py-1 rounded-lg bg-indigo-50 text-indigo-700 border border-indigo-200 shadow-2xs">
-                            {formatRoi(projectRoi)}
-                          </span>
+                          <div className="inline-flex items-center justify-center gap-1.5">
+                            <span className="font-mono font-bold text-xs px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-700 border border-indigo-200 shadow-2xs min-w-[22px] text-center">
+                              {projectRoiRanks.get(p.id) ?? '-'}
+                            </span>
+                            <span className="font-mono text-xs text-slate-500 font-medium">
+                              ({formatRoi(projectRoi)})
+                            </span>
+                          </div>
                         ) : (
                           <span className="text-slate-300">-</span>
                         )}
@@ -924,11 +1076,6 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
                       <td className="py-3 px-4">
                         <div className="font-bold text-slate-900 flex items-center gap-1.5">
                           <span>{p.name}</span>
-                          {isFirstBreach && (
-                            <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-amber-100 text-amber-900 text-[10px] font-bold rounded border border-amber-300">
-                              ⚠️ 1er dépassement quota
-                            </span>
-                          )}
                         </div>
                         {p.description && (
                           <p className="text-[11px] text-slate-500 line-clamp-1 mt-0.5 max-w-sm">
@@ -992,10 +1139,8 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
                                 }}
                                 placeholder="0"
                                 className={`w-14 px-2 py-1 text-center font-mono font-bold text-xs rounded-md border transition-all ${
-                                  isFirstBreach
+                                  isBreaching
                                     ? 'bg-amber-100 text-amber-950 border-amber-400 focus:ring-2 focus:ring-amber-500'
-                                    : isBreaching
-                                    ? 'bg-amber-50 text-amber-900 border-amber-300 focus:ring-2 focus:ring-amber-400'
                                     : 'bg-white text-slate-900 border-slate-300 hover:border-slate-400 focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20'
                                 }`}
                                 title="Saisir manuellement le bonus du projet (Value Management Officer)"
@@ -1003,20 +1148,23 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
                               {isBreaching && (
                                 <span
                                   className="text-xs shrink-0 cursor-help"
-                                  title={
-                                    isFirstBreach
-                                      ? `🚨 1er dépassement quota : ${breachInfo}`
-                                      : `⚠️ Dépassement : ${breachInfo}`
-                                  }
+                                  title={`⚠️ Dépassement : ${breachInfo?.reason}`}
                                 >
                                   ⚠️
                                 </span>
                               )}
                             </div>
-                            {isFirstBreach && (
-                              <span className="text-[9px] font-sans font-bold text-amber-800 uppercase tracking-tighter mt-0.5">
-                                1er dépassement
-                              </span>
+                            {isBreaching && breachInfo?.labels && breachInfo.labels.length > 0 && (
+                              <div className="flex flex-col items-center mt-1 space-y-0.5">
+                                {breachInfo.labels.map((lbl, idx) => (
+                                  <span
+                                    key={idx}
+                                    className="text-[9px] font-sans font-bold text-amber-900 bg-amber-200/90 border border-amber-300/80 px-1.5 py-0.5 rounded whitespace-nowrap leading-tight"
+                                  >
+                                    {lbl}
+                                  </span>
+                                ))}
+                              </div>
                             )}
                           </div>
                         ) : (
@@ -1024,27 +1172,30 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
                             <div className="inline-flex flex-col items-center">
                               <span
                                 className={`px-2 py-0.5 rounded text-[11px] font-bold ${
-                                  isFirstBreach
+                                  isBreaching
                                     ? 'bg-amber-200 text-amber-950 border border-amber-400 shadow-2xs'
-                                    : isBreaching
-                                    ? 'bg-amber-100 text-amber-900 border border-amber-300'
                                     : 'bg-amber-100 text-amber-900 border border-amber-300'
                                 }`}
                                 title={
-                                  isFirstBreach
-                                    ? `🚨 PREMIER PROJET EN DÉPASSEMENT : ${breachInfo}`
-                                    : isBreaching
-                                    ? `⚠️ Dépassement : ${breachInfo}`
+                                  isBreaching
+                                    ? `⚠️ Dépassement : ${breachInfo?.reason}`
                                     : `Bonus : ${p.bonus} pts`
                                 }
                               >
                                 {p.bonus}
                                 {isBreaching && <span className="ml-1 text-xs">⚠️</span>}
                               </span>
-                              {isFirstBreach && (
-                                <span className="text-[9px] font-sans font-bold text-amber-800 uppercase tracking-tighter mt-0.5">
-                                  1er dépassement
-                                </span>
+                              {isBreaching && breachInfo?.labels && breachInfo.labels.length > 0 && (
+                                <div className="flex flex-col items-center mt-1 space-y-0.5">
+                                  {breachInfo.labels.map((lbl, idx) => (
+                                    <span
+                                      key={idx}
+                                      className="text-[9px] font-sans font-bold text-amber-900 bg-amber-200/90 border border-amber-300/80 px-1.5 py-0.5 rounded whitespace-nowrap leading-tight"
+                                    >
+                                      {lbl}
+                                    </span>
+                                  ))}
+                                </div>
                               )}
                             </div>
                           ) : (
