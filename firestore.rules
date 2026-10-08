@@ -1,0 +1,69 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    // Default deny catch-all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Test connection
+    match /test/connection {
+      allow read, write: if true;
+    }
+
+    // Users & Roles management
+    match /users/{userId} {
+      allow read, write: if true;
+    }
+
+    // Criteria collection
+    match /criteria/{criterionId} {
+      allow read, write: if true;
+    }
+
+    // Budget lines collection
+    match /budgetLines/{budgetLineId} {
+      allow read, write: if true;
+    }
+
+    // Key Skills collection
+    match /keySkills/{keySkillId} {
+      allow read, write: if true;
+    }
+
+    // Project States (Lifecycle) collection
+    match /projectStates/{projectStateId} {
+      allow read, write: if true;
+    }
+
+    // Custom Project Parameters collection
+    match /projectCustomParams/{paramId} {
+      allow read, write: if true;
+    }
+
+    // Projects collection
+    match /projects/{projectId} {
+      allow read, write: if true;
+    }
+
+    // Unique sequential counters collection
+    match /counters/{counterId} {
+      allow read, write: if true;
+    }
+
+    // Application Settings
+    match /settings/{settingId} {
+      allow read, write: if true;
+    }
+
+    // Generic collection fallback for app features
+    match /{collectionName}/{docId} {
+      allow read, write: if true;
+    }
+  }
+}

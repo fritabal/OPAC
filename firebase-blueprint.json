@@ -1,0 +1,409 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "Utilisateurs autorisés avec leur profil et informations de connexion",
+      "type": "object",
+      "properties": {
+        "email": {
+          "type": "string",
+          "description": "Adresse email de l'utilisateur",
+          "maxLength": 256
+        },
+        "role": {
+          "type": "string",
+          "description": "Rôle principal attribué à l'utilisateur (rétrocompatibilité)",
+          "enum": ["super user", "administrateur", "chef de projet", "resource manager", "value management officer"]
+        },
+        "roles": {
+          "type": "array",
+          "description": "Liste des rôles attribués à l'utilisateur (un utilisateur peut cumuler plusieurs rôles, par exemple Resource Manager et Chef de projet)",
+          "items": {
+            "type": "string",
+            "enum": ["super user", "administrateur", "chef de projet", "resource manager", "value management officer"]
+          }
+        },
+        "displayName": {
+          "type": "string",
+          "description": "Nom affiché de l'utilisateur",
+          "maxLength": 128
+        },
+        "isActive": {
+          "type": "boolean",
+          "description": "Indicateur d'activation du compte : faux tant que l'utilisateur n'a pas défini son mot de passe initial"
+        },
+        "activationToken": {
+          "type": "string",
+          "description": "Jeton d'activation envoyé par email pour la première définition de mot de passe",
+          "maxLength": 128
+        },
+        "activationTokenExpiresAt": {
+          "type": "string",
+          "description": "Date et heure d'expiration du jeton d'activation"
+        },
+        "mustResetPassword": {
+          "type": "boolean",
+          "description": "Indicateur si l'utilisateur doit obligatoirement définir/réinitialiser son mot de passe à la prochaine connexion"
+        },
+        "passwordHash": {
+          "type": "string",
+          "description": "Empreinte cryptographique sécurisée du mot de passe de l'utilisateur",
+          "maxLength": 256
+        },
+        "passwordResetAt": {
+          "type": "string",
+          "description": "Date et heure de la dernière réinitialisation du mot de passe par l'administrateur"
+        },
+        "passwordLastChangedAt": {
+          "type": "string",
+          "description": "Date et heure de la dernière modification du mot de passe"
+        },
+        "resetToken": {
+          "type": "string",
+          "description": "Jeton temporaire pour le lien sécurisé de réinitialisation",
+          "maxLength": 128
+        },
+        "resetTokenExpiresAt": {
+          "type": "string",
+          "description": "Date et heure d'expiration du jeton de réinitialisation"
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Horodatage de création"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Horodatage de mise à jour"
+        }
+      },
+      "required": ["email", "role"]
+    },
+    "Criterion": {
+      "title": "Criterion",
+      "description": "Critère de priorisation de type VALEUR ou COÛT avec ses 6 échelons textuels",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Nom unique du critère",
+          "maxLength": 128
+        },
+        "type": {
+          "type": "string",
+          "description": "Type de critère : VALEUR ou COÛT",
+          "enum": ["VALEUR", "COÛT"]
+        },
+        "weight": {
+          "type": "number",
+          "description": "Poids relatif du critère parmi 1, 2, 3, 5, 8, 13",
+          "enum": [1, 2, 3, 5, 8, 13]
+        },
+        "isActive": {
+          "type": "boolean",
+          "description": "Indicateur d'activation du critère pour la prise en compte dans les calculs de priorité"
+        },
+        "levels": {
+          "type": "array",
+          "description": "Liste ordonnée de 6 libellés textuels correspondant aux notes 0, 1, 2, 3, 5, 8"
+        },
+        "order": {
+          "type": "number",
+          "description": "Ordre d'affichage du critère dans la liste"
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Date de création"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Date de modification"
+        }
+      },
+      "required": ["name", "type", "levels", "order"]
+    },
+    "BudgetLine": {
+      "title": "BudgetLine",
+      "description": "Ligne budgétaire définie par son nom, son budget en K€, son responsable et son activation",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Nom unique de la ligne budgétaire",
+          "maxLength": 128
+        },
+        "budgetKe": {
+          "type": "number",
+          "description": "Montant du budget alloué en K€"
+        },
+        "manager": {
+          "type": "string",
+          "description": "Nom ou adresse email du responsable de la ligne budgétaire",
+          "maxLength": 128
+        },
+        "color": {
+          "type": "string",
+          "description": "Couleur hexadécimale unique associée à la ligne budgétaire parmi la palette de 32 couleurs",
+          "maxLength": 32
+        },
+        "isActive": {
+          "type": "boolean",
+          "description": "Indicateur d'activation de la ligne budgétaire par boîte à cocher"
+        },
+        "order": {
+          "type": "number",
+          "description": "Ordre d'affichage de la ligne budgétaire"
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Date de création"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Date de modification"
+        }
+      },
+      "required": ["name", "budgetKe", "manager", "color", "isActive", "order"]
+    },
+    "KeySkill": {
+      "title": "KeySkill",
+      "description": "Compétence clé pouvant constituer un goulet d'étranglement avec gestion du plafonnement par ligne budgétaire",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Nom unique de la compétence clé",
+          "maxLength": 128
+        },
+        "resourceManagerId": {
+          "type": "string",
+          "description": "ID de l'utilisateur Resource Manager",
+          "maxLength": 128
+        },
+        "resourceManagerName": {
+          "type": "string",
+          "description": "Nom complet du Resource Manager",
+          "maxLength": 128
+        },
+        "description": {
+          "type": "string",
+          "description": "Description facultative de la compétence clé"
+        },
+        "isCapped": {
+          "type": "boolean",
+          "description": "Indicateur si la capacité est capée par ligne budgétaire ou non capée"
+        },
+        "budgetAllocations": {
+          "type": "array",
+          "description": "Répartition en pourcentage entre les différentes lignes budgétaires"
+        },
+        "order": {
+          "type": "number",
+          "description": "Ordre d'affichage de la compétence clé"
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Date de création"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Date de modification"
+        }
+      },
+      "required": ["name", "resourceManagerId", "resourceManagerName", "isCapped", "order"]
+    },
+    "AppSettings": {
+      "title": "AppSettings",
+      "description": "Paramètres génériques de l'application configurés par l'administrateur",
+      "type": "object",
+      "properties": {
+        "initialized": {
+          "type": "boolean",
+          "description": "Indicateur d'initialisation de l'application"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Date de dernière modification"
+        },
+        "updatedBy": {
+          "type": "string",
+          "description": "UID de l'administrateur",
+          "maxLength": 128
+        }
+      },
+      "required": ["initialized"]
+    },
+    "ProjectState": {
+      "title": "ProjectState",
+      "description": "État du cycle de vie des projets défini par son nom unique, sa description, et ses attributs à staffer et à prioriser",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Nom unique de l'état (clé obligatoire)",
+          "maxLength": 128
+        },
+        "description": {
+          "type": "string",
+          "description": "Description facultative de l'état",
+          "maxLength": 1000
+        },
+        "needsStaffing": {
+          "type": "boolean",
+          "description": "Attribut booléen à staffer (boîte à cocher)"
+        },
+        "needsPrioritization": {
+          "type": "boolean",
+          "description": "Attribut booléen à prioriser (boîte à cocher)"
+        },
+        "order": {
+          "type": "number",
+          "description": "Ordre séquentiel de l'état dans le workflow"
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Date de création"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Date de dernière modification"
+        }
+      },
+      "required": ["name", "needsStaffing", "needsPrioritization", "order"]
+    },
+    "ProjectCustomParam": {
+      "title": "ProjectCustomParam",
+      "type": "object",
+      "description": "Paramètre personnalisé pour un projet défini par l'administrateur",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Nom du paramètre (clé unique)",
+          "maxLength": 30
+        },
+        "description": {
+          "type": "string",
+          "description": "Description du paramètre",
+          "maxLength": 100
+        },
+        "type": {
+          "type": "string",
+          "description": "Type de donnée du paramètre",
+          "enum": ["texte court", "texte long", "date", "nombre entier", "nombre avec 2 décimales"]
+        },
+        "order": {
+          "type": "number",
+          "description": "Ordre d'affichage du paramètre"
+        }
+      },
+      "required": ["name", "type", "order"]
+    },
+    "Project": {
+      "title": "Project",
+      "type": "object",
+      "description": "Projet soumis à la priorisation et au pilotage",
+      "properties": {
+        "projectNumber": {
+          "type": "number",
+          "description": "Identifiant entier séquentiel unique jamais réutilisé"
+        },
+        "name": {
+          "type": "string",
+          "description": "Nom court du projet",
+          "maxLength": 30
+        },
+        "stateId": {
+          "type": "string",
+          "description": "Identifiant de l'état du cycle de vie du projet"
+        },
+        "description": {
+          "type": "string",
+          "description": "Description détaillée du projet",
+          "maxLength": 3000
+        },
+        "createdByEmail": {
+          "type": "string",
+          "description": "Email du créateur du projet"
+        },
+        "projectManagerEmail": {
+          "type": "string",
+          "description": "Email du chef de projet responsable"
+        },
+        "deputyEmail": {
+          "type": "string",
+          "description": "Email de l'adjoint au chef de projet (facultatif)"
+        },
+        "budgetLineId": {
+          "type": "string",
+          "description": "Identifiant de la ligne budgétaire associée"
+        },
+        "estimatedBudget": {
+          "type": "number",
+          "description": "Budget global estimatif en K€"
+        },
+        "criteriaValues": {
+          "type": "object",
+          "description": "Valeurs des critères de priorisation (clé: criterionId, valeur: coefficient échelon)"
+        },
+        "bonus": {
+          "type": "number",
+          "description": "Points de bonus accordés au projet (entier)"
+        },
+        "customParamValues": {
+          "type": "object",
+          "description": "Valeurs des paramètres personnalisés du projet (clé: paramId ou nom)"
+        }
+      },
+      "required": ["projectNumber", "name", "stateId", "createdByEmail", "projectManagerEmail", "budgetLineId"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": {
+        "$ref": "#/entities/User"
+      },
+      "description": "Collection des profils et rôles utilisateurs"
+    },
+    "/criteria/{criterionId}": {
+      "schema": {
+        "$ref": "#/entities/Criterion"
+      },
+      "description": "Critères de priorisation gérés par l'administrateur"
+    },
+    "/budgetLines/{budgetLineId}": {
+      "schema": {
+        "$ref": "#/entities/BudgetLine"
+      },
+      "description": "Lignes budgétaires gérées par l'administrateur"
+    },
+    "/keySkills/{keySkillId}": {
+      "schema": {
+        "$ref": "#/entities/KeySkill"
+      },
+      "description": "Compétences clés gérées par les Resource Managers"
+    },
+    "/projectStates/{projectStateId}": {
+      "schema": {
+        "$ref": "#/entities/ProjectState"
+      },
+      "description": "États du cycle de vie des projets gérés par l'administrateur"
+    },
+    "/projectCustomParams/{paramId}": {
+      "schema": {
+        "$ref": "#/entities/ProjectCustomParam"
+      },
+      "description": "Paramètres personnalisés des projets gérés par l'administrateur"
+    },
+    "/projects/{projectId}": {
+      "schema": {
+        "$ref": "#/entities/Project"
+      },
+      "description": "Projets gérés par les Value Management Officers et Chefs de projet"
+    },
+    "/settings/{settingId}": {
+      "schema": {
+        "$ref": "#/entities/AppSettings"
+      },
+      "description": "Paramètres globaux et configurations de l'application"
+    }
+  }
+}

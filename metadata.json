@@ -1,0 +1,6 @@
+{
+  "name": "Priorisation Projets & Compétences",
+  "description": "Application de priorisation de projets par valeur et coût avec alertes sur les compétences clés.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
