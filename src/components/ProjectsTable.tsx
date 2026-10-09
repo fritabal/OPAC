@@ -104,9 +104,8 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
     effectiveRole === 'resource manager' ||
     (isResourceManager && !isAdmin && !isValueManagementOfficer && !isSuperUser);
 
-  // Droits globaux : En tant que Resource Manager, interdiction de créer ou détruire des projets
-  const canCreate = !isActingAsResourceManager && (isValueManagementOfficer || isSuperUser || isAdmin);
-  const canDelete = !isActingAsResourceManager && (isValueManagementOfficer || isSuperUser || isAdmin);
+  // Droits globaux : En tant que Resource Manager, interdiction de créer des projets
+  const canCreate = !isActingAsResourceManager && (isValueManagementOfficer || isSuperUser || isAdmin || isProjectManager);
 
   // Droits exclusifs sur les bonus dans l'onglet projets : réservé au seul persona Value Management Officer
   const canToggleBonus = isValueManagementOfficer && (
@@ -152,15 +151,43 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
     }
   };
 
-  // Droit d'édition par projet : En tant que Resource Manager, interdiction de modifier des projets
+  // Droit d'édition par projet : Seul le chef de projet ou son adjoint ainsi que le Value Management Officer (et le Super User) ont le droit de modifier un projet
   const canEdit = (project: Project): boolean => {
     if (isActingAsResourceManager) return false;
-    if (isValueManagementOfficer || isSuperUser || isAdmin) return true;
+    if (isSuperUser || isValueManagementOfficer) return true;
     if (!activeUser?.email) return false;
     const userEmail = activeUser.email.toLowerCase();
-    const pmEmail = project.projectManagerEmail.toLowerCase();
+    const pmEmail = project.projectManagerEmail?.toLowerCase() || '';
     const deputyEmail = project.deputyEmail ? project.deputyEmail.toLowerCase() : '';
     return userEmail === pmEmail || userEmail === deputyEmail;
+  };
+
+  // Droit de visualisation d'un projet confidentiel : Chef de projet, son adjoint, VMO et Super User
+  const canViewConfidential = (project: Project): boolean => {
+    if (!project.isConfidential) return true;
+    if (isSuperUser || isValueManagementOfficer) return true;
+    if (!activeUser?.email) return false;
+    const userEmail = activeUser.email.toLowerCase();
+    const pmEmail = project.projectManagerEmail?.toLowerCase() || '';
+    const deputyEmail = project.deputyEmail ? project.deputyEmail.toLowerCase() : '';
+    return userEmail === pmEmail || userEmail === deputyEmail;
+  };
+
+  // Droit de suppression d'un projet : Seul le chef de projet, son adjoint, le Value Management Officer ou le Super User peuvent supprimer
+  // Les autres utilisateurs ne peuvent y accéder qu'en lecture (icône d'œil) et n'ont pas de pictogramme de poubelle
+  const canDeleteProject = (project: Project): boolean => {
+    if (isActingAsResourceManager) return false;
+    if (!canEdit(project)) return false;
+    return (
+      isSuperUser ||
+      isValueManagementOfficer ||
+      Boolean(
+        activeUser?.email &&
+          (project.projectManagerEmail.toLowerCase() === activeUser.email.toLowerCase() ||
+            (project.deputyEmail &&
+              project.deputyEmail.toLowerCase() === activeUser.email.toLowerCase()))
+      )
+    );
   };
 
   // Stockage local des modifications directes de bonus pour réactivité instantanée
@@ -242,6 +269,9 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
   };
 
   const handleOpenEdit = (p: Project) => {
+    if (p.isConfidential && !canViewConfidential(p)) {
+      return; // Interdire formellement la visualisation des projets confidentiels
+    }
     setSelectedProject(p);
     setIsReadOnlyModal(!canEdit(p));
     setModalOpen(true);
@@ -265,21 +295,31 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
   // Filtrage
   const filteredProjects = useMemo(() => {
     return projects.filter((p) => {
+      const isHidden = Boolean(p.isConfidential) && !canViewConfidential(p);
+
       // Recherche textuelle
       if (searchQuery.trim()) {
         const q = searchQuery.trim().toLowerCase();
-        const matchesName = p.name.toLowerCase().includes(q);
-        const matchesDesc = p.description.toLowerCase().includes(q);
         const matchesNumber = `#${p.projectNumber}`.includes(q) || String(p.projectNumber).includes(q);
-        const matchesPM = p.projectManagerEmail.toLowerCase().includes(q);
-        if (!matchesName && !matchesDesc && !matchesNumber && !matchesPM) return false;
+        if (isHidden) {
+          // Si le projet est caviardé pour l'utilisateur, ne pas permettre la recherche par le nom ou la description cachée
+          if (!matchesNumber && !'confidentiel'.includes(q)) return false;
+        } else {
+          const matchesName = p.name.toLowerCase().includes(q);
+          const matchesDesc = p.description.toLowerCase().includes(q);
+          const matchesPM = p.projectManagerEmail.toLowerCase().includes(q);
+          if (!matchesName && !matchesDesc && !matchesNumber && !matchesPM) return false;
+        }
       }
 
       // Filtre état
       if (stateFilter && p.stateId !== stateFilter) return false;
 
       // Filtre ligne budgétaire
-      if (budgetLineFilter && p.budgetLineId !== budgetLineFilter) return false;
+      if (budgetLineFilter) {
+        if (isHidden) return false; // Ligne budgétaire caviardée pour cet utilisateur
+        if (p.budgetLineId !== budgetLineFilter) return false;
+      }
 
       // Mes projets uniquement
       if (myProjectsOnly && activeUser?.email) {
@@ -297,7 +337,7 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
 
       return true;
     });
-  }, [projects, searchQuery, stateFilter, budgetLineFilter, myProjectsOnly, bonusedOnly, activeUser, localBonuses]);
+  }, [projects, searchQuery, stateFilter, budgetLineFilter, myProjectsOnly, bonusedOnly, activeUser, localBonuses, isSuperUser, isValueManagementOfficer]);
 
   const getStateName = (stateId: string) => {
     const s = projectStates.find((st) => st.id === stateId);
@@ -1030,6 +1070,7 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
               <tbody className="divide-y divide-slate-100">
                 {sortedProjects.map((p) => {
                   const userCanEdit = canEdit(p);
+                  const isConfidentialHidden = Boolean(p.isConfidential) && !canViewConfidential(p);
                   const projectRoi = getProjectEffectiveRoi(p);
                   const breachInfo = bonusQuotaAnalysis.breachingProjectsMap.get(p.id);
                   const isBreaching = bonusConfig.checkQuotas && Boolean(breachInfo);
@@ -1072,15 +1113,46 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
                         )}
                       </td>
 
-                      {/* Colonne 3 : Nom et description */}
+                      {/* Colonne 3 : Nom et description (caviardé si projet confidentiel non autorisé) */}
                       <td className="py-3 px-4">
-                        <div className="font-bold text-slate-900 flex items-center gap-1.5">
-                          <span>{p.name}</span>
-                        </div>
-                        {p.description && (
-                          <p className="text-[11px] text-slate-500 line-clamp-1 mt-0.5 max-w-sm">
-                            {p.description}
-                          </p>
+                        {isConfidentialHidden ? (
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <span
+                                className="bg-slate-900 text-slate-900 select-none rounded px-2.5 py-0.5 text-xs font-mono tracking-widest inline-block shadow-2xs"
+                                title="Contenu caviardé (Projet confidentiel)"
+                              >
+                                ██████████████
+                              </span>
+                              <span className="inline-flex items-center gap-1 text-[10px] text-red-600 font-bold bg-red-50 border border-red-200 px-1.5 py-0.5 rounded shadow-2xs select-none">
+                                <Lock className="w-2.5 h-2.5 text-red-600" />
+                                CONFIDENTIEL
+                              </span>
+                            </div>
+                            <p className="text-[10px] text-slate-400 italic mt-0.5 select-none">
+                              Titre et description masqués
+                            </p>
+                          </div>
+                        ) : (
+                          <div>
+                            <div className="font-bold text-slate-900 flex items-center gap-2">
+                              <span>{p.name}</span>
+                              {p.isConfidential && (
+                                <span
+                                  className="inline-flex items-center gap-1 text-[10px] text-red-600 font-bold bg-red-50 border border-red-200 px-1.5 py-0.5 rounded shadow-2xs select-none"
+                                  title="Projet confidentiel (visible par vous, votre adjoint et le VMO)"
+                                >
+                                  <Lock className="w-2.5 h-2.5 text-red-600" />
+                                  CONFIDENTIEL
+                                </span>
+                              )}
+                            </div>
+                            {p.description && (
+                              <p className="text-[11px] text-slate-500 line-clamp-1 mt-0.5 max-w-sm">
+                                {p.description}
+                              </p>
+                            )}
+                          </div>
                         )}
                       </td>
 
@@ -1109,11 +1181,20 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
                         </div>
                       </td>
 
-                      {/* Colonne 5 : Ligne budgétaire */}
+                      {/* Colonne 5 : Ligne budgétaire (caviardée si projet confidentiel non autorisé) */}
                       <td className="py-3 px-4 text-slate-700">
-                        <span className="truncate block max-w-[160px]" title={getBudgetLineName(p.budgetLineId)}>
-                          {getBudgetLineName(p.budgetLineId)}
-                        </span>
+                        {isConfidentialHidden ? (
+                          <span
+                            className="bg-slate-900 text-slate-900 select-none rounded px-2 py-0.5 text-xs font-mono tracking-widest inline-block shadow-2xs"
+                            title="Ligne budgétaire masquée"
+                          >
+                            ████████
+                          </span>
+                        ) : (
+                          <span className="truncate block max-w-[160px]" title={getBudgetLineName(p.budgetLineId)}>
+                            {getBudgetLineName(p.budgetLineId)}
+                          </span>
+                        )}
                       </td>
 
                       {/* Colonne 6 : Bonus */}
@@ -1207,28 +1288,46 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
                       {/* Colonne 8 : Actions */}
                       <td className="py-3 px-4 text-right whitespace-nowrap">
                         <div className="flex items-center justify-end gap-1">
-                          <button
-                            type="button"
-                            onClick={() => handleOpenEdit(p)}
-                            className={`p-1.5 rounded-md transition-colors cursor-pointer ${
-                              userCanEdit
-                                ? 'text-slate-500 hover:text-indigo-600 hover:bg-indigo-50'
-                                : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100'
-                            }`}
-                            title={userCanEdit ? 'Modifier ce projet' : 'Consulter ce projet (Lecture seule)'}
-                          >
-                            {userCanEdit ? <Pencil className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-                          </button>
-
-                          {canDelete && (
-                            <button
-                              type="button"
-                              onClick={() => setDeleteCandidate(p)}
-                              className="p-1.5 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors cursor-pointer"
-                              title="Supprimer ce projet"
+                          {isConfidentialHidden ? (
+                            <span
+                              className="p-1.5 text-slate-400 select-none cursor-not-allowed inline-flex items-center rounded-md"
+                              title="Projet confidentiel — Visualisation et modification interdites"
                             >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
+                              <Lock className="w-3.5 h-3.5 text-slate-400" />
+                            </span>
+                          ) : (
+                            <>
+                              {userCanEdit ? (
+                                <button
+                                  type="button"
+                                  onClick={() => handleOpenEdit(p)}
+                                  className="p-1.5 rounded-md transition-colors cursor-pointer text-slate-500 hover:text-indigo-600 hover:bg-indigo-50"
+                                  title="Modifier ce projet"
+                                >
+                                  <Pencil className="w-3.5 h-3.5" />
+                                </button>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() => handleOpenEdit(p)}
+                                  className="p-1.5 rounded-md transition-colors cursor-pointer text-slate-400 hover:text-slate-600 hover:bg-slate-100"
+                                  title="Consulter ce projet (Lecture seule)"
+                                >
+                                  <Eye className="w-3.5 h-3.5" />
+                                </button>
+                              )}
+
+                              {userCanEdit && canDeleteProject(p) && (
+                                <button
+                                  type="button"
+                                  onClick={() => setDeleteCandidate(p)}
+                                  className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors cursor-pointer"
+                                  title="Supprimer ce projet"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              )}
+                            </>
                           )}
                         </div>
                       </td>

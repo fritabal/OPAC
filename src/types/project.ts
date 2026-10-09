@@ -12,6 +12,7 @@ export interface Project {
   createdByEmail: string; // Email de l'utilisateur qui l'a créé (non modifiable)
   projectManagerEmail: string; // Email du chef de projet (obligatoire, modifiable)
   deputyEmail?: string | null; // Email de l'adjoint au chef de projet (facultatif, modifiable)
+  isConfidential?: boolean; // Projet confidentiel (masqué aux utilisateurs non autorisés)
 
   // Encart c) "Priorisation"
   budgetLineId: string; // Ligne budgétaire associée (modifiable)

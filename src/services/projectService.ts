@@ -81,6 +81,7 @@ export function subscribeToProjects(
           createdByEmail: data.createdByEmail || '',
           projectManagerEmail: data.projectManagerEmail || '',
           deputyEmail: data.deputyEmail || null,
+          isConfidential: Boolean(data.isConfidential),
           budgetLineId: data.budgetLineId || '',
           estimatedBudget: typeof data.estimatedBudget === 'number' ? data.estimatedBudget : 0,
           criteriaValues: data.criteriaValues || {},
@@ -136,6 +137,7 @@ export async function createProject(formData: ProjectFormData): Promise<Project>
       createdByEmail: formData.createdByEmail.trim().toLowerCase(),
       projectManagerEmail: formData.projectManagerEmail.trim().toLowerCase(),
       deputyEmail: formData.deputyEmail ? formData.deputyEmail.trim().toLowerCase() : null,
+      isConfidential: Boolean(formData.isConfidential),
       budgetLineId: formData.budgetLineId,
       estimatedBudget: Number(formData.estimatedBudget) || 0,
       criteriaValues: formData.criteriaValues || {},
@@ -193,6 +195,9 @@ export async function updateProject(id: string, formData: Partial<ProjectFormDat
     }
     if (formData.deputyEmail !== undefined) {
       payload.deputyEmail = formData.deputyEmail ? formData.deputyEmail.trim().toLowerCase() : null;
+    }
+    if (formData.isConfidential !== undefined) {
+      payload.isConfidential = Boolean(formData.isConfidential);
     }
     if (formData.budgetLineId !== undefined) payload.budgetLineId = formData.budgetLineId;
     if (formData.estimatedBudget !== undefined) payload.estimatedBudget = Number(formData.estimatedBudget) || 0;

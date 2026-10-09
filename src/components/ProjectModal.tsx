@@ -20,6 +20,7 @@ import {
   ChevronDown,
   Pencil,
   Eye,
+  Lock,
 } from 'lucide-react';
 import { Project, ProjectFormData } from '../types/project';
 import { ProjectState } from '../types/lifecycle';
@@ -96,6 +97,7 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
   const [createdByEmail, setCreatedByEmail] = useState('');
   const [projectManagerEmail, setProjectManagerEmail] = useState('');
   const [deputyEmail, setDeputyEmail] = useState('');
+  const [isConfidential, setIsConfidential] = useState(false);
 
   // Encart c) "Priorisation"
   const [budgetLineId, setBudgetLineId] = useState('');
@@ -125,6 +127,7 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
       setCreatedByEmail(projectToEdit.createdByEmail || '');
       setProjectManagerEmail(projectToEdit.projectManagerEmail || '');
       setDeputyEmail(projectToEdit.deputyEmail || '');
+      setIsConfidential(Boolean(projectToEdit.isConfidential));
 
       setBudgetLineId(projectToEdit.budgetLineId || (budgetLines[0]?.id ?? ''));
       setEstimatedBudget(typeof projectToEdit.estimatedBudget === 'number' ? projectToEdit.estimatedBudget : '');
@@ -149,6 +152,7 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
         '';
       setProjectManagerEmail(defaultPm);
       setDeputyEmail('');
+      setIsConfidential(false);
 
       setBudgetLineId(budgetLines.find((b) => b.isActive)?.id || budgetLines[0]?.id || '');
       setEstimatedBudget('');
@@ -257,6 +261,7 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
         createdByEmail: projectToEdit ? projectToEdit.createdByEmail : currentUserEmail,
         projectManagerEmail: projectManagerEmail.trim().toLowerCase(),
         deputyEmail: deputyEmail.trim() ? deputyEmail.trim().toLowerCase() : null,
+        isConfidential,
         budgetLineId,
         estimatedBudget: Number(estimatedBudget) || 0,
         criteriaValues,
@@ -304,6 +309,12 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
                 {isReadOnly && (
                   <span className="text-[10px] bg-slate-200 text-slate-700 px-2 py-0.5 rounded font-semibold uppercase tracking-wider">
                     Lecture seule
+                  </span>
+                )}
+                {isConfidential && (
+                  <span className="text-[10px] bg-red-100 text-red-700 border border-red-200 px-2 py-0.5 rounded font-bold uppercase tracking-wider flex items-center gap-1 shadow-2xs">
+                    <Lock className="w-2.5 h-2.5 text-red-600" />
+                    Confidentiel
                   </span>
                 )}
               </div>
@@ -434,13 +445,52 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {/* Créateur (non modifiable) */}
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
-                  Créé par
-                </label>
-                <div className="px-3 py-2 bg-slate-200/80 border border-slate-300 rounded-lg text-xs font-mono text-slate-700 truncate select-none" title={createdByEmail}>
-                  {createdByEmail || '(Enregistré à la validation)'}
+              {/* Créateur (non modifiable) & case à cocher CONFIDENTIEL */}
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
+                    Créé par
+                  </label>
+                  <div className="px-3 py-2 bg-slate-200/80 border border-slate-300 rounded-lg text-xs font-mono text-slate-700 truncate select-none" title={createdByEmail}>
+                    {createdByEmail || '(Enregistré à la validation)'}
+                  </div>
+                </div>
+
+                {/* Case à cocher CONFIDENTIEL sous la boîte "Créé par" */}
+                <div className="pt-0.5">
+                  <div className="flex items-start gap-2.5 select-none">
+                    <input
+                      type="checkbox"
+                      id="project-is-confidential"
+                      checked={isConfidential}
+                      disabled={isReadOnly}
+                      onChange={(e) => setIsConfidential(e.target.checked)}
+                      className={`mt-0.5 h-4 w-4 rounded cursor-pointer disabled:cursor-not-allowed shrink-0 transition-colors ${
+                        isConfidential
+                          ? 'accent-red-600 text-red-600 border-red-500 focus:ring-red-500'
+                          : 'text-slate-600 border-slate-300 focus:ring-indigo-500'
+                      }`}
+                    />
+                    <div>
+                      <label
+                        htmlFor="project-is-confidential"
+                        className={`text-xs font-bold uppercase tracking-wider block leading-tight cursor-pointer ${
+                          isConfidential ? 'text-red-600' : 'text-slate-700'
+                        }`}
+                      >
+                        CONFIDENTIEL
+                      </label>
+                      <p
+                        className={`text-[11px] mt-0.5 leading-snug ${
+                          isConfidential ? 'text-red-600 font-medium' : 'text-slate-500'
+                        }`}
+                      >
+                        {isConfidential
+                          ? 'Projet visible que du chef de projet, son adjoint et le VMO'
+                          : 'Projet visible de tous'}
+                      </p>
+                    </div>
+                  </div>
                 </div>
               </div>
 
