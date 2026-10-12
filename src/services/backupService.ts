@@ -23,6 +23,7 @@ export interface BackupData {
     criteria: number;
     budgetLines: number;
     keySkills: number;
+    resources: number;
     projectStates: number;
     projectCustomParams: number;
     settings: number;
@@ -34,6 +35,7 @@ export interface BackupData {
     criteria: Record<string, any>[];
     budgetLines: Record<string, any>[];
     keySkills: Record<string, any>[];
+    resources: Record<string, any>[];
     projectStates: Record<string, any>[];
     projectCustomParams: Record<string, any>[];
     settings: Record<string, any>[];
@@ -50,6 +52,7 @@ export interface ImportResult {
     criteria: number;
     budgetLines: number;
     keySkills: number;
+    resources: number;
     projectStates: number;
     projectCustomParams: number;
     settings: number;
@@ -70,6 +73,7 @@ const BACKUP_COLLECTIONS = [
   'criteria',
   'budgetLines',
   'keySkills',
+  'resources',
   'projectStates',
   'projectCustomParams',
   'settings',
@@ -147,6 +151,7 @@ export async function exportAllApplicationData(currentUserEmail: string): Promis
       criteria: 0,
       budgetLines: 0,
       keySkills: 0,
+      resources: 0,
       projectStates: 0,
       projectCustomParams: 0,
       settings: 0,
@@ -158,6 +163,7 @@ export async function exportAllApplicationData(currentUserEmail: string): Promis
       criteria: [],
       budgetLines: [],
       keySkills: [],
+      resources: [],
       projectStates: [],
       projectCustomParams: [],
       settings: [],
@@ -231,6 +237,7 @@ export async function importAllApplicationData(
     criteria: 0,
     budgetLines: 0,
     keySkills: 0,
+    resources: 0,
     projectStates: 0,
     projectCustomParams: 0,
     settings: 0,

@@ -56,3 +56,33 @@ export const normalizeForSearch = (str: string): string => {
     .replace(/[\u0300-\u036f]/g, '')
     .trim();
 };
+
+/**
+ * Résout le nom d'affichage d'un utilisateur à partir de sa clé (email en priorité, ou id pour rétrocompatibilité)
+ * et de la liste globale des utilisateurs. Si l'utilisateur n'est pas trouvé, renvoie le fallback fourni ou la clé.
+ */
+export function resolveUserDisplayName(
+  keyOrEmail: string | undefined | null,
+  users: AppUser[],
+  fallbackName?: string
+): string {
+  if (!keyOrEmail || !keyOrEmail.trim()) {
+    return fallbackName || '';
+  }
+  const cleanKey = keyOrEmail.trim().toLowerCase();
+  
+  // Recherche 1 : par email (prioritaire car l'email est la clé unique métier)
+  const userByEmail = users.find((u) => (u.email || '').trim().toLowerCase() === cleanKey);
+  if (userByEmail && userByEmail.displayName) {
+    return userByEmail.displayName;
+  }
+
+  // Recherche 2 : par id de document (rétrocompatibilité avec les anciens enregistrements)
+  const userById = users.find((u) => u.id === keyOrEmail.trim());
+  if (userById && userById.displayName) {
+    return userById.displayName;
+  }
+
+  // Fallback : nom stocké précédemment ou clé brute
+  return fallbackName || keyOrEmail;
+}

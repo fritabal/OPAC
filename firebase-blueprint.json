@@ -211,6 +211,55 @@
       },
       "required": ["name", "resourceManagerId", "resourceManagerName", "isCapped", "order"]
     },
+    "Resource": {
+      "title": "Resource",
+      "description": "Ressource (individu ou équipe) rattachée à une compétence clé avec son équivalent temps plein et calendrier d'indisponibilité mensuelle",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Nom unique de la ressource (clé obligatoire)",
+          "maxLength": 128
+        },
+        "description": {
+          "type": "string",
+          "description": "Description de la ressource",
+          "maxLength": 1000
+        },
+        "fte": {
+          "type": "number",
+          "description": "Équivalent Temps Plein (ETP)"
+        },
+        "skillId": {
+          "type": "string",
+          "description": "ID de la compétence clé de rattachement",
+          "maxLength": 128
+        },
+        "skillName": {
+          "type": "string",
+          "description": "Nom de la compétence clé",
+          "maxLength": 128
+        },
+        "resourceManagerId": {
+          "type": "string",
+          "description": "ID du Resource Manager responsable",
+          "maxLength": 128
+        },
+        "unavailability": {
+          "type": "object",
+          "description": "Dictionnaire des indisponibilités mensuelles en jours { 'YYYY-MM': nombre_jours }"
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Date de création"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Date de modification"
+        }
+      },
+      "required": ["name", "fte", "skillId"]
+    },
     "AppSettings": {
       "title": "AppSettings",
       "description": "Paramètres génériques de l'application configurés par l'administrateur",
@@ -380,6 +429,12 @@
         "$ref": "#/entities/KeySkill"
       },
       "description": "Compétences clés gérées par les Resource Managers"
+    },
+    "/resources/{resourceId}": {
+      "schema": {
+        "$ref": "#/entities/Resource"
+      },
+      "description": "Ressources et indisponibilités mensuelles gérées par les Resource Managers"
     },
     "/projectStates/{projectStateId}": {
       "schema": {

@@ -40,13 +40,13 @@ export const UserAutocompleteSelect: React.FC<UserAutocompleteSelectProps> = ({
   // Recherche de l'utilisateur actuellement sélectionné
   const selectedUser = useMemo(() => {
     if (!value) return null;
+    const cleanVal = value.trim().toLowerCase();
     return users.find((u) => {
-      if (valueKey === 'id') {
-        return u.id === value;
-      }
-      return (u.email || '').toLowerCase() === value.toLowerCase();
+      if ((u.email || '').trim().toLowerCase() === cleanVal) return true;
+      if (u.id === value.trim()) return true;
+      return false;
     });
-  }, [users, value, valueKey]);
+  }, [users, value]);
 
   // Liste des utilisateurs disponibles pré-filtrés sur le rôle requis et hors exclu
   const availableUsers = useMemo(() => {
@@ -65,7 +65,10 @@ export const UserAutocompleteSelect: React.FC<UserAutocompleteSelectProps> = ({
         const hasRequiredRole = roles.includes(requiredRole);
 
         // Si l'utilisateur est déjà celui sélectionné, on le conserve pour ne pas casser l'affichage
-        const isCurrentSelected = value && (valueKey === 'id' ? u.id === value : (u.email || '').toLowerCase() === value.toLowerCase());
+        const isCurrentSelected = value && (
+          u.id === value ||
+          (u.email || '').toLowerCase() === value.toLowerCase()
+        );
         if (isCurrentSelected) {
           return true;
         }

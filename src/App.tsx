@@ -21,10 +21,12 @@ import {
   SlidersHorizontal,
   Camera,
   Upload,
+  Calendar,
 } from 'lucide-react';
 import { Criterion } from './types/criteria';
 import { BudgetLine } from './types/budget';
 import { KeySkill } from './types/skill';
+import { Resource } from './types/resource';
 import { ProjectState } from './types/lifecycle';
 import { CustomProjectParam } from './types/customParam';
 import { Project } from './types/project';
@@ -33,6 +35,7 @@ import { BonusConfig } from './types/bonus';
 import { subscribeToCriteria, addCriterion } from './services/criteriaService';
 import { subscribeToBudgetLines, addBudgetLine } from './services/budgetService';
 import { subscribeToKeySkills, addKeySkill } from './services/skillService';
+import { subscribeToResources } from './services/resourceService';
 import { subscribeToProjectStates } from './services/lifecycleService';
 import { subscribeToCustomParams } from './services/customParamService';
 import { subscribeToProjects } from './services/projectService';
@@ -50,6 +53,7 @@ import { SkillsTable } from './components/SkillsTable';
 import { LifecycleStatesTable } from './components/LifecycleStatesTable';
 import { CustomParamsTable } from './components/CustomParamsTable';
 import { ProjectsTable } from './components/ProjectsTable';
+import { ResourcesUnavailabilityTable } from './components/ResourcesUnavailabilityTable';
 import { UserManagement } from './components/UserManagement';
 import { LoginModal } from './components/LoginModal';
 import { UserProfileModal, UserAvatarPictogram } from './components/UserProfileModal';
@@ -59,6 +63,7 @@ import { getUserInitials } from './utils/userUtils';
 
 type ActiveTab =
   | 'projects'
+  | 'resources'
   | 'criteria'
   | 'budgets'
   | 'skills'
@@ -152,12 +157,16 @@ function Dashboard() {
     }
   };
 
-  // Rediriger vers l'onglet projets si un non-administrateur tente d'accéder aux utilisateurs
+  // Rediriger vers l'onglet projets si un utilisateur non autorisé tente d'accéder aux utilisateurs ou aux ressources
   useEffect(() => {
     if (activeTab === 'users' && !isAdmin) {
       setActiveTab('projects');
     }
-  }, [activeTab, isAdmin]);
+    const canAccessResources = isResourceManager || isAdmin || isSuperUser;
+    if (activeTab === 'resources' && !canAccessResources) {
+      setActiveTab('projects');
+    }
+  }, [activeTab, isAdmin, isResourceManager, isSuperUser]);
   const [criteria, setCriteria] = useState<Criterion[]>([]);
   const [loadingCriteria, setLoadingCriteria] = useState(true);
   const [seedingCriteria, setSeedingCriteria] = useState(false);
@@ -169,6 +178,9 @@ function Dashboard() {
   const [skills, setSkills] = useState<KeySkill[]>([]);
   const [loadingSkills, setLoadingSkills] = useState(true);
   const [seedingSkill, setSeedingSkill] = useState(false);
+
+  const [resources, setResources] = useState<Resource[]>([]);
+  const [loadingResources, setLoadingResources] = useState(true);
 
   const [projectStates, setProjectStates] = useState<ProjectState[]>([]);
   const [loadingStates, setLoadingStates] = useState(true);
@@ -231,6 +243,17 @@ function Dashboard() {
       }
     );
 
+    const unsubResources = subscribeToResources(
+      (data) => {
+        setResources(data);
+        setLoadingResources(false);
+      },
+      (error) => {
+        console.error('Erreur chargement ressources:', error);
+        setLoadingResources(false);
+      }
+    );
+
     const unsubProjectStates = subscribeToProjectStates(
       (data) => {
         setProjectStates(data);
@@ -269,6 +292,7 @@ function Dashboard() {
       unsubBonus();
       unsubBudgets();
       unsubSkills();
+      unsubResources();
       unsubProjectStates();
       unsubCustomParams();
       unsubProjects();
@@ -324,7 +348,7 @@ function Dashboard() {
     if (!canManageSkills) return;
     setSeedingSkill(true);
     try {
-      const rm = allUsers.find((u) => u.role === 'resource manager') || activeUser;
+      const rm = allUsers.find((u) => u.roles?.includes('resource manager') || u.role === 'resource manager') || activeUser;
       const allocs = budgetLines.map((bl, i) => ({
         budgetLineId: bl.id,
         budgetLineName: bl.name,
@@ -333,8 +357,8 @@ function Dashboard() {
 
       await addKeySkill({
         name: 'Architecture Cloud & DevOps',
-        resourceManagerId: rm?.id || '',
-        resourceManagerName: rm?.displayName || 'Stéphane Labati',
+        resourceManagerId: rm?.email || '',
+        resourceManagerName: rm?.displayName || 'Stéphane super user',
         description: 'Conception d’infrastructures haute disponibilité, pipelines CI/CD et sécurité cloud.',
         isCapped: budgetLines.length > 0,
         budgetAllocations: allocs,
@@ -609,7 +633,22 @@ function Dashboard() {
                 <span>Projets</span>
               </button>
 
-              {/* Onglet Haut Niveau 2 : Paramètres */}
+              {/* Onglet Haut Niveau 2 : Indisponibilités des Ressources (en rouge foncé, visible RM / Admin / Super User) */}
+              {(isResourceManager || isAdmin || isSuperUser) && (
+                <button
+                  onClick={() => setActiveTab('resources')}
+                  className={`px-4 py-2 rounded-t-xl border-t-2 border-x-2 border-b-0 text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer whitespace-nowrap ${
+                    activeTab === 'resources'
+                      ? 'bg-rose-900 text-white border-rose-900 shadow-xs'
+                      : 'bg-rose-50/70 hover:bg-rose-100 text-rose-900 border-rose-200 hover:border-rose-300'
+                  }`}
+                >
+                  <Calendar className={`w-4 h-4 ${activeTab === 'resources' ? 'text-white' : 'text-rose-900'}`} />
+                  <span>Ressources</span>
+                </button>
+              )}
+
+              {/* Onglet Haut Niveau 3 : Paramètres */}
               <button
                 onClick={() => setActiveTab(lastSettingsTab)}
                 className={`px-4 py-2 rounded-t-xl border-t-2 border-x-2 border-b-0 text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer whitespace-nowrap ${
@@ -832,7 +871,7 @@ function Dashboard() {
             projects={projects}
             loading={loadingProjects}
             activeUser={activeUser}
-            isSuperUser={isSuperUser && !assumedRole}
+            isSuperUser={isSuperUser && !assumedRole && !isImpersonating}
             isAdmin={isAdmin}
             isProjectManager={isProjectManager}
             isResourceManager={isResourceManager}
@@ -844,6 +883,21 @@ function Dashboard() {
             customParams={customParams}
             users={allUsers}
             bonusConfig={bonusConfig}
+          />
+        )}
+
+        {/* Onglet 2 : Indisponibilités des Ressources (12 mois glissants) */}
+        {activeTab === 'resources' && (
+          <ResourcesUnavailabilityTable
+            resources={resources}
+            skills={skills}
+            loading={loadingResources}
+            activeUser={activeUser}
+            isSuperUser={isSuperUser && !assumedRole && !isImpersonating}
+            isAdmin={isAdmin}
+            isResourceManager={isResourceManager}
+            effectiveRole={effectiveRole}
+            allUsers={allUsers}
           />
         )}
         {/* Onglet 1 : Critères de priorisation */}

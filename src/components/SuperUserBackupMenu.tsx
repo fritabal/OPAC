@@ -407,6 +407,7 @@ export const SuperUserBackupMenu: React.FC<SuperUserBackupMenuProps> = ({
                       <div>⚖️ Critères : <strong>{(parsedBackup.data?.criteria || []).length}</strong></div>
                       <div>💰 Lignes budgétaires : <strong>{(parsedBackup.data?.budgetLines || []).length}</strong></div>
                       <div>🎯 Compétences clés : <strong>{(parsedBackup.data?.keySkills || []).length}</strong></div>
+                      <div>📅 Ressources & indisponibilités : <strong>{(parsedBackup.data?.resources || []).length}</strong></div>
                       <div>🔄 Cycle de vie : <strong>{(parsedBackup.data?.projectStates || []).length}</strong></div>
                       <div>⚙️ Paramètres personnalisés : <strong>{(parsedBackup.data?.projectCustomParams || []).length}</strong></div>
                       <div>🔧 Configuration : <strong>{(parsedBackup.data?.settings || []).length}</strong></div>

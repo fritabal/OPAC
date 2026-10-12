@@ -19,6 +19,7 @@ import {
 import { KeySkill, KeySkillFormData } from '../types/skill';
 import { BudgetLine } from '../types/budget';
 import { AppUser } from '../types/user';
+import { resolveUserDisplayName } from '../utils/userUtils';
 import { SkillModal } from './SkillModal';
 import {
   addKeySkill,
@@ -300,8 +301,8 @@ export const SkillsTable: React.FC<SkillsTableProps> = ({
 
                       {/* Resource Manager */}
                       <td className="py-2.5 px-4 whitespace-nowrap">
-                        <span className="text-slate-800 font-medium truncate block max-w-[200px]">
-                          {skill.resourceManagerName}
+                        <span className="text-slate-800 font-medium truncate block max-w-[200px]" title={skill.resourceManagerId || skill.resourceManagerName}>
+                          {resolveUserDisplayName(skill.resourceManagerId, users, skill.resourceManagerName)}
                         </span>
                       </td>
 

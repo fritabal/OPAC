@@ -36,6 +36,11 @@ service cloud.firestore {
       allow read, write: if true;
     }
 
+    // Resources & unavailabilities collection
+    match /resources/{resourceId} {
+      allow read, write: if true;
+    }
+
     // Project States (Lifecycle) collection
     match /projectStates/{projectStateId} {
       allow read, write: if true;

@@ -75,7 +75,13 @@ export const SkillModal: React.FC<SkillModalProps> = ({
   useEffect(() => {
     if (skillToEdit) {
       setName(skillToEdit.name);
-      setResourceManagerId(skillToEdit.resourceManagerId);
+      // Préférer l'email du RM. Si skillToEdit.resourceManagerId est un id Firestore, le convertir en email si possible
+      const matchedUser = users.find(
+        (u) =>
+          u.id === skillToEdit.resourceManagerId ||
+          u.email.toLowerCase() === (skillToEdit.resourceManagerId || '').toLowerCase()
+      );
+      setResourceManagerId(matchedUser ? matchedUser.email : skillToEdit.resourceManagerId);
       setDescription(skillToEdit.description || '');
       setIsCapped(Boolean(skillToEdit.isCapped));
 
@@ -90,12 +96,13 @@ export const SkillModal: React.FC<SkillModalProps> = ({
       setAllocations(allocMap);
     } else {
       setName('');
-      // Sélectionner par défaut l'utilisateur actuel s'il est RM, sinon le 1er RM disponible
+      // Sélectionner par défaut l'utilisateur actuel s'il est RM, sinon le 1er RM disponible (par son email unique)
+      const currentUserObj = users.find((u) => u.id === currentUserId || (u.email && u.email.toLowerCase() === (currentUserId || '').toLowerCase()));
       const defaultRm =
-        resourceManagers.find((u) => u.id === currentUserId) ||
+        (currentUserObj && resourceManagers.find((u) => u.email.toLowerCase() === currentUserObj.email.toLowerCase())) ||
         resourceManagers[0] ||
         users[0];
-      setResourceManagerId(defaultRm ? defaultRm.id : '');
+      setResourceManagerId(defaultRm ? defaultRm.email : '');
       setDescription('');
       setIsCapped(false);
 
@@ -149,8 +156,13 @@ export const SkillModal: React.FC<SkillModalProps> = ({
       return;
     }
 
-    const rmUser = users.find((u) => u.id === resourceManagerId);
+    const rmUser = users.find(
+      (u) =>
+        (u.email || '').toLowerCase() === resourceManagerId.toLowerCase() ||
+        u.id === resourceManagerId
+    );
     const rmName = rmUser ? rmUser.displayName : 'Inconnu';
+    const cleanRmEmail = rmUser ? rmUser.email : resourceManagerId;
 
     // Construire la liste des allocations
     // Même si isCapped est false, on conserve les allocations pour pouvoir les restaurer !
@@ -172,7 +184,7 @@ export const SkillModal: React.FC<SkillModalProps> = ({
 
       await onSave({
         name: trimmedName,
-        resourceManagerId,
+        resourceManagerId: cleanRmEmail,
         resourceManagerName: rmName,
         description: description.trim(),
         isCapped,
@@ -254,7 +266,7 @@ export const SkillModal: React.FC<SkillModalProps> = ({
                 value={resourceManagerId}
                 onChange={(val) => setResourceManagerId(val)}
                 users={users}
-                valueKey="id"
+                valueKey="email"
                 requiredRole="resource manager"
                 placeholder="Chercher un Resource Manager..."
                 required={!isReadOnly}
