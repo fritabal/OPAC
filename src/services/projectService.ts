@@ -88,6 +88,9 @@ export function subscribeToProjects(
           bonus: typeof data.bonus === 'number' ? data.bonus : null,
           roi: typeof data.roi === 'number' ? data.roi : null,
           customParamValues: data.customParamValues || {},
+          capacityUpdatedMonth: data.capacityUpdatedMonth || null,
+          capacityDaysPerSkill: data.capacityDaysPerSkill || {},
+          isStaffed: data.isStaffed !== undefined ? Boolean(data.isStaffed) : undefined,
           createdAt: data.createdAt?.toDate?.()?.toISOString() || data.createdAt,
           updatedAt: data.updatedAt?.toDate?.()?.toISOString() || data.updatedAt,
         };
@@ -144,11 +147,22 @@ export async function createProject(formData: ProjectFormData): Promise<Project>
       bonus: typeof formData.bonus === 'number' ? formData.bonus : null,
       roi: typeof formData.roi === 'number' ? formData.roi : null,
       customParamValues: formData.customParamValues || {},
+      capacityUpdatedMonth: formData.capacityUpdatedMonth || null,
+      capacityDaysPerSkill: formData.capacityDaysPerSkill || {},
+      isStaffed: formData.isStaffed !== undefined ? Boolean(formData.isStaffed) : true,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     };
 
-    const docRef = await addDoc(collection(db, COLLECTION_NAME), payload);
+    // Nettoyage strict de toutes les propriétés indéfinies pour empêcher toute erreur addDoc Firestore
+    const cleanPayload: Record<string, any> = {};
+    for (const [key, value] of Object.entries(payload)) {
+      if (value !== undefined) {
+        cleanPayload[key] = value;
+      }
+    }
+
+    const docRef = await addDoc(collection(db, COLLECTION_NAME), cleanPayload);
 
     return {
       id: docRef.id,
@@ -209,7 +223,59 @@ export async function updateProject(id: string, formData: Partial<ProjectFormDat
       payload.roi = typeof formData.roi === 'number' ? formData.roi : null;
     }
     if (formData.customParamValues !== undefined) payload.customParamValues = formData.customParamValues;
+    if (formData.capacityUpdatedMonth !== undefined) payload.capacityUpdatedMonth = formData.capacityUpdatedMonth;
+    if (formData.capacityDaysPerSkill !== undefined) payload.capacityDaysPerSkill = formData.capacityDaysPerSkill;
+    if (formData.isStaffed !== undefined) payload.isStaffed = Boolean(formData.isStaffed);
 
+    const cleanPayload: Record<string, any> = {};
+    for (const [key, value] of Object.entries(payload)) {
+      if (value !== undefined) {
+        cleanPayload[key] = value;
+      }
+    }
+
+    await updateDoc(docRef, cleanPayload);
+  } catch (error) {
+    handleFirestoreError(error, OperationType.UPDATE, `${COLLECTION_NAME}/${id}`);
+    throw error;
+  }
+}
+
+/**
+ * Met à jour rapidement le statut de staffing d'un projet.
+ */
+export async function updateProjectStaffing(id: string, isStaffed: boolean): Promise<void> {
+  try {
+    const docRef = doc(db, COLLECTION_NAME, id);
+    await updateDoc(docRef, {
+      isStaffed: Boolean(isStaffed),
+      updatedAt: serverTimestamp(),
+    });
+  } catch (error) {
+    handleFirestoreError(error, OperationType.UPDATE, `${COLLECTION_NAME}/${id}`);
+    throw error;
+  }
+}
+
+/**
+ * Met à jour rapidement les données capacitaires d'un projet.
+ */
+export async function updateProjectCapacity(
+  id: string,
+  capacityUpdatedMonth: string | null | undefined,
+  capacityDaysPerSkill: Record<string, number | null> | undefined
+): Promise<void> {
+  try {
+    const docRef = doc(db, COLLECTION_NAME, id);
+    const payload: Record<string, any> = {
+      updatedAt: serverTimestamp(),
+    };
+    if (capacityUpdatedMonth !== undefined) {
+      payload.capacityUpdatedMonth = capacityUpdatedMonth;
+    }
+    if (capacityDaysPerSkill !== undefined) {
+      payload.capacityDaysPerSkill = capacityDaysPerSkill;
+    }
     await updateDoc(docRef, payload);
   } catch (error) {
     handleFirestoreError(error, OperationType.UPDATE, `${COLLECTION_NAME}/${id}`);

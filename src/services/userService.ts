@@ -20,6 +20,13 @@ import { hashPassword, validatePassword } from '../utils/passwordSecurity';
 
 const COLLECTION_NAME = 'users';
 export const SUPER_ADMIN_EMAIL = 'stephane.labati@goood.com';
+export const SUPER_ADMIN_EMAILS = ['stephane.labati@goood.com'];
+
+export const isSuperAdminEmail = (email?: string | null): boolean => {
+  if (!email) return false;
+  const clean = email.trim().toLowerCase();
+  return clean === SUPER_ADMIN_EMAIL.toLowerCase();
+};
 
 export function subscribeToUsers(
   onData: (users: AppUser[]) => void,
@@ -51,7 +58,7 @@ export function subscribeToUsers(
       const users: AppUser[] = snapshot.docs.map((docSnap) => {
         const data = docSnap.data();
         const email = (data.email || '').trim().toLowerCase();
-        const isSuper = email === SUPER_ADMIN_EMAIL || data.isSuperAdmin === true;
+        const isPrimarySuperEmail = isSuperAdminEmail(email);
 
         // Extraction des rôles multiples avec rétro-compatibilité
         let userRoles: UserRole[] = [];
@@ -60,18 +67,29 @@ export function subscribeToUsers(
         } else if (data.role) {
           userRoles = [data.role as UserRole];
         } else {
-          userRoles = isSuper ? ['super user'] : ['chef de projet'];
+          userRoles = isPrimarySuperEmail ? ['super user'] : ['chef de projet'];
         }
 
-        if (isSuper && !userRoles.includes('super user')) {
+        // Le compte concepteur principal stephane.labati@goood.com conserve toujours le rôle super user par défaut
+        if (isPrimarySuperEmail && !userRoles.includes('super user')) {
           userRoles.unshift('super user');
         }
 
-        // If it's the super user but still marked without super user, update in firestore
-        if (isSuper && (!data.roles || !data.roles.includes('super user'))) {
+        // Pour tous les comptes : super admin si c'est le compte principal OU si le rôle 'super user' est attribué
+        const hasSuperRole = userRoles.includes('super user');
+        const isSuper = isPrimarySuperEmail || hasSuperRole;
+
+        // Si c'est le compte principal et qu'il n'était pas marqué en base, synchroniser
+        if (isPrimarySuperEmail && (!data.roles || !data.roles.includes('super user') || !data.isSuperAdmin)) {
           updateDoc(doc(db, COLLECTION_NAME, docSnap.id), {
             roles: userRoles,
             role: 'super user',
+            isSuperAdmin: true,
+          }).catch(() => {});
+        } else if (!isSuper && data.isSuperAdmin === true) {
+          // Si les droits super user ont été retirés à cet utilisateur, synchroniser Firestore
+          updateDoc(doc(db, COLLECTION_NAME, docSnap.id), {
+            isSuperAdmin: false,
           }).catch(() => {});
         }
 
@@ -103,17 +121,26 @@ export function subscribeToUsers(
         };
       });
 
-      // Ensure super user is present if not yet synced
+      // Ensure super user stephane.labati@goood.com is present if not yet synced
       if (!users.some((u) => u.email.toLowerCase() === SUPER_ADMIN_EMAIL.toLowerCase())) {
-        users.unshift({
-          id: 'bootstrap-superadmin',
+        const defaultAdminData = {
           email: SUPER_ADMIN_EMAIL,
           displayName: 'Stéphane Labati (Concepteur / Super User)',
-          roles: ['super user'],
-          role: 'super user',
+          roles: ['super user'] as UserRole[],
+          role: 'super user' as UserRole,
           isSuperAdmin: true,
           isActive: true,
           mustResetPassword: false,
+        };
+        addDoc(collection(db, COLLECTION_NAME), {
+          ...defaultAdminData,
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+        }).catch(() => {});
+
+        users.unshift({
+          id: 'bootstrap-superadmin',
+          ...defaultAdminData,
         });
       }
 
@@ -141,7 +168,7 @@ export async function addAuthorizedUser(data: AppUserFormData): Promise<{
       throw new Error(`Un utilisateur avec l'adresse « ${cleanEmail} » existe déjà.`);
     }
 
-    const isSuper = cleanEmail === SUPER_ADMIN_EMAIL;
+    const isSuper = isSuperAdminEmail(cleanEmail);
     const userRoles: UserRole[] =
       data.roles && data.roles.length > 0
         ? data.roles
@@ -340,11 +367,13 @@ export async function updateUserRoles(userId: string, newRoles: UserRole[]): Pro
   if (!newRoles || newRoles.length === 0) {
     throw new Error('Un utilisateur doit posséder au moins un rôle.');
   }
+  const hasSuper = newRoles.includes('super user');
   const docRef = doc(db, COLLECTION_NAME, userId);
   try {
     await updateDoc(docRef, {
       roles: newRoles,
       role: newRoles[0],
+      isSuperAdmin: hasSuper,
       updatedAt: serverTimestamp(),
     });
   } catch (error) {
@@ -388,9 +417,11 @@ export async function updateUser(
     if (data.roles !== undefined && data.roles.length > 0) {
       payload.roles = data.roles;
       payload.role = data.roles[0];
+      payload.isSuperAdmin = data.roles.includes('super user');
     } else if (data.role !== undefined) {
       payload.role = data.role;
       payload.roles = [data.role];
+      payload.isSuperAdmin = data.role === 'super user';
     }
     if (data.email !== undefined) payload.email = data.email.trim().toLowerCase();
     if (data.isActive !== undefined) payload.isActive = data.isActive;

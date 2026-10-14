@@ -23,6 +23,7 @@ import {
   PRIMARY_ACTION_HEADER_BUTTON_CLASS,
   MY_FILTER_BUTTON_ACTIVE_CLASS,
   MY_FILTER_BUTTON_INACTIVE_CLASS,
+  TABLE_FROZEN_DIVIDER_CLASS,
 } from '../constants/ui';
 import {
   addResource,
@@ -428,7 +429,7 @@ export const ResourcesUnavailabilityTable: React.FC<ResourcesUnavailabilityTable
                 <th
                   scope="col"
                   onClick={() => handleSort('name')}
-                  className="px-4 py-3 font-bold sticky left-0 bg-slate-100 z-20 min-w-[200px] border-r border-slate-200 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.06)] cursor-pointer select-none group hover:bg-slate-200/70 transition-colors"
+                  className="px-4 py-3 font-bold sticky left-0 bg-slate-100 z-20 w-[220px] min-w-[220px] max-w-[220px] border-r border-slate-200 cursor-pointer select-none group hover:bg-slate-200/70 transition-colors"
                   title="Cliquer pour trier par ressource"
                 >
                   <div className="flex items-center justify-between gap-1.5">
@@ -439,7 +440,7 @@ export const ResourcesUnavailabilityTable: React.FC<ResourcesUnavailabilityTable
                 <th
                   scope="col"
                   onClick={() => handleSort('skillName')}
-                  className="px-3 py-3 font-bold min-w-[140px] border-r border-slate-200 cursor-pointer select-none group hover:bg-slate-200/70 transition-colors"
+                  className={`px-3 py-3 font-bold sticky left-[220px] bg-slate-100 z-20 w-[160px] min-w-[160px] max-w-[160px] ${TABLE_FROZEN_DIVIDER_CLASS} shadow-[2px_0_4px_-2px_rgba(0,0,0,0.06)] cursor-pointer select-none group hover:bg-slate-200/70 transition-colors`}
                   title="Cliquer pour trier par compétence clé"
                 >
                   <div className="flex items-center justify-between gap-1.5">
@@ -522,8 +523,8 @@ export const ResourcesUnavailabilityTable: React.FC<ResourcesUnavailabilityTable
                       key={resource.id}
                       className="hover:bg-slate-50/70 transition-colors group bg-white"
                     >
-                      {/* Nom + description */}
-                      <td className="px-4 py-2.5 font-medium text-slate-900 sticky left-0 bg-white group-hover:bg-slate-50/70 z-10 border-r border-slate-200 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.06)]">
+                      {/* Nom + description (colonne 1 figée) */}
+                      <td className="px-4 py-2.5 font-medium text-slate-900 sticky left-0 bg-white group-hover:bg-slate-50/70 z-10 w-[220px] min-w-[220px] max-w-[220px] border-r border-slate-200">
                         <div className="flex flex-col">
                           <button
                             type="button"
@@ -543,11 +544,11 @@ export const ResourcesUnavailabilityTable: React.FC<ResourcesUnavailabilityTable
                         </div>
                       </td>
 
-                      {/* Compétence clé */}
-                      <td className="px-3 py-2.5 text-slate-700 border-r border-slate-200">
+                      {/* Compétence clé (colonne 2 figée avec double filet vertical) */}
+                      <td className={`px-3 py-2.5 text-slate-700 sticky left-[220px] bg-white group-hover:bg-slate-50/70 z-10 w-[160px] min-w-[160px] max-w-[160px] ${TABLE_FROZEN_DIVIDER_CLASS} shadow-[2px_0_4px_-2px_rgba(0,0,0,0.06)]`}>
                         <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[11px] font-medium bg-slate-100 text-slate-700 border border-slate-200">
-                          <Brain className="w-3 h-3 text-slate-500" />
-                          <span className="truncate max-w-[150px]" title={resource.skillName}>
+                          <Brain className="w-3 h-3 text-slate-500 shrink-0" />
+                          <span className="truncate max-w-[120px]" title={resource.skillName}>
                             {resource.skillName || '—'}
                           </span>
                         </span>

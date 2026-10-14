@@ -2,7 +2,7 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User, onAuthStateChanged } from 'firebase/auth';
 import { auth, googleProvider, signInWithPopup, signOut, testConnection } from '../lib/firebase';
 import { AppUser, UserRole } from '../types/user';
-import { subscribeToUsers, SUPER_ADMIN_EMAIL } from '../services/userService';
+import { subscribeToUsers, SUPER_ADMIN_EMAIL, isSuperAdminEmail } from '../services/userService';
 
 interface AuthContextType {
   firebaseUser: User | null;
@@ -105,13 +105,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setAllUsers(users);
 
       setRealUser((prev) => {
-        if (prev) {
-          const updated = users.find(
-            (u) => u.id === prev.id || u.email.toLowerCase() === prev.email.toLowerCase()
-          );
-          if (updated) return updated;
-        }
-
+        // Si l'utilisateur est authentifié avec Firebase Auth (connexion Google), respecter son compte
         if (auth.currentUser?.email) {
           const match = users.find(
             (u) => u.email.toLowerCase() === auth.currentUser?.email?.toLowerCase()
@@ -119,8 +113,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           if (match) return match;
         }
 
+        if (prev) {
+          const updated = users.find(
+            (u) => u.id === prev.id || u.email.toLowerCase() === prev.email.toLowerCase()
+          );
+          if (updated) return updated;
+        }
+
         const superUser = users.find(
-          (u) => u.email.toLowerCase() === SUPER_ADMIN_EMAIL.toLowerCase()
+          (u) => isSuperAdminEmail(u.email)
         );
         if (superUser) return superUser;
 
@@ -166,7 +167,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const enterConceptionMode = () => {
     const superUser = allUsers.find(
-      (u) => u.email.toLowerCase() === SUPER_ADMIN_EMAIL.toLowerCase()
+      (u) => isSuperAdminEmail(u.email)
     );
     if (superUser) {
       setRealUser(superUser);
@@ -189,7 +190,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setRealUser(user);
     setImpersonatedUser(null);
     setIsAuthenticated(true);
-    setIsConceptionMode(user.email.toLowerCase() === SUPER_ADMIN_EMAIL.toLowerCase());
+    setIsConceptionMode(isSuperAdminEmail(user.email));
     setAssumedRole(null);
   };
 
@@ -217,7 +218,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const canImpersonate =
     realUser?.isSuperAdmin === true ||
-    realUser?.email.toLowerCase() === SUPER_ADMIN_EMAIL.toLowerCase() ||
+    isSuperAdminEmail(realUser?.email) ||
     realUserRoles.includes('super user');
 
   // Privilège Super User : se connecter à la place de n'importe quel autre utilisateur

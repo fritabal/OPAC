@@ -24,6 +24,11 @@ export interface Project {
   // Encart d) "Autres"
   customParamValues: Record<string, string | number | null>; // Valeurs des paramètres personnalisés (clé = paramId)
 
+  // Encart e) "Capacitaire" (mobilisation des compétences clés sur le mois à venir)
+  capacityUpdatedMonth?: string | null; // Mois de mise à jour au format "YYYY-MM" (ex: "2026-11")
+  capacityDaysPerSkill?: Record<string, number | null>; // clé = skillId, valeur = nombre de jours (>= 0)
+  isStaffed?: boolean; // Boîte à cocher Capacitaire : true par défaut si l'état est à staffer, false si exclu du staffing
+
   createdAt?: string;
   updatedAt?: string;
 }

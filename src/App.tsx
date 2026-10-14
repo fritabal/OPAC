@@ -22,6 +22,9 @@ import {
   Camera,
   Upload,
   Calendar,
+  ListOrdered,
+  Gauge,
+  BarChart3,
 } from 'lucide-react';
 import { Criterion } from './types/criteria';
 import { BudgetLine } from './types/budget';
@@ -52,7 +55,9 @@ import { BudgetLinesTable } from './components/BudgetLinesTable';
 import { SkillsTable } from './components/SkillsTable';
 import { LifecycleStatesTable } from './components/LifecycleStatesTable';
 import { CustomParamsTable } from './components/CustomParamsTable';
-import { ProjectsTable } from './components/ProjectsTable';
+import { ProjectsTable, SortColumn, SortDirection } from './components/ProjectsTable';
+import { ProjectsCapacityTable } from './components/ProjectsCapacityTable';
+import { ProjectsReportsView } from './components/ProjectsReportsView';
 import { ResourcesUnavailabilityTable } from './components/ResourcesUnavailabilityTable';
 import { UserManagement } from './components/UserManagement';
 import { LoginModal } from './components/LoginModal';
@@ -63,6 +68,8 @@ import { getUserInitials } from './utils/userUtils';
 
 type ActiveTab =
   | 'projects'
+  | 'projects_capacity'
+  | 'projects_reports'
   | 'resources'
   | 'criteria'
   | 'budgets'
@@ -103,6 +110,7 @@ function Dashboard() {
   } = useAuth();
 
   const [activeTab, setActiveTab] = useState<ActiveTab>('projects');
+  const [lastProjectsTab, setLastProjectsTab] = useState<ActiveTab>('projects');
   const [lastSettingsTab, setLastSettingsTab] = useState<ActiveTab>('criteria');
   const [profileModalOpen, setProfileModalOpen] = useState(false);
   const [loginModalOpen, setLoginModalOpen] = useState(false);
@@ -116,6 +124,8 @@ function Dashboard() {
     }
   }, []);
 
+  const isProjectsActive = ['projects', 'projects_capacity', 'projects_reports'].includes(activeTab);
+  const isProjectsTableTab = activeTab === 'projects' || activeTab === 'projects_capacity';
   const isSettingsActive = ['criteria', 'budgets', 'lifecycle', 'custom_params', 'skills'].includes(activeTab);
 
   // Logo personnalisé de l'application (administrable)
@@ -191,8 +201,15 @@ function Dashboard() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [loadingProjects, setLoadingProjects] = useState(true);
 
+  // Affichage des projets confidentiels pour le Value Management Officer (masqué par défaut pour le partage d'écran)
+  const [showConfidentialProjects, setShowConfidentialProjects] = useState(false);
+
   // Configuration des bonus (priorisation & quotas)
   const [bonusConfig, setBonusConfig] = useState<BonusConfig>(getCachedBonusConfig());
+
+  // Maintien du tri appliqué sur la liste des projets dans l'onglet Priorités lors du changement d'onglet
+  const [projectsSortColumn, setProjectsSortColumn] = useState<SortColumn>('id');
+  const [projectsSortDirection, setProjectsSortDirection] = useState<SortDirection>('desc');
 
   // Seul l'Administrateur (et le Super User sans rôle endossé restrictif) peut gérer les compétences clés
   const canManageSkills = isAdmin || (isSuperUser && !assumedRole);
@@ -425,10 +442,14 @@ function Dashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col font-sans">
+    <div
+      className={`min-h-screen bg-slate-50 text-slate-900 flex flex-col font-sans ${
+        isProjectsTableTab ? 'h-screen overflow-hidden' : ''
+      }`}
+    >
       {/* Barre d'usurpation active pour le Super User */}
       {isImpersonating && (
-        <div className="bg-indigo-950 text-white px-4 py-2.5 text-xs shadow-md z-50 border-b border-indigo-800">
+        <div className="bg-indigo-950 text-white px-4 py-2.5 text-xs shadow-md z-50 border-b border-indigo-800 shrink-0">
           <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2">
             <div className="flex items-center gap-2.5">
               <div className="p-1 bg-amber-400 text-slate-950 rounded font-bold">
@@ -462,7 +483,7 @@ function Dashboard() {
 
       {/* Barre d'endossement de rôle pour le Super User (hors usurpation) */}
       {!isImpersonating && isSuperUser && (
-        <div className="bg-gradient-to-r from-amber-600 via-amber-500 to-orange-500 text-white px-4 py-2 text-xs shadow-xs z-40">
+        <div className="bg-gradient-to-r from-amber-600 via-amber-500 to-orange-500 text-white px-4 py-2 text-xs shadow-xs z-40 shrink-0">
           <div className="w-full px-2 sm:px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
             <div className="flex items-center gap-2">
               <Crown className="w-4 h-4 text-amber-200 shrink-0" />
@@ -549,7 +570,7 @@ function Dashboard() {
       )}
 
       {/* En-tête de navigation principale (Pleine largeur fluide) */}
-      <header className="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-2xs">
+      <header className="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-2xs shrink-0">
         <div className="w-full px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
           {/* Côté gauche : Logo (modifiable par l'administrateur) & Titre OPAC */}
           <div className="flex items-center gap-3 shrink-0">
@@ -622,9 +643,9 @@ function Dashboard() {
             <div className="flex items-end gap-1.5 select-none -mb-px">
               {/* Onglet Haut Niveau 1 : Projets (en bleu moyen) */}
               <button
-                onClick={() => setActiveTab('projects')}
+                onClick={() => setActiveTab(lastProjectsTab)}
                 className={`px-4 py-2 rounded-t-xl border-t-2 border-x-2 border-b-0 text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer whitespace-nowrap ${
-                  activeTab === 'projects'
+                  isProjectsActive
                     ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
                     : 'bg-blue-50/70 hover:bg-blue-100 text-blue-700 border-blue-200 hover:border-blue-300'
                 }`}
@@ -732,6 +753,64 @@ function Dashboard() {
             </div>
           </div>
         </div>
+
+        {/* ========================================================================= */}
+        {/* BARRE 2 (SOUS-ONGLETS DE L'ONGLET PROJETS)                                */}
+        {/* 1. Priorités, 2. Capacitaire, 3. Rapports                                 */}
+        {/* ========================================================================= */}
+        {isProjectsActive && (
+          <div className="bg-slate-100/90 border-t border-slate-200 pt-1.5 transition-all">
+            <div className="w-full px-4 sm:px-6 lg:px-8 flex items-end gap-2 overflow-x-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden select-none">
+              {/* 1. Priorités (en bleu moyen) */}
+              <button
+                onClick={() => {
+                  setActiveTab('projects');
+                  setLastProjectsTab('projects');
+                }}
+                className={`px-3 py-1.5 rounded-t-xl border-t-2 border-x-2 border-b-0 text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer whitespace-nowrap ${
+                  activeTab === 'projects'
+                    ? 'bg-blue-600 text-white border-blue-600 shadow-xs -mb-[1px] pb-[7px]'
+                    : 'bg-blue-50/80 hover:bg-blue-100 text-blue-800 border-blue-200 hover:border-blue-300'
+                }`}
+              >
+                <ListOrdered className="w-3.5 h-3.5" />
+                <span>Priorités</span>
+              </button>
+
+              {/* 2. Capacitaire (en indigo) */}
+              <button
+                onClick={() => {
+                  setActiveTab('projects_capacity');
+                  setLastProjectsTab('projects_capacity');
+                }}
+                className={`px-3 py-1.5 rounded-t-xl border-t-2 border-x-2 border-b-0 text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer whitespace-nowrap ${
+                  activeTab === 'projects_capacity'
+                    ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs -mb-[1px] pb-[7px]'
+                    : 'bg-indigo-50/80 hover:bg-indigo-100 text-indigo-800 border-indigo-200 hover:border-indigo-300'
+                }`}
+              >
+                <Gauge className="w-3.5 h-3.5" />
+                <span>Capacitaire</span>
+              </button>
+
+              {/* 3. Rapports (en ardoise / slate) */}
+              <button
+                onClick={() => {
+                  setActiveTab('projects_reports');
+                  setLastProjectsTab('projects_reports');
+                }}
+                className={`px-3 py-1.5 rounded-t-xl border-t-2 border-x-2 border-b-0 text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer whitespace-nowrap ${
+                  activeTab === 'projects_reports'
+                    ? 'bg-slate-700 text-white border-slate-700 shadow-xs -mb-[1px] pb-[7px]'
+                    : 'bg-slate-200/80 hover:bg-slate-300 text-slate-800 border-slate-300 hover:border-slate-400'
+                }`}
+              >
+                <BarChart3 className="w-3.5 h-3.5" />
+                <span>Rapports</span>
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* ========================================================================= */}
         {/* BARRE 2 (SOUS-ONGLETS DE L'ONGLET PARAMÈTRES)                            */}
@@ -864,8 +943,14 @@ function Dashboard() {
       </header>
 
       {/* Contenu principal (Pleine largeur fluide) */}
-      <main className="flex-1 w-full px-4 sm:px-6 lg:px-8 py-6 space-y-6">
-        {/* Onglet 1 : Projets */}
+      <main
+        className={`flex-1 w-full px-4 sm:px-6 lg:px-8 ${
+          isProjectsTableTab
+            ? 'py-3 sm:py-3.5 flex flex-col min-h-0 overflow-hidden'
+            : 'py-6 space-y-6'
+        }`}
+      >
+        {/* Onglet 1 : Projets - Sous-onglet 1 : Priorités */}
         {activeTab === 'projects' && (
           <ProjectsTable
             projects={projects}
@@ -881,6 +966,50 @@ function Dashboard() {
             budgetLines={budgetLines}
             criteria={criteria}
             customParams={customParams}
+            users={allUsers}
+            bonusConfig={bonusConfig}
+            showConfidentialProjects={showConfidentialProjects}
+            setShowConfidentialProjects={setShowConfidentialProjects}
+            sortColumn={projectsSortColumn}
+            setSortColumn={setProjectsSortColumn}
+            sortDirection={projectsSortDirection}
+            setSortDirection={setProjectsSortDirection}
+          />
+        )}
+
+        {/* Onglet 1 : Projets - Sous-onglet 2 : Capacitaire */}
+        {activeTab === 'projects_capacity' && (
+          <ProjectsCapacityTable
+            projects={projects}
+            skills={skills}
+            resources={resources}
+            loading={loadingProjects}
+            activeUser={activeUser}
+            isSuperUser={isSuperUser && !assumedRole && !isImpersonating}
+            isAdmin={isAdmin}
+            isProjectManager={isProjectManager}
+            isResourceManager={isResourceManager}
+            isValueManagementOfficer={isValueManagementOfficer}
+            effectiveRole={effectiveRole}
+            projectStates={projectStates}
+            budgetLines={budgetLines}
+            criteria={criteria}
+            customParams={customParams}
+            users={allUsers}
+            bonusConfig={bonusConfig}
+            showConfidentialProjects={showConfidentialProjects}
+            setShowConfidentialProjects={setShowConfidentialProjects}
+          />
+        )}
+
+        {/* Onglet 1 : Projets - Sous-onglet 3 : Rapports */}
+        {activeTab === 'projects_reports' && (
+          <ProjectsReportsView
+            projects={projects}
+            skills={skills}
+            projectStates={projectStates}
+            budgetLines={budgetLines}
+            criteria={criteria}
             users={allUsers}
             bonusConfig={bonusConfig}
           />

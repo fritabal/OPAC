@@ -15,6 +15,7 @@ import {
   PieChart,
   Eye,
   Sparkles,
+  Bell,
 } from 'lucide-react';
 import { KeySkill, KeySkillFormData } from '../types/skill';
 import { BudgetLine } from '../types/budget';
@@ -55,6 +56,7 @@ export const SkillsTable: React.FC<SkillsTableProps> = ({
   const [deleteCandidate, setDeleteCandidate] = useState<KeySkill | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [processing, setProcessing] = useState(false);
+  const [updatingSkillId, setUpdatingSkillId] = useState<string | null>(null);
 
   const handleOpenAdd = () => {
     if (!canManage) return;
@@ -69,6 +71,21 @@ export const SkillsTable: React.FC<SkillsTableProps> = ({
     setIsReadOnlyModal(!canManage);
     setModalOpen(true);
     setActionError(null);
+  };
+
+  const handleToggleAlert = async (skill: KeySkill) => {
+    if (!canManage) return;
+    setUpdatingSkillId(skill.id);
+    setActionError(null);
+    try {
+      await updateKeySkill(skill.id, {
+        alertOnDemandOverrun: !skill.alertOnDemandOverrun,
+      });
+    } catch (err: any) {
+      setActionError(err?.message || "Erreur lors de la modification de l'alerte.");
+    } finally {
+      setUpdatingSkillId(null);
+    }
   };
 
   const handleSave = async (formData: KeySkillFormData) => {
@@ -120,6 +137,7 @@ export const SkillsTable: React.FC<SkillsTableProps> = ({
 
   const cappedCount = skills.filter((s) => s.isCapped).length;
   const uncappedCount = skills.filter((s) => !s.isCapped).length;
+  const alertCount = skills.filter((s) => s.alertOnDemandOverrun).length;
 
   return (
     <div className="space-y-6">
@@ -186,33 +204,40 @@ export const SkillsTable: React.FC<SkillsTableProps> = ({
               <tr>
                 {/* Ordre */}
                 {canManage && (
-                  <th scope="col" className="py-3 px-3 w-14 text-center">
+                  <th scope="col" className="py-3 px-3 w-14 text-center border-r border-slate-200">
                     Ordre
                   </th>
                 )}
                 {/* Nom unique */}
-                <th scope="col" className="py-3 px-4 min-w-[200px]">
+                <th scope="col" className="py-3 px-4 min-w-[200px] border-r border-slate-200">
                   <div className="flex items-center gap-1.5">
                     <Tag className="w-3.5 h-3.5 text-slate-500" />
                     <span>Compétence clé</span>
                   </div>
                 </th>
                 {/* Resource Manager */}
-                <th scope="col" className="py-3 px-4 min-w-[180px]">
+                <th scope="col" className="py-3 px-4 min-w-[180px] border-r border-slate-200">
                   <div className="flex items-center gap-1.5">
                     <User className="w-3.5 h-3.5 text-slate-500" />
                     <span>Resource Manager</span>
                   </div>
                 </th>
                 {/* Description */}
-                <th scope="col" className="py-3 px-4 min-w-[240px]">
+                <th scope="col" className="py-3 px-4 min-w-[240px] border-r border-slate-200">
                   <div className="flex items-center gap-1.5">
                     <FileText className="w-3.5 h-3.5 text-slate-500" />
                     <span>Description</span>
                   </div>
                 </th>
+                {/* Alerte dépassement */}
+                <th scope="col" className="py-3 px-3 w-36 text-center border-r border-slate-200">
+                  <div className="flex items-center justify-center gap-1.5" title="Alerter en cas de dépassement des demandes dans l'onglet Capacitaire">
+                    <Bell className="w-3.5 h-3.5 text-slate-500" />
+                    <span>Alerte dépassement</span>
+                  </div>
+                </th>
                 {/* Indicateur de répartition */}
-                <th scope="col" className="py-3 px-4 w-44 text-center">
+                <th scope="col" className="py-3 px-4 w-44 text-center border-r border-slate-200">
                   <div className="flex items-center justify-center gap-1.5">
                     <Layers className="w-3.5 h-3.5 text-slate-500" />
                     <span>Répartition</span>
@@ -228,13 +253,13 @@ export const SkillsTable: React.FC<SkillsTableProps> = ({
             <tbody className="divide-y divide-slate-200 bg-white">
               {loading ? (
                 <tr>
-                  <td colSpan={canManage ? 6 : 5} className="py-12 text-center text-slate-400">
+                  <td colSpan={canManage ? 7 : 6} className="py-12 text-center text-slate-400">
                     Chargement des compétences clés...
                   </td>
                 </tr>
               ) : skills.length === 0 ? (
                 <tr>
-                  <td colSpan={canManage ? 6 : 5} className="py-12 text-center text-slate-500">
+                  <td colSpan={canManage ? 7 : 6} className="py-12 text-center text-slate-500">
                     <div className="flex flex-col items-center justify-center gap-2">
                       <Brain className="w-8 h-8 text-slate-300" />
                       <p className="font-medium text-slate-700">Aucune compétence clé définie</p>
@@ -268,7 +293,7 @@ export const SkillsTable: React.FC<SkillsTableProps> = ({
                     >
                       {/* Boutons de réorganisation */}
                       {canManage && (
-                        <td className="py-2.5 px-2 text-center whitespace-nowrap">
+                        <td className="py-2.5 px-2 text-center whitespace-nowrap border-r border-slate-200">
                           <div className="flex items-center justify-center gap-1">
                             <button
                               type="button"
@@ -293,21 +318,21 @@ export const SkillsTable: React.FC<SkillsTableProps> = ({
                       )}
 
                       {/* Nom unique */}
-                      <td className="py-2.5 px-4 whitespace-nowrap">
-                        <span className="font-semibold text-slate-900 block">
+                      <td className="py-2.5 px-4 whitespace-nowrap border-r border-slate-200">
+                        <span className="font-semibold text-slate-900">
                           {skill.name}
                         </span>
                       </td>
 
                       {/* Resource Manager */}
-                      <td className="py-2.5 px-4 whitespace-nowrap">
+                      <td className="py-2.5 px-4 whitespace-nowrap border-r border-slate-200">
                         <span className="text-slate-800 font-medium truncate block max-w-[200px]" title={skill.resourceManagerId || skill.resourceManagerName}>
                           {resolveUserDisplayName(skill.resourceManagerId, users, skill.resourceManagerName)}
                         </span>
                       </td>
 
                       {/* Description facultative */}
-                      <td className="py-2.5 px-4 text-slate-600 max-w-[320px] truncate">
+                      <td className="py-2.5 px-4 text-slate-600 max-w-[320px] truncate border-r border-slate-200">
                         {skill.description ? (
                           <span title={skill.description}>{skill.description}</span>
                         ) : (
@@ -315,8 +340,28 @@ export const SkillsTable: React.FC<SkillsTableProps> = ({
                         )}
                       </td>
 
+                      {/* Colonne Alerte dépassement avec case à cocher directement modifiable */}
+                      <td className="py-2.5 px-3 text-center whitespace-nowrap border-r border-slate-200">
+                        <div className="flex items-center justify-center">
+                          <input
+                            type="checkbox"
+                            checked={Boolean(skill.alertOnDemandOverrun)}
+                            onChange={() => handleToggleAlert(skill)}
+                            disabled={!canManage || updatingSkillId === skill.id}
+                            className="w-4 h-4 rounded border-slate-300 text-rose-600 focus:ring-rose-500 cursor-pointer disabled:cursor-not-allowed transition-colors"
+                            title={
+                              canManage
+                                ? skill.alertOnDemandOverrun
+                                  ? "Alerte activée : cliquer pour désactiver l'alerte dépassement dans le capacitaire"
+                                  : "Alerte désactivée : cliquer pour activer l'alerte dépassement dans le capacitaire"
+                                : "Seul un administrateur peut modifier cette option"
+                            }
+                          />
+                        </div>
+                      </td>
+
                       {/* Indicateur de plafonnement : "capée par ligne" ou "non capée par ligne" */}
-                      <td className="py-2.5 px-4 text-center whitespace-nowrap">
+                      <td className="py-2.5 px-4 text-center whitespace-nowrap border-r border-slate-200">
                         {skill.isCapped ? (
                           <span
                             className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200 shadow-2xs"
@@ -375,6 +420,9 @@ export const SkillsTable: React.FC<SkillsTableProps> = ({
           <div className="flex items-center gap-4 flex-wrap">
             <span>
               Total compétences clés : <strong>{skills.length}</strong>
+            </span>
+            <span className="inline-flex items-center gap-1.5 px-2 py-0.5 bg-rose-50 text-rose-800 rounded border border-rose-200 font-medium">
+              Alertes dépassement actives : <strong>{alertCount}</strong>
             </span>
             <span className="inline-flex items-center gap-1.5 px-2 py-0.5 bg-indigo-50 text-indigo-800 rounded border border-indigo-200 font-medium">
               Capées par ligne : <strong>{cappedCount}</strong>

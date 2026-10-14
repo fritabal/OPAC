@@ -283,10 +283,18 @@ export const UserManagement: React.FC<UserManagementProps> = ({
     setModalOpen(true);
   };
 
+  const isRootSuperAdmin = Boolean(
+    editingUser && editingUser.email.toLowerCase() === SUPER_ADMIN_EMAIL.toLowerCase()
+  );
+
   const handleToggleModalRole = (role: UserRole) => {
     if (selectedRoles.includes(role)) {
       if (selectedRoles.length === 1) {
         setFormError('Un utilisateur doit posséder au moins un rôle attribué.');
+        return;
+      }
+      if (role === 'super user' && isRootSuperAdmin) {
+        setFormError("Le compte concepteur principal (stephane.labati@goood.com) conserve obligatoirement les droits de Super User.");
         return;
       }
       setSelectedRoles(selectedRoles.filter((r) => r !== role));
@@ -306,6 +314,11 @@ export const UserManagement: React.FC<UserManagementProps> = ({
 
     if (selectedRoles.length === 0) {
       setFormError('Veuillez sélectionner au moins un rôle pour cet utilisateur.');
+      return;
+    }
+
+    if (isRootSuperAdmin && !selectedRoles.includes('super user')) {
+      setFormError("Le compte concepteur principal (stephane.labati@goood.com) conserve obligatoirement les droits de Super User.");
       return;
     }
 
@@ -459,7 +472,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({
 
   // Toggle rapide d'un rôle directement dans la ligne du tableau
   const handleToggleRoleDirect = async (user: AppUser, roleToToggle: UserRole) => {
-    const isSuperAdminAccount = user.email.toLowerCase() === SUPER_ADMIN_EMAIL.toLowerCase();
+    const isRootSuperAdmin = user.email.toLowerCase() === SUPER_ADMIN_EMAIL.toLowerCase();
     const currentRoles = getUserRoles(user);
 
     if (currentRoles.includes(roleToToggle)) {
@@ -467,8 +480,9 @@ export const UserManagement: React.FC<UserManagementProps> = ({
         alert('Un utilisateur doit posséder au moins un rôle attribué.');
         return;
       }
-      if (isSuperAdminAccount && roleToToggle === 'super user') {
-        alert("Le rôle Super User ne peut pas être retiré du compte concepteur principal.");
+      // Seul le compte concepteur principal stephane.labati@goood.com ne peut pas perdre son statut de Super User
+      if (roleToToggle === 'super user' && isRootSuperAdmin) {
+        alert("Le compte concepteur principal (stephane.labati@goood.com) conserve obligatoirement les droits de Super User.");
         return;
       }
       const nextRoles = currentRoles.filter((r) => r !== roleToToggle);
@@ -1060,18 +1074,34 @@ export const UserManagement: React.FC<UserManagementProps> = ({
                       <div className="flex items-center gap-1.5 whitespace-nowrap">
                         {ALL_ROLES.map((r) => {
                           const hasRole = uRoles.includes(r);
+                          const isProtectedRootRole = isSuperAdminAccount && r === 'super user';
                           return (
                             <button
                               key={r}
                               type="button"
-                              onClick={() => handleToggleRoleDirect(u, r)}
+                              onClick={() => {
+                                if (isProtectedRootRole) {
+                                  alert("Le compte concepteur principal (stephane.labati@goood.com) conserve obligatoirement les droits de Super User.");
+                                  return;
+                                }
+                                handleToggleRoleDirect(u, r);
+                              }}
+                              disabled={isProtectedRootRole}
                               title={
-                                hasRole
-                                  ? `Rôle ${ROLE_LABELS[r]} actif. Cliquer pour le retirer.`
+                                isProtectedRootRole
+                                  ? "Le compte concepteur principal (stephane.labati@goood.com) conserve obligatoirement les droits de Super User."
+                                  : hasRole
+                                  ? r === 'super user'
+                                    ? `Rôle Super User actif. Cliquer pour retirer les droits Super User à ${u.displayName}.`
+                                    : `Rôle ${ROLE_LABELS[r]} actif. Cliquer pour le retirer.`
                                   : `Cliquer pour attribuer le rôle ${ROLE_LABELS[r]}`
                               }
                               aria-label={`${ROLE_LABELS[r]} : ${hasRole ? 'Actif' : 'Inactif'}`}
-                              className={`w-7 h-7 rounded-md flex items-center justify-center transition-all cursor-pointer border ${
+                              className={`w-7 h-7 rounded-md flex items-center justify-center transition-all border ${
+                                isProtectedRootRole
+                                  ? 'cursor-not-allowed opacity-90'
+                                  : 'cursor-pointer'
+                              } ${
                                 hasRole
                                   ? r === 'super user'
                                     ? 'bg-amber-100 text-amber-900 border-amber-300 shadow-2xs ring-1 ring-amber-400/40'
@@ -1685,22 +1715,43 @@ export const UserManagement: React.FC<UserManagementProps> = ({
                       }
                     };
 
+                    const isProtectedRootRole = isRootSuperAdmin && roleKey === 'super user' && isChecked;
+
                     return (
                       <div
                         key={roleKey}
-                        onClick={() => handleToggleModalRole(roleKey)}
-                        className={`p-3 rounded-xl border transition-all cursor-pointer select-none flex items-start gap-2.5 ${getCardStyle()}`}
+                        onClick={() => {
+                          if (isProtectedRootRole) {
+                            setFormError("Le compte concepteur principal (stephane.labati@goood.com) conserve obligatoirement les droits de Super User.");
+                            return;
+                          }
+                          handleToggleModalRole(roleKey);
+                        }}
+                        className={`p-3 rounded-xl border transition-all select-none flex items-start gap-2.5 ${
+                          isProtectedRootRole ? 'cursor-not-allowed opacity-90' : 'cursor-pointer'
+                        } ${getCardStyle()}`}
+                        title={
+                          isProtectedRootRole
+                            ? "Le compte concepteur principal conserve obligatoirement les droits de Super User."
+                            : undefined
+                        }
                       >
                         <input
                           type="checkbox"
                           checked={isChecked}
+                          disabled={isProtectedRootRole}
                           onChange={() => {}} // géré par le clic sur la carte parente
-                          className={`w-4 h-4 mt-0.5 rounded cursor-pointer pointer-events-none ${getCheckboxColor()}`}
+                          className={`w-4 h-4 mt-0.5 rounded pointer-events-none ${getCheckboxColor()}`}
                         />
                         <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-1.5 mb-1">
+                          <div className="flex items-center gap-1.5 mb-1 flex-wrap">
                             {getRoleIcon(roleKey, `w-4 h-4 shrink-0 ${getRoleIconColor()}`)}
                             <span className="text-xs font-bold">{ROLE_LABELS[roleKey]}</span>
+                            {isProtectedRootRole && (
+                              <span className="text-[10px] text-amber-800 bg-amber-100/90 font-medium px-1.5 py-0.2 rounded border border-amber-300">
+                                Compte principal (non retirable)
+                              </span>
+                            )}
                           </div>
                           <p className={`text-[10px] leading-tight ${isChecked ? 'text-slate-600' : 'text-slate-400'}`}>
                             {ROLE_DESCRIPTIONS[roleKey]}

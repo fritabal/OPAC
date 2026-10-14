@@ -1,1 +1,44 @@
 @import "tailwindcss";
+
+/* Double filet vertical pour séparer les colonnes figées des colonnes défilantes dans les tableaux */
+.table-frozen-divider {
+  position: sticky !important;
+  border-right: none !important;
+}
+
+.table-frozen-divider::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  right: 0;
+  width: 4px;
+  height: 100%;
+  box-sizing: border-box;
+  border-left: 1px solid #e2e8f0;
+  border-right: 1px solid #e2e8f0;
+  background-color: inherit;
+  pointer-events: none;
+  z-index: 30;
+}
+
+/* Double filet horizontal toujours visible sous la ligne de titre des tableaux (même lors du défilement) */
+.table-header-double-bottom {
+  position: sticky !important;
+  border-bottom: none !important;
+}
+
+.table-header-double-bottom::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 4px;
+  box-sizing: border-box;
+  border-top: 1px solid #e2e8f0;
+  border-bottom: 1px solid #e2e8f0;
+  background-color: inherit;
+  pointer-events: none;
+  z-index: 60;
+}

@@ -33,6 +33,7 @@ import { createProject, updateProject } from '../services/projectService';
 import { calculateProjectRoi, formatRoi } from '../utils/roiCalculator';
 import { UserAutocompleteSelect } from './UserAutocompleteSelect';
 import { getUserRoles } from '../utils/userUtils';
+import { Tooltip } from './Tooltip';
 
 /**
  * Pictogramme volant de direction (Pilotage)
@@ -177,17 +178,17 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
 
   const isStatePrioritized = Boolean(selectedState?.needsPrioritization);
 
-  // Calcul dynamique du ROI : uniquement si l'état a « à prioriser » à VRAI
+  // Calcul dynamique du ROI : calculé pour tous les projets quel que soit leur état
   const computedRoi = useMemo(() => {
     const parsedBonus = bonus === '' ? null : Number(bonus);
     return calculateProjectRoi(
       criteriaValues,
       criteria,
-      isStatePrioritized,
+      true, // calculé quel que soit l'état
       parsedBonus,
       bonusConfig?.isBonusActive ?? true
     );
-  }, [criteriaValues, criteria, isStatePrioritized, bonus, bonusConfig?.isBonusActive]);
+  }, [criteriaValues, criteria, bonus, bonusConfig?.isBonusActive]);
 
   if (!isOpen) return null;
 
@@ -250,6 +251,16 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
     }
 
     const selectedState = projectStates.find((s) => s.id === stateId);
+    const stateNeedsStaffing = selectedState ? Boolean(selectedState.needsStaffing) : false;
+
+    // Recalcul de l'état "à staffer" :
+    // - À la création : recalculé selon l'attribut « À staffer » (needsStaffing) de l'état choisi
+    // - Lors de la modification : si l'état a changé, recalculé selon l'attribut du nouvel état
+    // - Si l'état n'a pas changé en mode édition : conserve la valeur actuelle
+    const isStateChanged = projectToEdit ? projectToEdit.stateId !== stateId : true;
+    const computedIsStaffed = isStateChanged
+      ? stateNeedsStaffing
+      : (projectToEdit?.isStaffed !== undefined ? projectToEdit.isStaffed : stateNeedsStaffing);
 
     setSaving(true);
     try {
@@ -268,6 +279,9 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
         bonus: bonus === '' ? null : Math.round(Number(bonus)),
         roi: computedRoi,
         customParamValues,
+        isStaffed: computedIsStaffed,
+        capacityUpdatedMonth: projectToEdit?.capacityUpdatedMonth || null,
+        capacityDaysPerSkill: projectToEdit?.capacityDaysPerSkill || {},
       };
 
       if (projectToEdit) {
@@ -728,8 +742,8 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
                       <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider">
                         ROI (Valeur / Coût)
                       </label>
-                      <span className={`text-[10px] font-medium ${isStatePrioritized ? 'text-indigo-600' : 'text-slate-500'}`}>
-                        {isStatePrioritized ? 'Calculé automatiquement' : 'État non priorisé'}
+                      <span className="text-[10px] font-medium text-indigo-600">
+                        {computedRoi !== null ? 'Calculé automatiquement' : 'En attente de valorisation'}
                       </span>
                     </div>
                     <input
@@ -744,9 +758,7 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
                       }`}
                     />
                     <p className="text-[10px] text-slate-500 mt-1">
-                      {isStatePrioritized
-                        ? 'Somme pondérée des critères de valeur / Somme pondérée des critères de coût'
-                        : `Non applicable : l’état « ${selectedState?.name || 'sélectionné'} » n’a pas le statut « à prioriser »`}
+                      Somme pondérée des critères de valeur / Somme pondérée des critères de coût
                     </p>
                   </div>
                 </div>
@@ -786,12 +798,14 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
                       <div className={`flex items-center gap-2 sm:w-1/3 shrink-0 ${param.type === 'texte long' ? 'pt-1.5' : ''}`}>
                         <span className="text-xs font-bold text-slate-900">{param.name}</span>
                         {param.description && (
-                          <div className="group relative inline-flex items-center cursor-help">
+                          <Tooltip
+                            content={param.description}
+                            placement="right"
+                            maxWidthClass="w-64"
+                            className="inline-flex items-center cursor-help"
+                          >
                             <HelpCircle className="w-4 h-4 text-indigo-500 hover:text-indigo-600 transition-colors" />
-                            <div className="absolute left-6 -top-2 hidden group-hover:block z-50 w-64 p-2.5 bg-slate-900 text-white text-[11px] rounded-lg shadow-xl leading-snug">
-                              {param.description}
-                            </div>
-                          </div>
+                          </Tooltip>
                         )}
                       </div>
 

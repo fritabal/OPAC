@@ -400,6 +400,14 @@
         "customParamValues": {
           "type": "object",
           "description": "Valeurs des paramètres personnalisés du projet (clé: paramId ou nom)"
+        },
+        "capacityUpdatedMonth": {
+          "type": "string",
+          "description": "Mois de mise à jour capacitaire au format YYYY-MM"
+        },
+        "capacityDaysPerSkill": {
+          "type": "object",
+          "description": "Nombre de jours de mobilisation par compétence clé pour le mois à venir (clé: skillId, valeur: nombre de jours)"
         }
       },
       "required": ["projectNumber", "name", "stateId", "createdByEmail", "projectManagerEmail", "budgetLineId"]

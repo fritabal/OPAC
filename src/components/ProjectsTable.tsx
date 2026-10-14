@@ -21,6 +21,7 @@ import {
   ArrowDown,
   AlertTriangle,
   HelpCircle,
+  ChevronDown,
 } from 'lucide-react';
 import { Project } from '../types/project';
 import { ProjectState } from '../types/lifecycle';
@@ -33,9 +34,20 @@ import { saveBonusConfig } from '../services/bonusService';
 import { deleteProject, updateProject } from '../services/projectService';
 import { ProjectModal } from './ProjectModal';
 import { calculateProjectRoi, formatRoi } from '../utils/roiCalculator';
+import { isSuperAdminEmail } from '../services/userService';
+import { Tooltip } from './Tooltip';
+import {
+  ProjectPermissionContext,
+  canEditProject,
+  canViewConfidentialProject,
+  canDeleteProject as canDeleteProjectUtil,
+} from '../utils/projectPermissions';
+import { ProjectActionButton } from './ProjectActionButton';
+import { LifecycleStateFilter } from './LifecycleStateFilter';
+import { BudgetLineFilter } from './BudgetLineFilter';
 
-type SortColumn = 'id' | 'roi' | 'name' | 'state' | 'pm' | 'budgetLine' | 'bonus';
-type SortDirection = 'asc' | 'desc';
+export type SortColumn = 'id' | 'roi' | 'name' | 'state' | 'pm' | 'budgetLine' | 'bonus';
+export type SortDirection = 'asc' | 'desc';
 
 interface ProjectsTableProps {
   projects: Project[];
@@ -53,6 +65,12 @@ interface ProjectsTableProps {
   customParams: CustomProjectParam[];
   users: AppUser[];
   bonusConfig?: BonusConfig;
+  showConfidentialProjects?: boolean;
+  setShowConfidentialProjects?: (show: boolean) => void;
+  sortColumn?: SortColumn;
+  setSortColumn?: (col: SortColumn) => void;
+  sortDirection?: SortDirection;
+  setSortDirection?: (dir: SortDirection) => void;
 }
 
 export const ProjectsTable: React.FC<ProjectsTableProps> = ({
@@ -71,6 +89,12 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
   customParams,
   users,
   bonusConfig = DEFAULT_BONUS_CONFIG,
+  showConfidentialProjects: showConfidentialProjectsProp,
+  setShowConfidentialProjects: setShowConfidentialProjectsProp,
+  sortColumn: sortColumnProp,
+  setSortColumn: setSortColumnProp,
+  sortDirection: sortDirectionProp,
+  setSortDirection: setSortDirectionProp,
 }) => {
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
@@ -79,25 +103,91 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
   const [deleteCandidate, setDeleteCandidate] = useState<Project | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [actionSuccess, setActionSuccess] = useState<string | null>(null);
+  const [updatingStateProjectId, setUpdatingStateProjectId] = useState<string | null>(null);
 
   // Filtres
   const [searchQuery, setSearchQuery] = useState('');
-  const [stateFilter, setStateFilter] = useState('');
-  const [budgetLineFilter, setBudgetLineFilter] = useState('');
+  const [selectedStateIds, setSelectedStateIds] = useState<string[]>([]);
+  const hasInitializedStatesRef = useRef(false);
+
+  useEffect(() => {
+    if (projectStates.length > 0 && !hasInitializedStatesRef.current) {
+      setSelectedStateIds(projectStates.map((s) => s.id));
+      hasInitializedStatesRef.current = true;
+    }
+  }, [projectStates]);
+
+  const isStateFilterActive =
+    hasInitializedStatesRef.current &&
+    selectedStateIds.length < projectStates.length;
+
+  const [selectedBudgetLineIds, setSelectedBudgetLineIds] = useState<string[]>([]);
+  const hasInitializedBudgetLinesRef = useRef(false);
+
+  useEffect(() => {
+    if (budgetLines.length > 0 && !hasInitializedBudgetLinesRef.current) {
+      setSelectedBudgetLineIds(budgetLines.map((b) => b.id));
+      hasInitializedBudgetLinesRef.current = true;
+    }
+  }, [budgetLines]);
+
+  const isBudgetLineFilterActive =
+    hasInitializedBudgetLinesRef.current &&
+    selectedBudgetLineIds.length < budgetLines.length;
+
   const [myProjectsOnly, setMyProjectsOnly] = useState(false);
   const [bonusedOnly, setBonusedOnly] = useState(false);
+  const [localShowConfidentialProjects, setLocalShowConfidentialProjects] = useState(false);
+
+  const showConfidentialProjects =
+    showConfidentialProjectsProp !== undefined ? showConfidentialProjectsProp : localShowConfidentialProjects;
+  const setShowConfidentialProjects = (val: boolean) => {
+    setLocalShowConfidentialProjects(val);
+    setShowConfidentialProjectsProp?.(val);
+  };
 
   const hasActiveFilters = Boolean(
-    searchQuery.trim() || stateFilter || budgetLineFilter || myProjectsOnly || bonusedOnly
+    searchQuery.trim() ||
+      isStateFilterActive ||
+      isBudgetLineFilterActive ||
+      myProjectsOnly ||
+      bonusedOnly
   );
 
   // Références de lignes pour le défilement automatique
   const rowRefs = useRef<Map<string, HTMLTableRowElement>>(new Map());
   const lastScrolledBreachKeyRef = useRef<string | null>(null);
 
-  // Tri du tableau des projets
-  const [sortColumn, setSortColumn] = useState<SortColumn>('id');
-  const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
+  // Tri du tableau des projets (avec conservation lors du changement d'onglet)
+  const [internalSortColumn, setInternalSortColumn] = useState<SortColumn>('id');
+  const [internalSortDirection, setInternalSortDirection] = useState<SortDirection>('desc');
+
+  const sortColumn = sortColumnProp !== undefined ? sortColumnProp : internalSortColumn;
+  const sortDirection = sortDirectionProp !== undefined ? sortDirectionProp : internalSortDirection;
+
+  const setSortColumn = (colOrFn: SortColumn | ((prev: SortColumn) => SortColumn)) => {
+    if (setSortColumnProp) {
+      if (typeof colOrFn === 'function') {
+        setSortColumnProp(colOrFn(sortColumn));
+      } else {
+        setSortColumnProp(colOrFn);
+      }
+    } else {
+      setInternalSortColumn(colOrFn);
+    }
+  };
+
+  const setSortDirection = (dirOrFn: SortDirection | ((prev: SortDirection) => SortDirection)) => {
+    if (setSortDirectionProp) {
+      if (typeof dirOrFn === 'function') {
+        setSortDirectionProp(dirOrFn(sortDirection));
+      } else {
+        setSortDirectionProp(dirOrFn);
+      }
+    } else {
+      setInternalSortDirection(dirOrFn);
+    }
+  };
 
   // Détection si l'utilisateur agit sous la casquette Resource Manager
   const isActingAsResourceManager =
@@ -151,44 +241,29 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
     }
   };
 
-  // Droit d'édition par projet : Seul le chef de projet ou son adjoint ainsi que le Value Management Officer (et le Super User) ont le droit de modifier un projet
-  const canEdit = (project: Project): boolean => {
-    if (isActingAsResourceManager) return false;
-    if (isSuperUser || isValueManagementOfficer) return true;
-    if (!activeUser?.email) return false;
-    const userEmail = activeUser.email.toLowerCase();
-    const pmEmail = project.projectManagerEmail?.toLowerCase() || '';
-    const deputyEmail = project.deputyEmail ? project.deputyEmail.toLowerCase() : '';
-    return userEmail === pmEmail || userEmail === deputyEmail;
-  };
+  const permissionContext: ProjectPermissionContext = useMemo(() => ({
+    activeUser,
+    isSuperUser,
+    isValueManagementOfficer,
+    isAdmin,
+    isResourceManager,
+    isProjectManager,
+    effectiveRole,
+    showConfidentialProjects,
+  }), [
+    activeUser,
+    isSuperUser,
+    isValueManagementOfficer,
+    isAdmin,
+    isResourceManager,
+    isProjectManager,
+    effectiveRole,
+    showConfidentialProjects,
+  ]);
 
-  // Droit de visualisation d'un projet confidentiel : Chef de projet, son adjoint, VMO et Super User
-  const canViewConfidential = (project: Project): boolean => {
-    if (!project.isConfidential) return true;
-    if (isSuperUser || isValueManagementOfficer) return true;
-    if (!activeUser?.email) return false;
-    const userEmail = activeUser.email.toLowerCase();
-    const pmEmail = project.projectManagerEmail?.toLowerCase() || '';
-    const deputyEmail = project.deputyEmail ? project.deputyEmail.toLowerCase() : '';
-    return userEmail === pmEmail || userEmail === deputyEmail;
-  };
-
-  // Droit de suppression d'un projet : Seul le chef de projet, son adjoint, le Value Management Officer ou le Super User peuvent supprimer
-  // Les autres utilisateurs ne peuvent y accéder qu'en lecture (icône d'œil) et n'ont pas de pictogramme de poubelle
-  const canDeleteProject = (project: Project): boolean => {
-    if (isActingAsResourceManager) return false;
-    if (!canEdit(project)) return false;
-    return (
-      isSuperUser ||
-      isValueManagementOfficer ||
-      Boolean(
-        activeUser?.email &&
-          (project.projectManagerEmail.toLowerCase() === activeUser.email.toLowerCase() ||
-            (project.deputyEmail &&
-              project.deputyEmail.toLowerCase() === activeUser.email.toLowerCase()))
-      )
-    );
-  };
+  const canEdit = (project: Project): boolean => canEditProject(project, permissionContext);
+  const canViewConfidential = (project: Project): boolean => canViewConfidentialProject(project, permissionContext);
+  const canDeleteProject = (project: Project): boolean => canDeleteProjectUtil(project, permissionContext);
 
   // Stockage local des modifications directes de bonus pour réactivité instantanée
   const [localBonuses, setLocalBonuses] = useState<Record<string, number | null>>({});
@@ -213,7 +288,7 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
       const calculatedRoi = calculateProjectRoi(
         p.criteriaValues,
         criteria,
-        isProjectStatePrioritized(p.stateId),
+        true, // calculé quel que soit l'état
         targetBonus,
         bonusConfig.isBonusActive
       );
@@ -259,6 +334,42 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
     const targetBonus = currentVal !== undefined ? currentVal : (p.bonus ?? null);
     if (targetBonus !== (p.bonus ?? null)) {
       persistBonus(p, targetBonus);
+    }
+  };
+
+  // Modification directe de l'état du projet depuis le tableau (avec recalcul automatique de l'état "à staffer")
+  const handleDirectStateChange = async (p: Project, newStateId: string) => {
+    if (!canEdit(p) || p.stateId === newStateId) return;
+    const targetState = projectStates.find((s) => s.id === newStateId);
+    if (!targetState) return;
+
+    setUpdatingStateProjectId(p.id);
+    try {
+      // Recalcul de l'état "à staffer" selon l'attribut « À staffer » (needsStaffing) du nouvel état
+      const newIsStaffed = Boolean(targetState.needsStaffing);
+
+      // Recalcul du ROI si applicable
+      const calculatedRoi = calculateProjectRoi(
+        p.criteriaValues,
+        criteria,
+        true,
+        getProjectBonus(p),
+        bonusConfig.isBonusActive
+      );
+
+      await updateProject(p.id, {
+        stateId: targetState.id,
+        stateName: targetState.name,
+        isStaffed: newIsStaffed,
+        roi: calculatedRoi,
+      });
+
+      setActionSuccess(`État du projet #${p.projectNumber ?? ''} mis à jour : « ${targetState.name} » (Staffé : ${newIsStaffed ? 'Oui' : 'Non'}).`);
+      setTimeout(() => setActionSuccess(null), 3000);
+    } catch (err: any) {
+      console.error('Erreur mise à jour directe de l\'état du projet:', err);
+    } finally {
+      setUpdatingStateProjectId(null);
     }
   };
 
@@ -313,12 +424,14 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
       }
 
       // Filtre état
-      if (stateFilter && p.stateId !== stateFilter) return false;
+      if (isStateFilterActive) {
+        if (!p.stateId || !selectedStateIds.includes(p.stateId)) return false;
+      }
 
       // Filtre ligne budgétaire
-      if (budgetLineFilter) {
+      if (isBudgetLineFilterActive) {
         if (isHidden) return false; // Ligne budgétaire caviardée pour cet utilisateur
-        if (p.budgetLineId !== budgetLineFilter) return false;
+        if (!p.budgetLineId || !selectedBudgetLineIds.includes(p.budgetLineId)) return false;
       }
 
       // Mes projets uniquement
@@ -337,7 +450,7 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
 
       return true;
     });
-  }, [projects, searchQuery, stateFilter, budgetLineFilter, myProjectsOnly, bonusedOnly, activeUser, localBonuses, isSuperUser, isValueManagementOfficer]);
+  }, [projects, searchQuery, isStateFilterActive, selectedStateIds, isBudgetLineFilterActive, selectedBudgetLineIds, myProjectsOnly, bonusedOnly, showConfidentialProjects, activeUser, localBonuses, isSuperUser, isValueManagementOfficer]);
 
   const getStateName = (stateId: string) => {
     const s = projectStates.find((st) => st.id === stateId);
@@ -360,15 +473,22 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
     return Boolean(s?.needsPrioritization);
   };
 
-  // Obtenir le ROI effectif d'un projet : calculé uniquement si son état est « à prioriser », sinon strictement null (vide)
-  const getProjectEffectiveRoi = (p: Project): number | null => {
-    if (!isProjectStatePrioritized(p.stateId)) {
-      return null;
+  // Helper : vérifie si le projet est staffé (son état a pour attribut "à staffer", ou case cochée)
+  const isProjectStaffed = (p: Project): boolean => {
+    const s = projectStates.find((st) => st.id === p.stateId);
+    const stateNeedsStaffing = Boolean(s?.needsStaffing);
+    if (!stateNeedsStaffing) {
+      return p.isStaffed === true;
     }
+    return p.isStaffed !== false;
+  };
+
+  // Obtenir le ROI effectif d'un projet : calculé quel que soit son état
+  const getProjectEffectiveRoi = (p: Project): number | null => {
     return calculateProjectRoi(
       p.criteriaValues,
       criteria,
-      true,
+      true, // quel que soit son état
       getProjectBonus(p),
       bonusConfig.isBonusActive
     );
@@ -410,19 +530,29 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
           comparison = (a.projectNumber || 0) - (b.projectNumber || 0);
           break;
         case 'roi': {
+          const isStaffedA = isProjectStaffed(a);
+          const isStaffedB = isProjectStaffed(b);
+
+          // Les projets staffés avec numéro de priorité viennent en premier (du numéro 1 au dernier),
+          // puis tous les projets non staffés par ordre décroissant de ROI
+          if (isStaffedA !== isStaffedB) {
+            return sortDirection === 'asc' ? (isStaffedA ? 1 : -1) : (isStaffedA ? -1 : 1);
+          }
+
           const roiA = getProjectEffectiveRoi(a);
           const roiB = getProjectEffectiveRoi(b);
 
-          // Règle métier : Les projets dont l'état a « à prioriser » à FAUX ont un ROI vide
-          // et sont systématiquement rejetés en fin de liste quel que soit le sens du tri
           if (roiA === null && roiB === null) {
-            return (b.projectNumber || 0) - (a.projectNumber || 0);
+            return (a.projectNumber || 0) - (b.projectNumber || 0);
           }
-          if (roiA === null) return 1; // A sans ROI -> après B
-          if (roiB === null) return -1; // B sans ROI -> après A
+          if (roiA === null) return 1;
+          if (roiB === null) return -1;
 
           const diff = roiA - roiB;
-          return sortDirection === 'asc' ? diff : -diff;
+          if (diff !== 0) {
+            return sortDirection === 'asc' ? diff : -diff;
+          }
+          return (a.projectNumber || 0) - (b.projectNumber || 0);
         }
         case 'name':
           comparison = a.name.localeCompare(b.name, 'fr', { sensitivity: 'base' });
@@ -547,24 +677,27 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
     };
   }, [sortedProjects, bonusConfig]);
 
-  // Classement des projets par ordre décroissant de ROI (pour la colonne PRIORITE)
+  // Classement des projets selon leur priorité :
+  // Le numéro de priorité ne doit être calculé que sur les projets staffés.
+  // Les projets non staffés ne doivent pas avoir un numéro de priorité.
   const projectRoiRanks = useMemo(() => {
-    const listWithRoi: { id: string; roi: number; projectNumber: number }[] = [];
+    const staffedWithRoi: { id: string; roi: number; projectNumber: number }[] = [];
     for (const p of projects) {
+      if (!isProjectStaffed(p)) continue;
       const roi = getProjectEffectiveRoi(p);
       if (roi !== null) {
-        listWithRoi.push({ id: p.id, roi, projectNumber: p.projectNumber || 0 });
+        staffedWithRoi.push({ id: p.id, roi, projectNumber: p.projectNumber || 0 });
       }
     }
     // Tri décroissant selon le ROI (et par #ID pour départager en cas d'égalité)
-    listWithRoi.sort((a, b) => {
+    staffedWithRoi.sort((a, b) => {
       const diff = b.roi - a.roi;
       if (diff !== 0) return diff;
       return a.projectNumber - b.projectNumber;
     });
 
     const rankMap = new Map<string, number>();
-    listWithRoi.forEach((item, index) => {
+    staffedWithRoi.forEach((item, index) => {
       rankMap.set(item.id, index + 1);
     });
     return rankMap;
@@ -610,27 +743,27 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
   ]);
 
   return (
-    <div className="space-y-6">
+    <div className="flex-1 min-h-0 flex flex-col space-y-3">
       {/* En-tête de section */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="shrink-0 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
         <div>
           <h2 className="text-xl font-bold text-blue-600 flex items-center gap-2.5">
             <Briefcase className="w-5 h-5 text-blue-600 shrink-0" />
             <span>Portefeuille Projets</span>
           </h2>
-          <p className="text-xs text-slate-600 mt-1 max-w-2xl">
+          <p className="text-xs text-slate-600 mt-0.5 max-w-2xl">
             {isValueManagementOfficer || isSuperUser
-              ? 'En tant que Value Management Officer, créez, qualifiez, modifiez et supprimez l’ensemble des projets du portefeuille.'
+              ? 'Créez, qualifiez, modifiez et supprimez des projets du portefeuille.'
               : isActingAsResourceManager
-              ? 'En tant que Resource Manager, vous visualisez l’ensemble des projets du portefeuille en mode consultation (lecture seule).'
-              : 'Consultez les projets et mettez à jour ceux sur lesquels vous êtes désigné Chef de projet ou Adjoint.'}
+              ? 'Consultez les projets du portefeuille.'
+              : 'Consultez les projets et mettez à jour ceux dont vous êtes Chef de projet ou Adjoint.'}
           </p>
         </div>
 
         {canCreate && (
           <button
             onClick={handleOpenCreate}
-            className="inline-flex items-center gap-2 px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-lg shadow-xs transition-colors cursor-pointer"
+            className="inline-flex items-center gap-2 px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-lg shadow-xs transition-colors cursor-pointer shrink-0"
           >
             <Plus className="w-4 h-4" />
             <span>Nouveau projet</span>
@@ -638,18 +771,8 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
         )}
       </div>
 
-      {/* Information de restriction de profil pour Resource Manager */}
-      {isActingAsResourceManager && (
-        <div className="p-3.5 bg-amber-50 border border-amber-200 rounded-xl flex items-center gap-3 text-amber-800 text-xs">
-          <Lock className="w-4 h-4 text-amber-600 shrink-0" />
-          <span>
-            <strong>Mode consultation :</strong> En tant que Resource Manager, vous visualisez l'ensemble des projets du portefeuille en lecture seule pour apprécier les besoins et la mobilisation des compétences clés. La création, la modification et la suppression de projets sont réservées aux profils habilités.
-          </span>
-        </div>
-      )}
-
       {actionSuccess && (
-        <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-800 text-xs flex items-center justify-between animate-in fade-in">
+        <div className="shrink-0 p-2.5 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-800 text-xs flex items-center justify-between animate-in fade-in">
           <span>{actionSuccess}</span>
           <button onClick={() => setActionSuccess(null)} className="text-emerald-700 font-bold hover:underline cursor-pointer">
             Fermer
@@ -658,7 +781,7 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
       )}
 
       {/* Barre de recherche et de filtres */}
-      <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-2xs space-y-3">
+      <div className="shrink-0 bg-white p-3 rounded-xl border border-slate-200 shadow-2xs space-y-2.5 relative z-20">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3">
           {/* Recherche textuelle */}
           <div className="lg:col-span-4 relative">
@@ -674,34 +797,20 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
 
           {/* Filtre État du cycle de vie */}
           <div className="lg:col-span-3">
-            <select
-              value={stateFilter}
-              onChange={(e) => setStateFilter(e.target.value)}
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs bg-white focus:ring-2 focus:ring-indigo-500"
-            >
-              <option value="">Tous les états du cycle de vie</option>
-              {projectStates.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.name}
-                </option>
-              ))}
-            </select>
+            <LifecycleStateFilter
+              projectStates={projectStates}
+              selectedStateIds={selectedStateIds}
+              onChange={setSelectedStateIds}
+            />
           </div>
 
           {/* Filtre Ligne budgétaire */}
           <div className="lg:col-span-3">
-            <select
-              value={budgetLineFilter}
-              onChange={(e) => setBudgetLineFilter(e.target.value)}
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs bg-white focus:ring-2 focus:ring-indigo-500 truncate"
-            >
-              <option value="">Toutes les lignes budgétaires</option>
-              {budgetLines.map((b) => (
-                <option key={b.id} value={b.id}>
-                  {b.name}
-                </option>
-              ))}
-            </select>
+            <BudgetLineFilter
+              budgetLines={budgetLines}
+              selectedBudgetLineIds={selectedBudgetLineIds}
+              onChange={setSelectedBudgetLineIds}
+            />
           </div>
 
           {/* Bouton bascule Mes projets uniquement */}
@@ -721,34 +830,56 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
           </div>
         </div>
 
-        <div className="flex items-center justify-between pt-2 border-t border-slate-100">
-          <span
-            className={`inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${
-              hasActiveFilters
-                ? 'bg-blue-50 border border-blue-200 text-blue-900'
-                : 'bg-slate-100 border border-slate-200 text-slate-600'
-            }`}
-          >
-            {hasActiveFilters
-              ? `${filteredProjects.length} projet${filteredProjects.length > 1 ? 's' : ''} sur ${projects.length} projet${projects.length > 1 ? 's' : ''} au total`
-              : `${projects.length} projet${projects.length > 1 ? 's' : ''} au total`}
-          </span>
-
-          {hasActiveFilters && (
-            <button
-              type="button"
-              onClick={() => {
-                setSearchQuery('');
-                setStateFilter('');
-                setBudgetLineFilter('');
-                setMyProjectsOnly(false);
-                setBonusedOnly(false);
-              }}
-              className="text-indigo-600 hover:text-indigo-800 hover:underline flex items-center gap-1.5 cursor-pointer text-xs font-semibold"
+        {/* Ligne inférieure : Boîte de comptage à gauche et case Afficher les projets confidentiels à droite, alignées horizontalement */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2 border-t border-slate-100">
+          <div className="flex items-center gap-3 flex-wrap">
+            <span
+              className={`inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${
+                hasActiveFilters
+                  ? 'bg-blue-50 border border-blue-200 text-blue-900'
+                  : 'bg-slate-100 border border-slate-200 text-slate-600'
+              }`}
             >
-              <RotateCcw className="w-3.5 h-3.5" />
-              <span>Réinitialiser les filtres</span>
-            </button>
+              {hasActiveFilters
+                ? `${filteredProjects.length} projet${filteredProjects.length > 1 ? 's' : ''} sur ${projects.length} projet${projects.length > 1 ? 's' : ''} au total`
+                : `${projects.length} projet${projects.length > 1 ? 's' : ''} au total`}
+            </span>
+
+            {hasActiveFilters && (
+              <button
+                type="button"
+                onClick={() => {
+                  setSearchQuery('');
+                  setSelectedStateIds(projectStates.map((s) => s.id));
+                  setSelectedBudgetLineIds(budgetLines.map((b) => b.id));
+                  setMyProjectsOnly(false);
+                  setBonusedOnly(false);
+                }}
+                className="text-indigo-600 hover:text-indigo-800 hover:underline flex items-center gap-1.5 cursor-pointer text-xs font-semibold"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+                <span>Réinitialiser les filtres</span>
+              </button>
+            )}
+          </div>
+
+          {/* Case à cocher pour le Value Management Officer alignée horizontalement à droite */}
+          {isValueManagementOfficer && (
+            <label
+              htmlFor="vmo-checkbox-show-confidential-priorities"
+              className="flex items-center gap-1.5 cursor-pointer select-none text-xs font-semibold text-slate-700 hover:text-slate-900 px-0.5 shrink-0"
+            >
+              <input
+                type="checkbox"
+                id="vmo-checkbox-show-confidential-priorities"
+                checked={showConfidentialProjects}
+                onChange={(e) => setShowConfidentialProjects(e.target.checked)}
+                className="w-3.5 h-3.5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer shrink-0"
+              />
+              <span className="text-xs" title="Afficher les projets confidentiels">
+                Afficher les projets confidentiels
+              </span>
+            </label>
           )}
         </div>
       </div>
@@ -758,7 +889,7 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
         const hasQuotaAlert = bonusConfig.checkQuotas && bonusQuotaAnalysis.hasAlert;
         return (
           <div
-            className={`rounded-xl transition-all shadow-xs p-4 space-y-3.5 ${
+            className={`shrink-0 rounded-xl transition-all shadow-xs p-3 space-y-2.5 ${
               hasQuotaAlert
                 ? 'bg-amber-50/90 border-2 border-amber-300 text-amber-950'
                 : 'bg-white border border-slate-200'
@@ -807,28 +938,23 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
                     >
                       Bonus actifs
                     </label>
-                    <div className="relative inline-flex items-center group">
+                    <Tooltip
+                      content={
+                        bonusConfig.isBonusActive
+                          ? 'Prend en compte les bonus projet dans le calcul du ROI'
+                          : 'Ne prend pas en compte les bonus dans le calcul du ROI'
+                      }
+                      placement="top"
+                      maxWidthClass="w-56"
+                    >
                       <span
                         tabIndex={0}
                         role="button"
                         className="text-slate-400 hover:text-slate-600 focus:text-slate-600 cursor-help inline-flex items-center"
-                        title={
-                          bonusConfig.isBonusActive
-                            ? 'Prend en compte les bonus projet dans le calcul du ROI'
-                            : 'Ne prend pas en compte les bonus dans le calcul du ROI'
-                        }
                       >
                         <HelpCircle className="w-3.5 h-3.5" />
                       </span>
-                      <div className="absolute right-0 bottom-full mb-2 hidden group-hover:flex group-focus-within:flex flex-col items-end z-30 pointer-events-none w-56">
-                        <div className="bg-slate-900 text-white text-[11px] leading-snug rounded-lg px-2.5 py-1.5 shadow-lg text-center">
-                          {bonusConfig.isBonusActive
-                            ? 'Prend en compte les bonus projet dans le calcul du ROI'
-                            : 'Ne prend pas en compte les bonus dans le calcul du ROI'}
-                        </div>
-                        <div className="w-2 h-2 bg-slate-900 rotate-45 -mt-1 mr-1.5"></div>
-                      </div>
-                    </div>
+                    </Tooltip>
                   </div>
                 </div>
 
@@ -854,28 +980,23 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
                     >
                       Vérification des quotas de bonus
                     </label>
-                    <div className="relative inline-flex items-center group">
+                    <Tooltip
+                      content={
+                        bonusConfig.checkQuotas
+                          ? 'Contrôle les quotas et alerte en cas de dépassement selon le tri actif'
+                          : 'Ne vérifie pas les quotas de bonus'
+                      }
+                      placement="top"
+                      maxWidthClass="w-56"
+                    >
                       <span
                         tabIndex={0}
                         role="button"
                         className="text-slate-400 hover:text-slate-600 focus:text-slate-600 cursor-help inline-flex items-center"
-                        title={
-                          bonusConfig.checkQuotas
-                            ? 'Contrôle les quotas et alerte en cas de dépassement selon le tri actif'
-                            : 'Ne vérifie pas les quotas de bonus'
-                        }
                       >
                         <HelpCircle className="w-3.5 h-3.5" />
                       </span>
-                      <div className="absolute right-0 bottom-full mb-2 hidden group-hover:flex group-focus-within:flex flex-col items-end z-30 pointer-events-none w-56">
-                        <div className="bg-slate-900 text-white text-[11px] leading-snug rounded-lg px-2.5 py-1.5 shadow-lg text-center">
-                          {bonusConfig.checkQuotas
-                            ? 'Contrôle les quotas et alerte en cas de dépassement selon le tri actif'
-                            : 'Ne vérifie pas les quotas de bonus'}
-                        </div>
-                        <div className="w-2 h-2 bg-slate-900 rotate-45 -mt-1 mr-1.5"></div>
-                      </div>
-                    </div>
+                    </Tooltip>
                   </div>
                 </div>
 
@@ -900,22 +1021,19 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
                     >
                       Projets bonussés uniquement
                     </label>
-                    <div className="relative inline-flex items-center group">
+                    <Tooltip
+                      content="Filtre la liste des projets pour ne faire apparaître que les projets avec un bonus"
+                      placement="top"
+                      maxWidthClass="w-56"
+                    >
                       <span
                         tabIndex={0}
                         role="button"
                         className="text-slate-400 hover:text-slate-600 focus:text-slate-600 cursor-help inline-flex items-center"
-                        title="Filtre la liste des projets pour ne faire apparaître que ceux ayant un bonus"
                       >
                         <HelpCircle className="w-3.5 h-3.5" />
                       </span>
-                      <div className="absolute right-0 bottom-full mb-2 hidden group-hover:flex group-focus-within:flex flex-col items-end z-30 pointer-events-none w-56">
-                        <div className="bg-slate-900 text-white text-[11px] leading-snug rounded-lg px-2.5 py-1.5 shadow-lg text-center">
-                          Filtre la liste des projets pour ne faire apparaître que les projets avec un bonus
-                        </div>
-                        <div className="w-2 h-2 bg-slate-900 rotate-45 -mt-1 mr-1.5"></div>
-                      </div>
-                    </div>
+                    </Tooltip>
                   </div>
                 </div>
               </div>
@@ -942,8 +1060,8 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
         );
       })()}
 
-      {/* Table des projets */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden">
+      {/* Table des projets (ascenseur vertical dédié à la liste seule) */}
+      <div className="flex-1 min-h-0 bg-white rounded-xl border border-slate-200 shadow-xs flex flex-col overflow-hidden relative z-10">
         {loading ? (
           <div className="p-12 text-center text-slate-500 text-xs">
             Chargement des projets...
@@ -972,17 +1090,17 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
             )}
           </div>
         ) : (
-          <div className="overflow-x-auto">
+          <div className="flex-1 min-h-0 overflow-auto [scrollbar-width:thin]">
             <table className="w-full text-left text-xs border-collapse">
-              <thead className="bg-slate-100/90 text-slate-700 uppercase font-semibold tracking-wider border-b border-slate-200 select-none">
+              <thead className="sticky top-0 z-30 bg-slate-100 uppercase font-semibold tracking-wider select-none">
                 <tr>
                   {/* ID */}
                   <th
                     scope="col"
                     onClick={() => handleSort('id')}
-                    className="py-3 px-4 w-24 text-center cursor-pointer select-none group hover:bg-slate-200/60 transition-colors"
+                    className="sticky top-0 bg-slate-100 z-30 py-2.5 px-1.5 w-14 min-w-[56px] max-w-[56px] text-center cursor-pointer select-none group hover:bg-slate-200/60 transition-colors border-r border-slate-200 table-header-double-bottom"
                   >
-                    <div className="flex items-center justify-center gap-1.5">
+                    <div className="flex items-center justify-center gap-1">
                       <span>ID</span>
                       {renderSortIcon('id')}
                     </div>
@@ -992,10 +1110,10 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
                   <th
                     scope="col"
                     onClick={() => handleSort('roi')}
-                    className="py-3 px-4 w-32 text-center cursor-pointer select-none group hover:bg-slate-200/60 transition-colors"
+                    className="sticky top-0 bg-slate-100 z-30 py-2.5 px-1.5 w-24 min-w-[96px] max-w-[96px] text-center cursor-pointer select-none group hover:bg-slate-200/60 transition-colors border-r border-slate-200 table-header-double-bottom"
                     title="Trier par priorité (rang selon ROI décroissant)"
                   >
-                    <div className="flex items-center justify-center gap-1.5">
+                    <div className="flex items-center justify-center gap-1">
                       <span>PRIORITE</span>
                       {renderSortIcon('roi')}
                     </div>
@@ -1005,10 +1123,10 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
                   <th
                     scope="col"
                     onClick={() => handleSort('name')}
-                    className="py-3 px-4 min-w-[200px] cursor-pointer select-none group hover:bg-slate-200/60 transition-colors"
+                    className="sticky top-0 bg-slate-100 z-30 py-2.5 px-4 min-w-[200px] cursor-pointer select-none group hover:bg-slate-200/60 transition-colors border-r border-slate-200 table-header-double-bottom"
                   >
                     <div className="flex items-center gap-1.5">
-                      <span>Projet (Nom &amp; Description)</span>
+                      <span>Projet</span>
                       {renderSortIcon('name')}
                     </div>
                   </th>
@@ -1017,7 +1135,7 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
                   <th
                     scope="col"
                     onClick={() => handleSort('state')}
-                    className="py-3 px-4 min-w-[150px] cursor-pointer select-none group hover:bg-slate-200/60 transition-colors"
+                    className="sticky top-0 bg-slate-100 z-30 py-2.5 px-4 min-w-[140px] cursor-pointer select-none group hover:bg-slate-200/60 transition-colors border-r border-slate-200 table-header-double-bottom"
                   >
                     <div className="flex items-center gap-1.5">
                       <span>État (Cycle de vie)</span>
@@ -1029,7 +1147,7 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
                   <th
                     scope="col"
                     onClick={() => handleSort('pm')}
-                    className="py-3 px-4 min-w-[190px] cursor-pointer select-none group hover:bg-slate-200/60 transition-colors"
+                    className="sticky top-0 bg-slate-100 z-30 py-2.5 px-4 min-w-[180px] cursor-pointer select-none group hover:bg-slate-200/60 transition-colors border-r border-slate-200 table-header-double-bottom"
                   >
                     <div className="flex items-center gap-1.5">
                       <span>Chef de projet &amp; Adjoint</span>
@@ -1041,7 +1159,7 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
                   <th
                     scope="col"
                     onClick={() => handleSort('budgetLine')}
-                    className="py-3 px-4 min-w-[160px] cursor-pointer select-none group hover:bg-slate-200/60 transition-colors"
+                    className="sticky top-0 bg-slate-100 z-30 py-2.5 px-4 min-w-[150px] cursor-pointer select-none group hover:bg-slate-200/60 transition-colors border-r border-slate-200 table-header-double-bottom"
                   >
                     <div className="flex items-center gap-1.5">
                       <span>Ligne budgétaire</span>
@@ -1053,7 +1171,7 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
                   <th
                     scope="col"
                     onClick={() => handleSort('bonus')}
-                    className="py-3 px-4 min-w-[90px] text-center cursor-pointer select-none group hover:bg-slate-200/60 transition-colors"
+                    className="sticky top-0 bg-slate-100 z-30 py-2.5 px-3 min-w-[85px] text-center cursor-pointer select-none group hover:bg-slate-200/60 transition-colors border-r border-slate-200 table-header-double-bottom"
                   >
                     <div className="flex items-center justify-center gap-1.5">
                       <span>Bonus</span>
@@ -1062,12 +1180,12 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
                   </th>
 
                   {/* Actions */}
-                  <th scope="col" className="py-3 px-4 w-24 text-right">
+                  <th scope="col" className="sticky top-0 bg-slate-100 z-30 py-2.5 px-4 w-24 text-right table-header-double-bottom">
                     Actions
                   </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-slate-200">
                 {sortedProjects.map((p) => {
                   const userCanEdit = canEdit(p);
                   const isConfidentialHidden = Boolean(p.isConfidential) && !canViewConfidential(p);
@@ -1091,61 +1209,93 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
                       }`}
                     >
                       {/* Colonne 1 : Identifiant de création unique */}
-                      <td className="py-3 px-4 text-center whitespace-nowrap">
-                        <span className="font-mono font-bold text-xs bg-slate-900 text-white px-2 py-0.5 rounded-full shadow-2xs">
+                      <td className="py-2.5 px-1.5 text-center whitespace-nowrap border-r border-slate-200">
+                        <span className="font-mono font-bold text-xs bg-slate-900 text-white px-1.5 py-0.5 rounded-full shadow-2xs">
                           #{p.projectNumber}
                         </span>
                       </td>
 
-                      {/* Colonne 2 : PRIORITE (Rang dans bulle et ROI calculé entre parenthèses à l'extérieur) */}
-                      <td className="py-3 px-4 text-center whitespace-nowrap">
+                      {/* Colonne 2 : PRIORITE (Numéro de priorité pour projets staffés, ROI affiché pour tous) */}
+                      <td className="py-2.5 px-1.5 text-center whitespace-nowrap border-r border-slate-200">
                         {projectRoi !== null ? (
-                          <div className="inline-flex items-center justify-center gap-1.5">
-                            <span className="font-mono font-bold text-xs px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-700 border border-indigo-200 shadow-2xs min-w-[22px] text-center">
-                              {projectRoiRanks.get(p.id) ?? '-'}
-                            </span>
-                            <span className="font-mono text-xs text-slate-500 font-medium">
-                              ({formatRoi(projectRoi)})
-                            </span>
-                          </div>
+                          isProjectStaffed(p) && projectRoiRanks.has(p.id) ? (
+                            <div className="inline-flex items-center justify-center gap-1">
+                              <span
+                                className="font-mono font-bold text-xs px-1.5 py-0.5 rounded-md bg-indigo-50 text-indigo-700 border border-indigo-200 shadow-2xs min-w-[20px] text-center"
+                                title={`Priorité #${projectRoiRanks.get(p.id)} (Projet staffé)`}
+                              >
+                                {projectRoiRanks.get(p.id)}
+                              </span>
+                              <span
+                                className="font-mono text-xs text-slate-500 font-medium"
+                                title={`ROI : ${formatRoi(projectRoi)}`}
+                              >
+                                ({formatRoi(projectRoi)})
+                              </span>
+                            </div>
+                          ) : (
+                            <div
+                              className="inline-flex items-center justify-center"
+                              title="Projet non staffé : pas de numéro de priorité"
+                            >
+                              <span className="font-mono text-xs text-slate-500 font-medium">
+                                ({formatRoi(projectRoi)})
+                              </span>
+                            </div>
+                          )
                         ) : (
                           <span className="text-slate-300">-</span>
                         )}
                       </td>
 
-                      {/* Colonne 3 : Nom et description (caviardé si projet confidentiel non autorisé) */}
-                      <td className="py-3 px-4">
+                      {/* Colonne 3 : Nom et description (remplacé par la boîte CONFIDENTIEL si non autorisé) */}
+                      <td className="py-2.5 px-4 border-r border-slate-200">
                         {isConfidentialHidden ? (
-                          <div>
-                            <div className="flex items-center gap-2">
-                              <span
-                                className="bg-slate-900 text-slate-900 select-none rounded px-2.5 py-0.5 text-xs font-mono tracking-widest inline-block shadow-2xs"
-                                title="Contenu caviardé (Projet confidentiel)"
-                              >
-                                ██████████████
-                              </span>
-                              <span className="inline-flex items-center gap-1 text-[10px] text-red-600 font-bold bg-red-50 border border-red-200 px-1.5 py-0.5 rounded shadow-2xs select-none">
-                                <Lock className="w-2.5 h-2.5 text-red-600" />
-                                CONFIDENTIEL
-                              </span>
-                            </div>
-                            <p className="text-[10px] text-slate-400 italic mt-0.5 select-none">
-                              Titre et description masqués
-                            </p>
-                          </div>
+                          <span
+                            className="inline-flex items-center gap-1.5 text-xs font-bold bg-rose-100 text-red-600 border border-red-300 px-2.5 py-1 rounded-md shadow-2xs select-none"
+                            title="Projet confidentiel (accès restreint)"
+                          >
+                            <Lock className="w-3.5 h-3.5 text-red-600 shrink-0" />
+                            <span>CONFIDENTIEL</span>
+                          </span>
                         ) : (
                           <div>
-                            <div className="font-bold text-slate-900 flex items-center gap-2">
+                            <div className="font-bold text-slate-900 flex items-center gap-2 flex-wrap">
                               <span>{p.name}</span>
                               {p.isConfidential && (
                                 <span
-                                  className="inline-flex items-center gap-1 text-[10px] text-red-600 font-bold bg-red-50 border border-red-200 px-1.5 py-0.5 rounded shadow-2xs select-none"
-                                  title="Projet confidentiel (visible par vous, votre adjoint et le VMO)"
+                                  className="inline-flex items-center justify-center p-1 rounded-md bg-rose-50 border border-red-300 text-red-600 shadow-2xs shrink-0"
+                                  title="Projet confidentiel"
                                 >
-                                  <Lock className="w-2.5 h-2.5 text-red-600" />
-                                  CONFIDENTIEL
+                                  <Lock className="w-3.5 h-3.5 text-red-600" />
                                 </span>
                               )}
+                              {/* Petit pictogramme gris en forme de point d'interrogation dans un cercle */}
+                              <Tooltip
+                                content={
+                                  <div>
+                                    <div className="text-[10px] font-semibold text-slate-200 uppercase tracking-wider mb-1 flex items-center justify-between gap-4">
+                                      <span>Description du projet</span>
+                                      {p.isConfidential && (
+                                        <span className="text-rose-200 flex items-center gap-1 font-medium normal-case">
+                                          <Lock className="w-2.5 h-2.5" />
+                                          Confidentiel
+                                        </span>
+                                      )}
+                                    </div>
+                                    <div className="text-white text-xs">
+                                      {p.description?.trim() || (
+                                        <span className="italic text-slate-300">Aucune description renseignée</span>
+                                      )}
+                                    </div>
+                                  </div>
+                                }
+                                placement="right"
+                                maxWidthClass="w-72"
+                                className="relative inline-flex items-center shrink-0 cursor-help"
+                              >
+                                <HelpCircle className="w-3.5 h-3.5 text-slate-400 hover:text-slate-600 cursor-help transition-colors" />
+                              </Tooltip>
                             </div>
                             {p.description && (
                               <p className="text-[11px] text-slate-500 line-clamp-1 mt-0.5 max-w-sm">
@@ -1157,15 +1307,38 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
                       </td>
 
                       {/* Colonne 3 : État du cycle de vie */}
-                      <td className="py-3 px-4">
-                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-indigo-50 text-indigo-900 border border-indigo-200">
-                          <Tag className="w-3 h-3 text-indigo-600" />
-                          <span>{getStateName(p.stateId)}</span>
-                        </span>
+                      <td className="py-2.5 px-4 border-r border-slate-200">
+                        {canEdit(p) ? (
+                          <div className="relative inline-flex items-center group/state">
+                            <Tag className="w-3 h-3 text-indigo-600 absolute left-2.5 pointer-events-none z-10" />
+                            <select
+                              value={p.stateId}
+                              onChange={(e) => handleDirectStateChange(p, e.target.value)}
+                              disabled={updatingStateProjectId === p.id}
+                              title="Modifier directement l'état du cycle de vie"
+                              className="appearance-none inline-flex items-center pl-7 pr-7 py-1 rounded-full text-xs font-semibold bg-indigo-50 hover:bg-indigo-100 text-indigo-900 border border-indigo-200 hover:border-indigo-300 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 cursor-pointer transition-colors shadow-2xs disabled:opacity-60 disabled:cursor-wait"
+                            >
+                              {projectStates.map((st) => (
+                                <option key={st.id} value={st.id} className="text-slate-800 bg-white font-normal py-1">
+                                  {st.name}
+                                </option>
+                              ))}
+                            </select>
+                            <ChevronDown className="w-3 h-3 text-indigo-600 absolute right-2.5 pointer-events-none z-10 transition-transform group-hover/state:translate-y-0.5" />
+                          </div>
+                        ) : (
+                          <span
+                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-indigo-50 text-indigo-900 border border-indigo-200"
+                            title="État du cycle de vie (modification non autorisée)"
+                          >
+                            <Tag className="w-3 h-3 text-indigo-600" />
+                            <span>{getStateName(p.stateId)}</span>
+                          </span>
+                        )}
                       </td>
 
                       {/* Colonne 4 : Chef de projet & Adjoint */}
-                      <td className="py-3 px-4">
+                      <td className="py-2.5 px-4 border-r border-slate-200">
                         <div className="flex flex-col gap-0.5">
                           <div className="font-semibold text-slate-800 flex items-center gap-1">
                             <span className="truncate max-w-[170px]" title={p.projectManagerEmail}>
@@ -1181,14 +1354,15 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
                         </div>
                       </td>
 
-                      {/* Colonne 5 : Ligne budgétaire (caviardée si projet confidentiel non autorisé) */}
-                      <td className="py-3 px-4 text-slate-700">
+                      {/* Colonne 5 : Ligne budgétaire (remplacée par la boîte CONFIDENTIEL si non autorisé) */}
+                      <td className="py-2.5 px-4 text-slate-700 border-r border-slate-200">
                         {isConfidentialHidden ? (
                           <span
-                            className="bg-slate-900 text-slate-900 select-none rounded px-2 py-0.5 text-xs font-mono tracking-widest inline-block shadow-2xs"
-                            title="Ligne budgétaire masquée"
+                            className="inline-flex items-center gap-1 text-[10px] font-bold bg-rose-100 text-red-600 border border-red-300 px-2 py-0.5 rounded-md shadow-2xs select-none"
+                            title="Ligne budgétaire confidentielle masquée"
                           >
-                            ████████
+                            <Lock className="w-2.5 h-2.5 text-red-600 shrink-0" />
+                            <span>CONFIDENTIEL</span>
                           </span>
                         ) : (
                           <span className="truncate block max-w-[160px]" title={getBudgetLineName(p.budgetLineId)}>
@@ -1198,7 +1372,7 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
                       </td>
 
                       {/* Colonne 6 : Bonus */}
-                      <td className="py-2.5 px-3 text-center font-mono">
+                      <td className="py-2 px-3 text-center font-mono border-r border-slate-200">
                         {canToggleBonus ? (
                           <div className="inline-flex flex-col items-center">
                             <div className="inline-flex items-center justify-center gap-1.5">
@@ -1286,49 +1460,19 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
                       </td>
 
                       {/* Colonne 8 : Actions */}
-                      <td className="py-3 px-4 text-right whitespace-nowrap">
-                        <div className="flex items-center justify-end gap-1">
-                          {isConfidentialHidden ? (
-                            <span
-                              className="p-1.5 text-slate-400 select-none cursor-not-allowed inline-flex items-center rounded-md"
-                              title="Projet confidentiel — Visualisation et modification interdites"
-                            >
-                              <Lock className="w-3.5 h-3.5 text-slate-400" />
-                            </span>
-                          ) : (
-                            <>
-                              {userCanEdit ? (
-                                <button
-                                  type="button"
-                                  onClick={() => handleOpenEdit(p)}
-                                  className="p-1.5 rounded-md transition-colors cursor-pointer text-slate-500 hover:text-indigo-600 hover:bg-indigo-50"
-                                  title="Modifier ce projet"
-                                >
-                                  <Pencil className="w-3.5 h-3.5" />
-                                </button>
-                              ) : (
-                                <button
-                                  type="button"
-                                  onClick={() => handleOpenEdit(p)}
-                                  className="p-1.5 rounded-md transition-colors cursor-pointer text-slate-400 hover:text-slate-600 hover:bg-slate-100"
-                                  title="Consulter ce projet (Lecture seule)"
-                                >
-                                  <Eye className="w-3.5 h-3.5" />
-                                </button>
-                              )}
-
-                              {userCanEdit && canDeleteProject(p) && (
-                                <button
-                                  type="button"
-                                  onClick={() => setDeleteCandidate(p)}
-                                  className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors cursor-pointer"
-                                  title="Supprimer ce projet"
-                                >
-                                  <Trash2 className="w-3.5 h-3.5" />
-                                </button>
-                              )}
-                            </>
-                          )}
+                      <td className="py-2.5 px-4 text-right whitespace-nowrap">
+                        <div className="flex items-center justify-end">
+                          <ProjectActionButton
+                            project={p}
+                            permissionContext={permissionContext}
+                            onOpenProject={(proj, isReadOnly) => {
+                              setSelectedProject(proj);
+                              setIsReadOnlyModal(isReadOnly);
+                              setModalOpen(true);
+                            }}
+                            onDeleteProject={(proj) => setDeleteCandidate(proj)}
+                            showDelete={true}
+                          />
                         </div>
                       </td>
                     </tr>

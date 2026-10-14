@@ -40,6 +40,7 @@ export function subscribeToKeySkills(
           resourceManagerId: data.resourceManagerId || '',
           resourceManagerName: data.resourceManagerName || '',
           description: data.description || '',
+          alertOnDemandOverrun: Boolean(data.alertOnDemandOverrun),
           isCapped: Boolean(data.isCapped),
           budgetAllocations,
           order: typeof data.order === 'number' ? data.order : 0,
@@ -65,6 +66,7 @@ export async function addKeySkill(data: KeySkillFormData): Promise<string> {
       resourceManagerId: data.resourceManagerId,
       resourceManagerName: data.resourceManagerName.trim(),
       description: data.description ? data.description.trim() : '',
+      alertOnDemandOverrun: Boolean(data.alertOnDemandOverrun),
       isCapped: Boolean(data.isCapped),
       budgetAllocations: data.budgetAllocations.map((a) => ({
         budgetLineId: a.budgetLineId,
@@ -94,6 +96,7 @@ export async function updateKeySkill(
     if (data.resourceManagerId !== undefined) updatePayload.resourceManagerId = data.resourceManagerId;
     if (data.resourceManagerName !== undefined) updatePayload.resourceManagerName = data.resourceManagerName.trim();
     if (data.description !== undefined) updatePayload.description = data.description.trim();
+    if (data.alertOnDemandOverrun !== undefined) updatePayload.alertOnDemandOverrun = Boolean(data.alertOnDemandOverrun);
     if (data.isCapped !== undefined) updatePayload.isCapped = Boolean(data.isCapped);
     if (data.budgetAllocations !== undefined) {
       updatePayload.budgetAllocations = data.budgetAllocations.map((a) => ({

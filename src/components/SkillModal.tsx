@@ -44,6 +44,7 @@ export const SkillModal: React.FC<SkillModalProps> = ({
   const [name, setName] = useState('');
   const [resourceManagerId, setResourceManagerId] = useState('');
   const [description, setDescription] = useState('');
+  const [alertOnDemandOverrun, setAlertOnDemandOverrun] = useState<boolean>(false);
   const [isCapped, setIsCapped] = useState<boolean>(false);
   const [allocations, setAllocations] = useState<Record<string, number>>({});
   const [error, setError] = useState<string | null>(null);
@@ -83,6 +84,7 @@ export const SkillModal: React.FC<SkillModalProps> = ({
       );
       setResourceManagerId(matchedUser ? matchedUser.email : skillToEdit.resourceManagerId);
       setDescription(skillToEdit.description || '');
+      setAlertOnDemandOverrun(Boolean(skillToEdit.alertOnDemandOverrun));
       setIsCapped(Boolean(skillToEdit.isCapped));
 
       // Reconstruire les allocations
@@ -104,6 +106,7 @@ export const SkillModal: React.FC<SkillModalProps> = ({
         users[0];
       setResourceManagerId(defaultRm ? defaultRm.email : '');
       setDescription('');
+      setAlertOnDemandOverrun(false);
       setIsCapped(false);
 
       // Allocations par défaut (0%)
@@ -187,6 +190,7 @@ export const SkillModal: React.FC<SkillModalProps> = ({
         resourceManagerId: cleanRmEmail,
         resourceManagerName: rmName,
         description: description.trim(),
+        alertOnDemandOverrun,
         isCapped,
         budgetAllocations,
         order,
@@ -292,6 +296,20 @@ export const SkillModal: React.FC<SkillModalProps> = ({
                 className="w-full pl-9 pr-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 disabled:bg-slate-50 disabled:text-slate-700"
               />
             </div>
+          </div>
+
+          {/* Boîte à cocher : alerter en cas de dépassement des demandes */}
+          <div className="pt-0.5">
+            <label className="flex items-center gap-2 cursor-pointer select-none text-xs font-semibold text-slate-700 hover:text-slate-900">
+              <input
+                type="checkbox"
+                disabled={isReadOnly}
+                checked={alertOnDemandOverrun}
+                onChange={(e) => setAlertOnDemandOverrun(e.target.checked)}
+                className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer disabled:cursor-not-allowed"
+              />
+              <span>alerter en cas de dépassement des demandes</span>
+            </label>
           </div>
 
           {/* Section Répartition par ligne budgétaire */}

@@ -10,6 +10,7 @@ export interface KeySkill {
   resourceManagerId: string;
   resourceManagerName: string;
   description?: string;
+  alertOnDemandOverrun?: boolean; // Boîte à cocher : "alerter en cas de dépassement des demandes"
   isCapped: boolean; // true = capée par ligne budgétaire, false = non capée par ligne budgétaire
   budgetAllocations: SkillBudgetAllocation[];
   order: number;

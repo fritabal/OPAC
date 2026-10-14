@@ -5,18 +5,16 @@ import { Criterion } from '../types/criteria';
  * Somme pondérée des critères de valeur / Somme pondérée des critères de coût.
  *
  * Règle métier :
- * Le calcul du ROI ne doit être effectué que pour les projets dont l'état
- * a pour attribut « à prioriser » (needsPrioritization) à VRAI.
- * Si l'état n'est pas à prioriser (isStatePrioritized === false), le ROI est vide (null).
+ * Tous les projets doivent avoir leur ROI calculé en permanence, quel que soit leur état,
+ * et ce dès la valorisation des critères de valeur et de coût.
  */
 export function calculateProjectRoi(
   criteriaValues: Record<string, number> | undefined,
   criteria: Criterion[],
-  isStatePrioritized: boolean = true,
+  _isStatePrioritized: boolean = true,
   bonus?: number | null,
   isBonusActive: boolean = true
 ): number | null {
-  if (!isStatePrioritized) return null;
   if (!criteriaValues || criteria.length === 0) return null;
 
   let valueSum = 0;
