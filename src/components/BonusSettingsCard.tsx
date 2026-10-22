@@ -4,7 +4,6 @@ import {
   AlertCircle,
   Lock,
   Sparkles,
-  Info,
   Save,
 } from 'lucide-react';
 import { BonusConfig, DEFAULT_BONUS_CONFIG } from '../types/bonus';
@@ -158,59 +157,56 @@ export const BonusSettingsCard: React.FC<BonusSettingsCardProps> = ({
 
       {/* Contenu et paramètres */}
       <div className="p-4 sm:p-6 space-y-6">
-        {/* Grille des 2 boîtes à cocher principales */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* Boîte 1 : Bonus actifs */}
-          <div
-            onClick={canManage ? handleToggleBonusActive : undefined}
-            className={`p-4 rounded-xl border transition-all select-none ${
-              isBonusActive
-                ? 'bg-teal-50/50 border-teal-300 shadow-2xs'
-                : 'bg-slate-50/70 border-slate-200'
-            } ${canManage ? 'cursor-pointer hover:border-teal-400' : 'cursor-default opacity-85'}`}
-          >
-            <div className="flex items-start gap-3">
-              <input
-                type="checkbox"
-                id="checkbox-bonus-active"
-                checked={isBonusActive}
-                disabled={!canManage}
-                onChange={(e) => {
-                  e.stopPropagation();
-                  handleToggleBonusActive();
-                }}
-                className="mt-1 h-4 w-4 rounded border-slate-300 text-teal-600 focus:ring-teal-500 cursor-pointer disabled:cursor-not-allowed"
-              />
-              <div className="flex-1">
-                <label
-                  htmlFor="checkbox-bonus-active"
-                  className="text-sm font-bold text-slate-900 block cursor-pointer"
-                >
-                  Bonus actifs
-                </label>
-                <p className="text-xs text-slate-600 mt-1 leading-relaxed">
-                  {isBonusActive ? (
-                    <span className="text-teal-900 font-medium">
-                      Prend en compte les bonus projet dans le calcul du ROI de la priorisation
-                    </span>
-                  ) : (
-                    <span className="text-slate-500">
-                      Ne prend pas en compte les bonus projet dans le calcul du ROI et la priorisation
-                    </span>
-                  )}
-                </p>
-              </div>
+        {/* Case à cocher "Bonus actifs" directement dans la frame Gestion des bonus */}
+        <div
+          onClick={canManage ? handleToggleBonusActive : undefined}
+          className={`select-none ${canManage ? 'cursor-pointer' : 'cursor-default opacity-85'}`}
+        >
+          <div className="flex items-start gap-3">
+            <input
+              type="checkbox"
+              id="checkbox-bonus-active"
+              checked={isBonusActive}
+              disabled={!canManage}
+              onChange={(e) => {
+                e.stopPropagation();
+                handleToggleBonusActive();
+              }}
+              className="mt-0.5 h-4 w-4 rounded border-slate-300 text-teal-600 focus:ring-teal-500 cursor-pointer disabled:cursor-not-allowed shrink-0"
+            />
+            <div className="flex-1">
+              <label
+                htmlFor="checkbox-bonus-active"
+                className="text-sm font-bold text-slate-900 block cursor-pointer"
+              >
+                Bonus actifs
+              </label>
+              <p className="text-xs text-slate-600 mt-0.5 leading-relaxed">
+                {isBonusActive ? (
+                  <span className="text-teal-900 font-medium">
+                    Prend en compte les bonus projet dans le calcul du ROI de la priorisation
+                  </span>
+                ) : (
+                  <span className="text-slate-500">
+                    Ne prend pas en compte les bonus projet dans le calcul du ROI et la priorisation
+                  </span>
+                )}
+              </p>
             </div>
           </div>
+        </div>
 
-          {/* Boîte 2 : Vérification des quotas de bonus */}
+        {/* Encart Quotas de bonus avec la case à cocher "Vérification des quotas de bonus" directement à l'intérieur */}
+        <div
+          className={`p-4 sm:p-5 rounded-xl border transition-all space-y-4 ${
+            checkQuotas
+              ? 'bg-slate-50/50 border-slate-200'
+              : 'bg-slate-100/60 border-slate-200/80 opacity-75'
+          }`}
+        >
           <div
             onClick={canManage ? handleToggleCheckQuotas : undefined}
-            className={`p-4 rounded-xl border transition-all select-none ${
-              checkQuotas
-                ? 'bg-indigo-50/50 border-indigo-300 shadow-2xs'
-                : 'bg-slate-50/70 border-slate-200'
-            } ${canManage ? 'cursor-pointer hover:border-indigo-400' : 'cursor-default opacity-85'}`}
+            className={`select-none ${canManage ? 'cursor-pointer' : 'cursor-default opacity-85'}`}
           >
             <div className="flex items-start gap-3">
               <input
@@ -222,7 +218,7 @@ export const BonusSettingsCard: React.FC<BonusSettingsCardProps> = ({
                   e.stopPropagation();
                   handleToggleCheckQuotas();
                 }}
-                className="mt-1 h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer disabled:cursor-not-allowed"
+                className="mt-0.5 h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer disabled:cursor-not-allowed shrink-0"
               />
               <div className="flex-1">
                 <label
@@ -231,10 +227,10 @@ export const BonusSettingsCard: React.FC<BonusSettingsCardProps> = ({
                 >
                   Vérification des quotas de bonus
                 </label>
-                <p className="text-xs text-slate-600 mt-1 leading-relaxed">
+                <p className="text-xs text-slate-600 mt-0.5 leading-relaxed">
                   {checkQuotas ? (
                     <span className="text-indigo-900 font-medium">
-                      Vérifie les quotas de bonus ci-dessous et alerte au premier projet en dépassement, en fonction du tri effectué
+                      Vérifie les quotas de bonus ci-dessous et alerte dès le premier projet en dépassement
                     </span>
                   ) : (
                     <span className="text-slate-500">
@@ -244,32 +240,6 @@ export const BonusSettingsCard: React.FC<BonusSettingsCardProps> = ({
                 </p>
               </div>
             </div>
-          </div>
-        </div>
-
-        {/* Section des 3 champs numériques de quotas */}
-        <div
-          className={`p-4 sm:p-5 rounded-xl border transition-all ${
-            checkQuotas
-              ? 'bg-slate-50/50 border-slate-200'
-              : 'bg-slate-100/60 border-slate-200/80 opacity-75'
-          }`}
-        >
-          <div className="flex items-center justify-between mb-4">
-            <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
-              <span>Plafonds et quotas de bonus</span>
-              {!checkQuotas && (
-                <span className="text-[11px] font-normal text-slate-400 lowercase italic">
-                  (grisés car la vérification des quotas est inactive)
-                </span>
-              )}
-            </h4>
-            {!checkQuotas && (
-              <span className="text-xs text-slate-500 flex items-center gap-1">
-                <Lock className="w-3 h-3 text-slate-400" />
-                <span>Valeurs mémorisées</span>
-              </span>
-            )}
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -353,17 +323,6 @@ export const BonusSettingsCard: React.FC<BonusSettingsCardProps> = ({
                 Enveloppe globale totale de points de bonus allouables
               </p>
             </div>
-          </div>
-        </div>
-
-        {/* Note informative de gouvernance */}
-        <div className="p-3 bg-amber-50/70 border border-amber-200 rounded-lg text-xs text-amber-900 flex items-start gap-2.5">
-          <Info className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" />
-          <div className="leading-relaxed">
-            <span className="font-semibold">Règle de gouvernance portefeuille :</span>{' '}
-            Ces paramètres s'appliquent immédiatement à la grille de priorisation des projets.
-            Lorsque la vérification des quotas est cochée, le tableau des projets met en alerte le premier projet
-            qui dépasse les seuils autorisés en suivant l'ordre du tri courant (par exemple trié par ROI décroissant).
           </div>
         </div>
       </div>

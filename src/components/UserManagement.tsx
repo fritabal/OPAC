@@ -49,6 +49,7 @@ import {
   requestGoogleAccessToken,
   isGmailAuthorized,
 } from '../services/emailService';
+import { Tooltip } from './Tooltip';
 
 interface UserManagementProps {
   users: AppUser[];
@@ -123,6 +124,15 @@ export const UserManagement: React.FC<UserManagementProps> = ({
   } | null>(null);
   const [copiedLink, setCopiedLink] = useState(false);
   const [copiedToken, setCopiedToken] = useState(false);
+
+  // Nombre d'attributs obligatoires non renseignés dans la modale utilisateur
+  const userModalMissingRequiredCount = React.useMemo(() => {
+    let count = 0;
+    if (!email.trim()) count++;
+    if (!displayName.trim()) count++;
+    if (selectedRoles.length === 0) count++;
+    return count;
+  }, [email, displayName, selectedRoles]);
 
   React.useEffect(() => {
     isGmailAuthorized().then(setGmailReady);
@@ -936,7 +946,6 @@ export const UserManagement: React.FC<UserManagementProps> = ({
                     type="button"
                     onClick={() => handleSort('name')}
                     className="group inline-flex items-center gap-1.5 font-semibold uppercase tracking-wider text-slate-700 hover:text-indigo-600 cursor-pointer"
-                    title="Trier par nom d'utilisateur"
                   >
                     <span>NOM</span>
                     {getSortIcon('name')}
@@ -949,7 +958,6 @@ export const UserManagement: React.FC<UserManagementProps> = ({
                     type="button"
                     onClick={() => handleSort('email')}
                     className="group inline-flex items-center gap-1.5 font-semibold uppercase tracking-wider text-slate-700 hover:text-indigo-600 cursor-pointer"
-                    title="Trier par adresse email"
                   >
                     <span>EMAIL</span>
                     {getSortIcon('email')}
@@ -958,28 +966,30 @@ export const UserManagement: React.FC<UserManagementProps> = ({
 
                 {/* Colonne 3 : Rôles associés (avec bascule directe et tri sur les rôles) */}
                 <th className="py-3 px-4 min-w-[200px]">
-                  <button
-                    type="button"
-                    onClick={() => handleSort('roles')}
-                    className="group inline-flex items-center gap-1.5 font-semibold uppercase tracking-wider text-slate-700 hover:text-indigo-600 cursor-pointer"
-                    title="Trier par rôles attribués"
-                  >
-                    <span>RÔLES ASSOCIÉS</span>
-                    {getSortIcon('roles')}
-                  </button>
+                  <Tooltip content="Sélectionnez les rôles en cliquant sur les pictogrammes">
+                    <button
+                      type="button"
+                      onClick={() => handleSort('roles')}
+                      className="group inline-flex items-center gap-1.5 font-semibold uppercase tracking-wider text-slate-700 hover:text-indigo-600 cursor-pointer"
+                    >
+                      <span>RÔLES ASSOCIÉS</span>
+                      {getSortIcon('roles')}
+                    </button>
+                  </Tooltip>
                 </th>
 
                 {/* Colonne 4 : ACTIF avec Tri (placée juste avant STATUT) */}
                 <th className="py-3 px-4 w-24 text-center">
-                  <button
-                    type="button"
-                    onClick={() => handleSort('active')}
-                    className="group inline-flex items-center justify-center gap-1.5 font-semibold uppercase tracking-wider text-slate-700 hover:text-indigo-600 cursor-pointer"
-                    title="Trier par compte actif ou inactif"
-                  >
-                    <span>ACTIF</span>
-                    {getSortIcon('active')}
-                  </button>
+                  <Tooltip content="Un utilisateur non actif ne peut pas se connecter">
+                    <button
+                      type="button"
+                      onClick={() => handleSort('active')}
+                      className="group inline-flex items-center justify-center gap-1.5 font-semibold uppercase tracking-wider text-slate-700 hover:text-indigo-600 cursor-pointer"
+                    >
+                      <span>ACTIF</span>
+                      {getSortIcon('active')}
+                    </button>
+                  </Tooltip>
                 </th>
 
                 {/* Colonne 5 : Statut avec Tri */}
@@ -988,7 +998,6 @@ export const UserManagement: React.FC<UserManagementProps> = ({
                     type="button"
                     onClick={() => handleSort('status')}
                     className="group inline-flex items-center gap-1.5 font-semibold uppercase tracking-wider text-slate-700 hover:text-indigo-600 cursor-pointer"
-                    title="Trier par statut de compte et mot de passe"
                   >
                     <span>STATUT</span>
                     {getSortIcon('status')}
@@ -1526,9 +1535,10 @@ export const UserManagement: React.FC<UserManagementProps> = ({
 
       {/* Modal Fiche détaillée de l'utilisateur (avec boîte à cocher compte actif et rôles colorés/grisés) */}
       {modalOpen && (
-        <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-xl overflow-hidden animate-in fade-in zoom-in-95">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 bg-slate-50">
+        <div className="fixed inset-0 z-50 overflow-hidden bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-5">
+          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-4xl max-h-[92vh] sm:max-h-[90vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95">
+            {/* En-tête (toujours visible) */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 bg-slate-50 shrink-0">
               <div className="flex items-center gap-3">
                 <div className="p-2.5 bg-pink-100 text-pink-600 rounded-xl border border-pink-200 shrink-0">
                   <Users className="w-5 h-5 text-pink-600" />
@@ -1552,13 +1562,15 @@ export const UserManagement: React.FC<UserManagementProps> = ({
               </button>
             </div>
 
-            <form onSubmit={handleSubmit} className="p-6 space-y-4">
-              {formError && (
-                <div className="p-3 bg-red-50 border border-red-200 rounded-lg flex items-start gap-2.5 text-red-700 text-xs">
-                  <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
-                  <span>{formError}</span>
-                </div>
-              )}
+            {/* Formulaire avec corps défilable et bandeau d'actions fixe */}
+            <form onSubmit={handleSubmit} className="flex-1 min-h-0 flex flex-col overflow-hidden">
+              <div className="flex-1 min-h-0 overflow-y-auto px-6 py-5 space-y-5 [scrollbar-width:thin]">
+                {formError && (
+                  <div className="p-3 bg-red-50 border border-red-200 rounded-lg flex items-start gap-2.5 text-red-700 text-xs">
+                    <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
+                    <span>{formError}</span>
+                  </div>
+                )}
 
               {/* Boîte à cocher État du compte dans la fiche détaillée */}
               <div
@@ -1587,15 +1599,6 @@ export const UserManagement: React.FC<UserManagementProps> = ({
                   <div>
                     <p className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
                       <span>Compte actif (autoriser l'accès)</span>
-                      {modalIsActive ? (
-                        <span className="text-[10px] bg-emerald-100 text-emerald-800 px-1.5 py-0.2 rounded font-semibold">
-                          Actif
-                        </span>
-                      ) : (
-                        <span className="text-[10px] bg-amber-100 text-amber-800 px-1.5 py-0.2 rounded font-semibold">
-                          Non actif
-                        </span>
-                      )}
                     </p>
                     <p className="text-[11px] text-slate-500 mt-0.5 leading-tight">
                       {modalIsActive
@@ -1786,21 +1789,38 @@ export const UserManagement: React.FC<UserManagementProps> = ({
                 </div>
               )}
 
-              <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-200">
-                <button
-                  type="button"
-                  onClick={() => setModalOpen(false)}
-                  className="px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
-                >
-                  Annuler
-                </button>
-                <button
-                  type="submit"
-                  disabled={saving || selectedRoles.length === 0}
-                  className="px-4 py-2 text-sm font-medium bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors shadow-xs disabled:opacity-50 cursor-pointer"
-                >
-                  {saving ? 'Enregistrement...' : editingUser ? 'Mettre à jour' : 'Autoriser le compte'}
-                </button>
+              </div>
+
+              {/* Bandeau d'actions fixe */}
+              <div className="shrink-0 px-6 py-4 border-t border-slate-200 bg-slate-50/80 flex items-center justify-between gap-3">
+                <div className="flex-1 min-w-0">
+                  {userModalMissingRequiredCount > 0 && (
+                    <div className="flex items-center gap-1.5 text-xs font-semibold text-red-600 animate-in fade-in">
+                      <AlertCircle className="w-4 h-4 text-red-600 shrink-0" />
+                      <span>
+                        {userModalMissingRequiredCount === 1
+                          ? '1 attribut obligatoire non renseigné'
+                          : `${userModalMissingRequiredCount} attributs obligatoires non renseignés`}
+                      </span>
+                    </div>
+                  )}
+                </div>
+                <div className="flex items-center gap-3 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => setModalOpen(false)}
+                    className="px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
+                  >
+                    Annuler
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={saving || userModalMissingRequiredCount > 0}
+                    className="px-4 py-2 text-sm font-medium bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors shadow-xs disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                  >
+                    {saving ? 'Enregistrement...' : editingUser ? 'Mettre à jour' : 'Autoriser le compte'}
+                  </button>
+                </div>
               </div>
             </form>
           </div>

@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { BudgetLine, BudgetLineFormData } from '../types/budget';
 import { BudgetLineModal } from './BudgetLineModal';
+import { Tooltip } from './Tooltip';
 import { BUDGET_PALETTE_32 } from '../constants/colors';
 import {
   addBudgetLine,
@@ -170,7 +171,6 @@ export const BudgetLinesTable: React.FC<BudgetLinesTableProps> = ({
 
   // Statistiques calculées
   const activeLines = budgetLines.filter((l) => l.isActive !== false);
-  const inactiveLines = budgetLines.filter((l) => l.isActive === false);
 
   const totalActiveBudgetKe = activeLines.reduce((sum, l) => sum + (Number(l.budgetKe) || 0), 0);
   const totalAllBudgetKe = budgetLines.reduce((sum, l) => sum + (Number(l.budgetKe) || 0), 0);
@@ -214,7 +214,7 @@ export const BudgetLinesTable: React.FC<BudgetLinesTableProps> = ({
               className="inline-flex items-center gap-2 px-3 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 text-xs font-semibold rounded-lg transition-colors shadow-2xs cursor-pointer"
             >
               <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
-              <span>{seeding ? 'Ajout en cours...' : 'Charger l’exemple « Innovation (350 K€) »'}</span>
+              <span>{seeding ? 'Chargement en cours...' : 'Charger les lignes budgétaires par défaut (3 lignes)'}</span>
             </button>
           )}
 
@@ -261,17 +261,21 @@ export const BudgetLinesTable: React.FC<BudgetLinesTableProps> = ({
                 )}
                 {/* Boîte à cocher Actif */}
                 <th scope="col" className="py-3 px-3 w-16 text-center">
-                  <div className="flex items-center justify-center gap-1" title="Ligne budgétaire active">
-                    <CheckSquare className="w-3.5 h-3.5 text-slate-500" />
-                    <span>Actif</span>
-                  </div>
+                  <Tooltip content="Ligne budgétaire active pour les projets" className="w-full inline-block">
+                    <div className="flex items-center justify-center gap-1 cursor-help">
+                      <CheckSquare className="w-3.5 h-3.5 text-slate-500" />
+                      <span>Actif</span>
+                    </div>
+                  </Tooltip>
                 </th>
                 {/* Couleur */}
                 <th scope="col" className="py-3 px-3 w-20 text-center">
-                  <div className="flex items-center justify-center gap-1" title="Couleur distinctive (palette de 32 teintes uniques)">
-                    <Palette className="w-3.5 h-3.5 text-slate-500" />
-                    <span>Couleur</span>
-                  </div>
+                  <Tooltip content="Couleur distinctive (palette de 32 teintes uniques)" className="w-full inline-block">
+                    <div className="flex items-center justify-center gap-1 cursor-help">
+                      <Palette className="w-3.5 h-3.5 text-slate-500" />
+                      <span>Couleur</span>
+                    </div>
+                  </Tooltip>
                 </th>
                 {/* Nom unique */}
                 <th scope="col" className="py-3 px-4 min-w-[220px]">
@@ -317,15 +321,27 @@ export const BudgetLinesTable: React.FC<BudgetLinesTableProps> = ({
                       {isAdmin ? (
                         <>
                           <p className="text-xs text-slate-400 max-w-sm">
-                            Cliquez sur "Ajouter une ligne budgétaire" pour créer votre première enveloppe.
+                            Cliquez sur "Ajouter une ligne budgétaire" pour créer votre première enveloppe ou préchargez le référentiel standard.
                           </p>
-                          <button
-                            onClick={handleOpenAdd}
-                            className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 text-indigo-600 hover:bg-indigo-100 rounded-md font-medium text-xs transition-colors cursor-pointer"
-                          >
-                            <Plus className="w-3.5 h-3.5" />
-                            <span>Créer une ligne maintenant</span>
-                          </button>
+                          <div className="flex items-center justify-center gap-2 mt-2">
+                            {onSeedExample && (
+                              <button
+                                onClick={onSeedExample}
+                                disabled={seeding}
+                                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 rounded-md font-semibold text-xs transition-colors cursor-pointer border border-indigo-200 shadow-2xs"
+                              >
+                                <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
+                                <span>{seeding ? 'Chargement...' : 'Charger les lignes budgétaires par défaut.'}</span>
+                              </button>
+                            )}
+                            <button
+                              onClick={handleOpenAdd}
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 text-white hover:bg-indigo-700 rounded-md font-semibold text-xs transition-colors cursor-pointer shadow-xs"
+                            >
+                              <Plus className="w-3.5 h-3.5" />
+                              <span>Ajouter une ligne budgétaire</span>
+                            </button>
+                          </div>
                         </>
                       ) : (
                         <p className="text-xs text-slate-400">
@@ -430,20 +446,13 @@ export const BudgetLinesTable: React.FC<BudgetLinesTableProps> = ({
 
                       {/* Nom unique */}
                       <td className="py-2.5 px-4 whitespace-nowrap font-medium">
-                        <div className="flex items-center gap-2">
-                          <span
-                            className={
-                              isActive ? 'text-slate-900 font-semibold' : 'text-slate-400 italic'
-                            }
-                          >
-                            {line.name}
-                          </span>
-                          {!isActive && (
-                            <span className="text-[10px] bg-slate-200/80 text-slate-500 px-1.5 py-0.5 rounded font-normal italic">
-                              Désactivée
-                            </span>
-                          )}
-                        </div>
+                        <span
+                          className={
+                            isActive ? 'text-slate-900 font-semibold' : 'text-slate-400 italic'
+                          }
+                        >
+                          {line.name}
+                        </span>
                       </td>
 
                       {/* Budget en K€ */}
@@ -496,32 +505,28 @@ export const BudgetLinesTable: React.FC<BudgetLinesTableProps> = ({
                 })
               )}
             </tbody>
-          </table>
-        </div>
-
-        {/* Pied de tableau informatif avec total et budget cumulé */}
-        <div className="p-3 bg-slate-50 border-t border-slate-200 text-slate-600 text-xs flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-4 flex-wrap">
-            <span>
-              Total lignes : <strong>{budgetLines.length}</strong> (
-              <strong className="text-emerald-700">{activeLines.length} active{activeLines.length > 1 ? 's' : ''}</strong>
-              {inactiveLines.length > 0 && (
-                <span className="text-slate-400">, {inactiveLines.length} désactivée{inactiveLines.length > 1 ? 's' : ''}</span>
-              )}
-              )
-            </span>
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 bg-indigo-50 text-indigo-800 rounded border border-indigo-200 font-medium">
-              Budget actif cumulé : <strong>{formatAmount(totalActiveBudgetKe)} K€</strong>
-            </span>
-            {inactiveLines.length > 0 && (
-              <span className="text-slate-400">
-                Budget total (y compris désactivé) : {formatAmount(totalAllBudgetKe)} K€
-              </span>
+            {budgetLines.length > 0 && (
+              <tfoot className="border-t-2 border-slate-200 bg-slate-50 text-xs">
+                <tr>
+                  <td
+                    colSpan={isAdmin ? 5 : 4}
+                    className="py-2.5 px-4 text-right whitespace-nowrap"
+                  >
+                    <div className="inline-flex items-center justify-end gap-1.5">
+                      <span className="text-slate-500 font-normal">
+                        Budget total = {formatAmount(totalAllBudgetKe)} K€ dont
+                      </span>
+                      <span className="inline-flex items-center px-2.5 py-0.5 bg-indigo-50 text-indigo-800 rounded border border-indigo-200 font-bold">
+                        {formatAmount(totalActiveBudgetKe)} K€ actifs
+                      </span>
+                    </div>
+                  </td>
+                  <td className="py-2.5 px-4 whitespace-nowrap"></td>
+                  <td className="py-2.5 px-4 text-right whitespace-nowrap sticky right-0 bg-slate-50"></td>
+                </tr>
+              </tfoot>
             )}
-          </div>
-          <span className="text-slate-400">
-            Cliquez sur la pastille couleur pour réaffecter rapidement une couleur parmi la palette des 32 teintes uniques
-          </span>
+          </table>
         </div>
       </div>
 

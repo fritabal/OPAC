@@ -37,6 +37,10 @@ export function subscribeToCustomParams(
           description: data.description || '',
           type: data.type || 'texte court',
           order: typeof data.order === 'number' ? data.order : 0,
+          options: Array.isArray(data.options) ? data.options : [],
+          allowMultiple: Boolean(data.allowMultiple),
+          isRequired: Boolean(data.isRequired),
+          showInTable: Boolean(data.showInTable),
           createdAt: data.createdAt?.toDate?.()?.toISOString() || data.createdAt,
           updatedAt: data.updatedAt?.toDate?.()?.toISOString() || data.updatedAt,
         };
@@ -82,8 +86,8 @@ export async function addCustomParam(formData: CustomProjectParamFormData): Prom
   }
 
   const trimmedDesc = formData.description ? formData.description.trim() : '';
-  if (trimmedDesc.length > 100) {
-    throw new Error('La description du paramètre ne peut pas dépasser 100 caractères.');
+  if (trimmedDesc.length > 500) {
+    throw new Error('La description du paramètre ne peut pas dépasser 500 caractères.');
   }
 
   const exists = await checkCustomParamNameExists(trimmedName);
@@ -107,6 +111,10 @@ export async function addCustomParam(formData: CustomProjectParamFormData): Prom
       description: trimmedDesc,
       type: formData.type,
       order: nextOrder,
+      options: Array.isArray(formData.options) ? formData.options : [],
+      allowMultiple: Boolean(formData.allowMultiple),
+      isRequired: Boolean(formData.isRequired),
+      showInTable: Boolean(formData.showInTable),
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     });
@@ -138,8 +146,8 @@ export async function updateCustomParam(
     }
   }
 
-  if (formData.description !== undefined && formData.description.length > 100) {
-    throw new Error('La description ne peut pas dépasser 100 caractères.');
+  if (formData.description !== undefined && formData.description.length > 500) {
+    throw new Error('La description ne peut pas dépasser 500 caractères.');
   }
 
   try {
@@ -151,8 +159,44 @@ export async function updateCustomParam(
     if (formData.description !== undefined) payload.description = formData.description.trim();
     if (formData.type !== undefined) payload.type = formData.type;
     if (formData.order !== undefined) payload.order = formData.order;
+    if (formData.options !== undefined) payload.options = Array.isArray(formData.options) ? formData.options : [];
+    if (formData.allowMultiple !== undefined) payload.allowMultiple = Boolean(formData.allowMultiple);
+    if (formData.isRequired !== undefined) payload.isRequired = Boolean(formData.isRequired);
+    if (formData.showInTable !== undefined) payload.showInTable = Boolean(formData.showInTable);
 
     await updateDoc(docRef, payload);
+  } catch (error) {
+    handleFirestoreError(error, OperationType.UPDATE, `${COLLECTION_NAME}/${id}`);
+    throw error;
+  }
+}
+
+/**
+ * Bascule rapidement l'attribut obligatoire d'un paramètre personnalisé.
+ */
+export async function toggleCustomParamRequired(id: string, isRequired: boolean): Promise<void> {
+  try {
+    const docRef = doc(db, COLLECTION_NAME, id);
+    await updateDoc(docRef, {
+      isRequired,
+      updatedAt: serverTimestamp(),
+    });
+  } catch (error) {
+    handleFirestoreError(error, OperationType.UPDATE, `${COLLECTION_NAME}/${id}`);
+    throw error;
+  }
+}
+
+/**
+ * Bascule rapidement l'attribut affiché dans le tableau d'un paramètre personnalisé.
+ */
+export async function toggleCustomParamShowInTable(id: string, showInTable: boolean): Promise<void> {
+  try {
+    const docRef = doc(db, COLLECTION_NAME, id);
+    await updateDoc(docRef, {
+      showInTable,
+      updatedAt: serverTimestamp(),
+    });
   } catch (error) {
     handleFirestoreError(error, OperationType.UPDATE, `${COLLECTION_NAME}/${id}`);
     throw error;

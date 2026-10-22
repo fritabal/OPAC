@@ -131,6 +131,14 @@ export const SkillModal: React.FC<SkillModalProps> = ({
     }));
   };
 
+  // Nombre d'attributs obligatoires non renseignés
+  const missingRequiredCount = useMemo(() => {
+    let count = 0;
+    if (!name.trim()) count++;
+    if (!resourceManagerId) count++;
+    return count;
+  }, [name, resourceManagerId]);
+
   if (!isOpen) return null;
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -204,16 +212,16 @@ export const SkillModal: React.FC<SkillModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-xl shadow-xl border border-slate-200 w-full max-w-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150 my-8">
-        {/* En-tête modal */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 bg-slate-50/50">
+    <div className="fixed inset-0 z-50 overflow-hidden bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-5">
+      <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-4xl max-h-[92vh] sm:max-h-[90vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+        {/* En-tête modal (toujours visible) */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 bg-slate-50 shrink-0">
           <div className="flex items-center gap-3">
             <div className="p-2.5 bg-rose-100 text-rose-600 rounded-xl border border-rose-200 shrink-0">
               <Brain className="w-5 h-5 text-rose-600" />
             </div>
             <div>
-              <h3 className="font-semibold text-slate-900 text-lg">
+              <h3 className="font-semibold text-slate-900 text-base">
                 {isReadOnly
                   ? `Compétence clé : ${skillToEdit?.name || ''}`
                   : skillToEdit
@@ -235,13 +243,15 @@ export const SkillModal: React.FC<SkillModalProps> = ({
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-5 max-h-[75vh] overflow-y-auto">
-          {error && (
-            <div className="p-3 bg-red-50 border border-red-200 rounded-lg flex items-start gap-2.5 text-red-700 text-sm">
-              <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
-              <span>{error}</span>
-            </div>
-          )}
+        {/* Formulaire avec zone défilable et bandeau d'actions fixe */}
+        <form onSubmit={handleSubmit} className="flex-1 min-h-0 flex flex-col overflow-hidden">
+          <div className="flex-1 min-h-0 overflow-y-auto px-6 py-5 space-y-5 [scrollbar-width:thin]">
+            {error && (
+              <div className="p-3 bg-red-50 border border-red-200 rounded-lg flex items-start gap-2.5 text-red-700 text-sm">
+                <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
+                <span>{error}</span>
+              </div>
+            )}
 
           {/* Ligne 1 : Nom et Resource Manager réduits côte-à-côte */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
@@ -280,20 +290,26 @@ export const SkillModal: React.FC<SkillModalProps> = ({
             </div>
           </div>
 
-          {/* Description facultative */}
+          {/* Description (facultative) */}
           <div>
-            <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center justify-between">
-              <span>Description </span>
-            </label>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider">
+                Description (facultative)
+              </label>
+              <span className={`text-[11px] font-mono ${description.length > 500 ? 'text-red-600 font-bold' : 'text-slate-400'}`}>
+                {description.length} / 500 car.
+              </span>
+            </div>
             <div className="relative">
               <FileText className="w-4 h-4 text-slate-400 absolute left-3 top-2.5 pointer-events-none" />
               <textarea
                 rows={2}
+                maxLength={500}
                 disabled={isReadOnly}
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                placeholder="Précisez la nature de la ressource clé, sa séniorité ou les compétences techniques associées..."
-                className="w-full pl-9 pr-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 disabled:bg-slate-50 disabled:text-slate-700"
+                placeholder="Saisissez une description..."
+                className="w-full pl-9 pr-3 py-2 border border-slate-300 rounded-lg text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 disabled:bg-slate-50 disabled:text-slate-700 resize-y"
               />
             </div>
           </div>
@@ -521,34 +537,50 @@ export const SkillModal: React.FC<SkillModalProps> = ({
             </div>
           </div>
 
-          {/* Pied modal : Boutons d'action */}
-          <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-200">
-            {isReadOnly ? (
-              <button
-                type="button"
-                onClick={onClose}
-                className="px-4 py-2 text-sm font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition-colors cursor-pointer"
-              >
-                Fermer
-              </button>
-            ) : (
-              <>
+          </div>
+
+          {/* Pied modal : Boutons d'action (bandeau inférieur fixe) */}
+          <div className="shrink-0 px-6 py-4 border-t border-slate-200 bg-slate-50/80 flex items-center justify-between gap-3">
+            <div className="flex-1 min-w-0">
+              {!isReadOnly && missingRequiredCount > 0 && (
+                <div className="flex items-center gap-1.5 text-xs font-semibold text-red-600 animate-in fade-in">
+                  <AlertCircle className="w-4 h-4 text-red-600 shrink-0" />
+                  <span>
+                    {missingRequiredCount === 1
+                      ? '1 attribut obligatoire non renseigné'
+                      : `${missingRequiredCount} attributs obligatoires non renseignés`}
+                  </span>
+                </div>
+              )}
+            </div>
+            <div className="flex items-center gap-3 shrink-0">
+              {isReadOnly ? (
                 <button
                   type="button"
                   onClick={onClose}
-                  className="px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
+                  className="px-4 py-2 text-sm font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition-colors cursor-pointer"
                 >
-                  Annuler
+                  Fermer
                 </button>
-                <button
-                  type="submit"
-                  disabled={saving}
-                  className="px-4 py-2 text-sm font-medium bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors shadow-xs disabled:opacity-50 inline-flex items-center gap-2 cursor-pointer"
-                >
-                  {saving ? 'Enregistrement...' : skillToEdit ? 'Mettre à jour' : 'Ajouter la compétence clé'}
-                </button>
-              </>
-            )}
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    onClick={onClose}
+                    className="px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
+                  >
+                    Annuler
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={saving || missingRequiredCount > 0}
+                    className="px-4 py-2 text-sm font-medium bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors shadow-xs disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-2 cursor-pointer"
+                  >
+                    {saving ? 'Enregistrement...' : skillToEdit ? 'Enregistrer les modifications' : 'Créer la compétence'}
+                  </button>
+                </>
+              )}
+            </div>
           </div>
         </form>
       </div>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { X, AlertCircle, Sliders } from 'lucide-react';
 import {
   Criterion,
@@ -27,6 +27,7 @@ export const CriterionModal: React.FC<CriterionModalProps> = ({
   isReadOnly = false,
 }) => {
   const [name, setName] = useState('');
+  const [description, setDescription] = useState('');
   const [type, setType] = useState<CriterionType>('VALEUR');
   const [weight, setWeight] = useState<CriterionWeight>(1);
   const [isActive, setIsActive] = useState<boolean>(true);
@@ -44,12 +45,14 @@ export const CriterionModal: React.FC<CriterionModalProps> = ({
   useEffect(() => {
     if (criterionToEdit) {
       setName(criterionToEdit.name);
+      setDescription(criterionToEdit.description || '');
       setType(criterionToEdit.type);
       setWeight(criterionToEdit.weight ?? 1);
       setIsActive(criterionToEdit.isActive !== false);
       setLevels([...criterionToEdit.levels]);
     } else {
       setName('');
+      setDescription('');
       setType('VALEUR');
       setWeight(1);
       setIsActive(true);
@@ -57,6 +60,14 @@ export const CriterionModal: React.FC<CriterionModalProps> = ({
     }
     setError(null);
   }, [criterionToEdit, isOpen]);
+
+  // Nombre d'attributs obligatoires non renseignés
+  const missingRequiredCount = useMemo(() => {
+    let count = 0;
+    if (!name.trim()) count++;
+    count += levels.filter((lvl) => !lvl.trim()).length;
+    return count;
+  }, [name, levels]);
 
   if (!isOpen) return null;
 
@@ -69,7 +80,7 @@ export const CriterionModal: React.FC<CriterionModalProps> = ({
   const handleApplyExample = () => {
     setName('CA additionnel');
     setType('VALEUR');
-    setWeight(5);
+    setWeight(2);
     setIsActive(true);
     setLevels([
       '0 K€/an',
@@ -123,6 +134,7 @@ export const CriterionModal: React.FC<CriterionModalProps> = ({
 
       await onSave({
         name: trimmedName,
+        description: description.trim(),
         type,
         weight,
         isActive,
@@ -138,17 +150,18 @@ export const CriterionModal: React.FC<CriterionModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-xl shadow-xl border border-slate-200 w-full max-w-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 bg-slate-50/50">
+    <div className="fixed inset-0 z-50 overflow-hidden bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-5">
+      <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-4xl max-h-[92vh] sm:max-h-[90vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+        {/* En-tête (toujours visible) */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 bg-slate-50 shrink-0">
           <div className="flex items-center gap-3">
             <div className="p-2.5 bg-emerald-100 text-emerald-600 rounded-xl border border-emerald-200 shrink-0">
               <Sliders className="w-5 h-5 text-emerald-600" />
             </div>
             <div>
-              <h3 className="font-semibold text-slate-900 text-lg">
+              <h3 className="font-semibold text-slate-900 text-base">
                 {isReadOnly
-                  ? `Critère de priorisation :  : ${criterionToEdit?.name || ''}`
+                  ? `Critère de priorisation : ${criterionToEdit?.name || ''}`
                   : criterionToEdit
                   ? 'Modifier le critère de priorisation : ' + criterionToEdit.name
                   : 'Nouveau critère de priorisation'}
@@ -168,13 +181,15 @@ export const CriterionModal: React.FC<CriterionModalProps> = ({
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-5">
-          {error && (
-            <div className="p-3 bg-red-50 border border-red-200 rounded-lg flex items-start gap-2.5 text-red-700 text-sm">
-              <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
-              <span>{error}</span>
-            </div>
-          )}
+        {/* Formulaire avec zone défilable et bandeau d'actions fixe */}
+        <form onSubmit={handleSubmit} className="flex-1 min-h-0 flex flex-col overflow-hidden">
+          <div className="flex-1 min-h-0 overflow-y-auto px-6 py-5 space-y-5 [scrollbar-width:thin]">
+            {error && (
+              <div className="p-3 bg-red-50 border border-red-200 rounded-lg flex items-start gap-2.5 text-red-700 text-sm">
+                <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
+                <span>{error}</span>
+              </div>
+            )}
 
           {!criterionToEdit && !isReadOnly && (
             <div className="flex justify-end">
@@ -183,7 +198,7 @@ export const CriterionModal: React.FC<CriterionModalProps> = ({
                 onClick={handleApplyExample}
                 className="text-xs text-indigo-600 hover:text-indigo-800 font-medium hover:underline inline-flex items-center gap-1 cursor-pointer"
               >
-                Pré-remplir avec l'exemple « CA additionnel » (Poids 5)
+                Pré-remplir avec l'exemple « CA additionnel » (Poids 2)
               </button>
             </div>
           )}
@@ -241,8 +256,29 @@ export const CriterionModal: React.FC<CriterionModalProps> = ({
             </div>
           </div>
 
+          {/* Description (facultative) */}
+          <div>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider">
+                Description (facultative)
+              </label>
+              <span className={`text-[11px] font-mono ${description.length > 500 ? 'text-red-600 font-bold' : 'text-slate-400'}`}>
+                {description.length} / 500 car.
+              </span>
+            </div>
+            <textarea
+              rows={2}
+              maxLength={500}
+              disabled={isReadOnly}
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="Saisissez une description..."
+              className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 disabled:bg-slate-50 disabled:text-slate-700 resize-y"
+            />
+          </div>
+
           {/* Statut Actif / Inactif */}
-          <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg flex items-center justify-between">
+          <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg flex items-center">
             <label htmlFor="criterion-is-active" className={`flex items-center gap-2.5 ${isReadOnly ? 'cursor-default' : 'cursor-pointer'}`}>
               <input
                 type="checkbox"
@@ -261,15 +297,6 @@ export const CriterionModal: React.FC<CriterionModalProps> = ({
                 </span>
               </div>
             </label>
-            <span
-              className={`text-xs font-bold px-2 py-0.5 rounded border ${
-                isActive
-                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                  : 'bg-slate-100 text-slate-500 border-slate-200'
-              }`}
-            >
-              {isActive ? 'Actif' : 'Désactivé'}
-            </span>
           </div>
 
           <div>
@@ -298,8 +325,23 @@ export const CriterionModal: React.FC<CriterionModalProps> = ({
               ))}
             </div>
           </div>
+        </div>
 
-          <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-200">
+        {/* Bandeau d'actions fixe */}
+        <div className="shrink-0 px-6 py-4 border-t border-slate-200 bg-slate-50/80 flex items-center justify-between gap-3">
+          <div className="flex-1 min-w-0">
+            {!isReadOnly && missingRequiredCount > 0 && (
+              <div className="flex items-center gap-1.5 text-xs font-semibold text-red-600 animate-in fade-in">
+                <AlertCircle className="w-4 h-4 text-red-600 shrink-0" />
+                <span>
+                  {missingRequiredCount === 1
+                    ? '1 attribut obligatoire non renseigné'
+                    : `${missingRequiredCount} attributs obligatoires non renseignés`}
+                </span>
+              </div>
+            )}
+          </div>
+          <div className="flex items-center gap-3 shrink-0">
             {isReadOnly ? (
               <button
                 type="button"
@@ -319,16 +361,17 @@ export const CriterionModal: React.FC<CriterionModalProps> = ({
                 </button>
                 <button
                   type="submit"
-                  disabled={saving}
-                  className="px-4 py-2 text-sm font-medium bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors shadow-xs disabled:opacity-50 inline-flex items-center gap-2 cursor-pointer"
+                  disabled={saving || missingRequiredCount > 0}
+                  className="px-4 py-2 text-sm font-medium bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors shadow-xs disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-2 cursor-pointer"
                 >
-                  {saving ? 'Enregistrement...' : criterionToEdit ? 'Mettre à jour' : 'Ajouter le critère'}
+                  {saving ? 'Enregistrement...' : criterionToEdit ? 'Enregistrer les modifications' : 'Créer le critère'}
                 </button>
               </>
             )}
           </div>
-        </form>
-      </div>
+        </div>
+      </form>
     </div>
-  );
+  </div>
+);
 };

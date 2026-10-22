@@ -20,13 +20,33 @@ export const MY_FILTER_BUTTON_ACTIVE_CLASS =
 export const MY_FILTER_BUTTON_INACTIVE_CLASS =
   'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200';
 
-// Couleur de fond gris moyen pour toutes les bulles d'information standards (tooltips)
-export const TOOLTIP_BG_CLASS = 'bg-slate-600';
-export const TOOLTIP_TEXT_CLASS = 'text-white text-xs font-normal';
+// =========================================================================
+// PARAMÈTRES GLOBAUX CONFIGURABLES DES BULLES D'INFORMATION (TOOLTIPS)
+// =========================================================================
+
+// 1. Couleur de fond (gris très soutenu, moins foncé que le noir pur)
+export const TOOLTIP_BG_CLASS = 'bg-slate-800';
+
+// 2. Couleur de texte (bien blanche pour un contraste maximal)
+export const TOOLTIP_TEXT_COLOR_CLASS = 'text-white';
+
+// 3. Taille et graisse de police (légèrement plus grande pour une excellente lisibilité)
+export const TOOLTIP_TEXT_SIZE_CLASS = 'text-[13px] sm:text-sm';
+export const TOOLTIP_TEXT_WEIGHT_CLASS = 'font-medium';
+
+// Combinaison complète de style de texte
+export const TOOLTIP_TEXT_CLASS = `${TOOLTIP_TEXT_COLOR_CLASS} ${TOOLTIP_TEXT_SIZE_CLASS} ${TOOLTIP_TEXT_WEIGHT_CLASS}`;
+
+// 4. Largeur maximale de la bulle (largeur limitée avec retour automatique à la ligne)
+export const TOOLTIP_MAX_WIDTH_CLASS = 'max-w-xs sm:max-w-sm';
+
+// 5. Bordure et ombre des bulles standards
+export const TOOLTIP_BORDER_CLASS = 'border-slate-700 shadow-xl';
 
 // Couleurs globales pour toutes les bulles d'information en cas d'erreur / problème (texte blanc et gras sur fond rouge)
 export const TOOLTIP_ERROR_BG_CLASS = 'bg-red-600';
 export const TOOLTIP_ERROR_TEXT_CLASS = 'text-white font-bold text-xs';
+export const TOOLTIP_ERROR_BORDER_CLASS = 'border-red-700/80 shadow-red-950/20';
 
 // Style global homogène pour les titres de colonnes de tous les tableaux (taille de police text-xs, majuscules, graisse)
 export const TABLE_HEADER_TEXT_CLASS =

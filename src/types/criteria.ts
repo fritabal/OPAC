@@ -8,6 +8,7 @@ export type CriterionWeight = (typeof CRITERION_WEIGHTS)[number];
 export interface Criterion {
   id: string;
   name: string;
+  description?: string;
   type: CriterionType;
   weight: CriterionWeight;
   isActive: boolean;

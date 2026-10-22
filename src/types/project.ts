@@ -22,7 +22,7 @@ export interface Project {
   roi?: number | null; // Champ calculé (non modifiable) : somme pondérée Valeur / somme pondérée Coût
 
   // Encart d) "Autres"
-  customParamValues: Record<string, string | number | null>; // Valeurs des paramètres personnalisés (clé = paramId)
+  customParamValues: Record<string, string | number | boolean | string[] | null>; // Valeurs des paramètres personnalisés (clé = paramId)
 
   // Encart e) "Capacitaire" (mobilisation des compétences clés sur le mois à venir)
   capacityUpdatedMonth?: string | null; // Mois de mise à jour au format "YYYY-MM" (ex: "2026-11")

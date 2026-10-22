@@ -38,6 +38,7 @@ export function subscribeToBudgetLines(
         return {
           id: docSnap.id,
           name: data.name || '',
+          description: data.description || '',
           budgetKe: typeof data.budgetKe === 'number' ? data.budgetKe : 0,
           manager: data.manager || '',
           color,
@@ -62,6 +63,7 @@ export async function addBudgetLine(data: BudgetLineFormData): Promise<string> {
   try {
     const docRef = await addDoc(collection(db, COLLECTION_NAME), {
       name: data.name.trim(),
+      description: data.description ? data.description.trim() : '',
       budgetKe: Number(data.budgetKe) || 0,
       manager: data.manager.trim(),
       color: data.color || BUDGET_PALETTE_32[0].hex,
@@ -86,6 +88,7 @@ export async function updateBudgetLine(
       updatedAt: serverTimestamp(),
     };
     if (data.name !== undefined) updatePayload.name = data.name.trim();
+    if (data.description !== undefined) updatePayload.description = data.description.trim();
     if (data.budgetKe !== undefined) updatePayload.budgetKe = Number(data.budgetKe) || 0;
     if (data.manager !== undefined) updatePayload.manager = data.manager.trim();
     if (data.color !== undefined) updatePayload.color = data.color;

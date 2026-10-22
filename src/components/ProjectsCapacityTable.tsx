@@ -68,6 +68,8 @@ interface ProjectsCapacityTableProps {
   bonusConfig?: BonusConfig;
   showConfidentialProjects?: boolean;
   setShowConfidentialProjects?: (show: boolean) => void;
+  searchQuery?: string;
+  setSearchQuery?: (query: string) => void;
 }
 
 const MONTH_NAMES_FR = [
@@ -100,11 +102,16 @@ export const ProjectsCapacityTable: React.FC<ProjectsCapacityTableProps> = ({
   bonusConfig,
   showConfidentialProjects: showConfidentialProjectsProp,
   setShowConfidentialProjects: setShowConfidentialProjectsProp,
+  searchQuery: searchQueryProp,
+  setSearchQuery: setSearchQueryProp,
 }) => {
-  const [searchQuery, setSearchQuery] = useState('');
+  const [internalSearchQuery, setInternalSearchQuery] = useState('');
+  const searchQuery = searchQueryProp !== undefined ? searchQueryProp : internalSearchQuery;
+  const setSearchQuery = setSearchQueryProp || setInternalSearchQuery;
   const [myProjectsOnly, setMyProjectsOnly] = useState(false);
   const [filterCapacityOverruns, setFilterCapacityOverruns] = useState(false);
   const [filterBudgetOverruns, setFilterBudgetOverruns] = useState(false);
+  const [filterOutdatedStaffingDemands, setFilterOutdatedStaffingDemands] = useState(false);
   const [selectedStateIds, setSelectedStateIds] = useState<string[]>([]);
   const hasInitializedStatesRef = useRef(false);
 
@@ -133,7 +140,8 @@ export const ProjectsCapacityTable: React.FC<ProjectsCapacityTableProps> = ({
     hasInitializedBudgetLinesRef.current &&
     selectedBudgetLineIds.length < budgetLines.length;
 
-  const isAlertFilterActive = filterCapacityOverruns || filterBudgetOverruns;
+  const isAlertFilterActive =
+    filterCapacityOverruns || filterBudgetOverruns || filterOutdatedStaffingDemands;
 
   const [localShowConfidentialProjects, setLocalShowConfidentialProjects] = useState(false);
   const [showBudgetOverruns, setShowBudgetOverruns] = useState(false);
@@ -315,19 +323,22 @@ export const ProjectsCapacityTable: React.FC<ProjectsCapacityTableProps> = ({
     (isAdmin && !isValueManagementOfficer && !isSuperUser);
 
   // Droits pour cocher / décocher la case « Staffé » d'un projet dans le tableau capacitaire :
-  // - L'état du projet doit avoir l'attribut « à staffer »
+  // - Règle impérative : Interdire de staffer un projet qui n'est pas priorisé (état non coché "à prioriser")
   // - Les persona Administrateur ne doivent PAS avoir le droit de cocher / décocher cette case
-  // - En tant que Value Management Officer (ou Super User), droit accordé pour TOUS les projets à staffer,
-  //   MÊME pour les projets qui sont confidentiels (qu'ils soient masqués ou affichés)
-  // - Pour le Chef de projet ou son adjoint : autorisé sur ses propres projets (s'il y a accès)
+  // - En tant que Value Management Officer (ou Super User), droit accordé pour TOUS les projets dont l'état est à prioriser
+  // - Pour le Chef de projet ou son adjoint : autorisé sur ses propres projets priorisés (s'il y a accès et état à staffer)
   const canToggleProjectStaffing = (p: Project): boolean => {
+    // Interdire de staffer un projet qui n'est pas priorisé
+    if (!isProjectStatePrioritized(p.stateId)) {
+      return false;
+    }
+
     // Règle explicite : les persona Administrateur ne doivent pas avoir le droit de cocher / décocher cette case
     if (isPersonaAdmin) {
       return false;
     }
 
-    // Le Value Management Officer (et le super user) sont autorisés à cocher / décocher TOUS les projets,
-    // y compris ceux dont l'état ne réclame normalement pas de le staffer, même confidentiels
+    // Le Value Management Officer (et le super user) sont autorisés à cocher / décocher tous les projets priorisés
     if (isValueManagementOfficer || isSuperUser) {
       return true;
     }
@@ -347,6 +358,11 @@ export const ProjectsCapacityTable: React.FC<ProjectsCapacityTableProps> = ({
 
   // Helper : vérifie si le projet est effectivement staffé (prise en compte dans le capacitaire)
   const isProjectStaffed = (p: Project): boolean => {
+    // Règle impérative : un projet non priorisé ne peut jamais être staffé
+    if (!isProjectStatePrioritized(p.stateId)) {
+      return false;
+    }
+
     if (localStaffed[p.id] !== undefined) {
       return localStaffed[p.id];
     }
@@ -362,6 +378,7 @@ export const ProjectsCapacityTable: React.FC<ProjectsCapacityTableProps> = ({
 
   // Basculer le statut de staffing directement depuis la case à cocher du tableau
   const handleToggleStaffing = async (project: Project) => {
+    if (!isProjectStatePrioritized(project.stateId)) return;
     if (!canToggleProjectStaffing(project)) return;
 
     const currentlyStaffed = isProjectStaffed(project);
@@ -381,9 +398,9 @@ export const ProjectsCapacityTable: React.FC<ProjectsCapacityTableProps> = ({
 
   // Tri des projets selon les règles de priorisation :
   // - Tous les projets ont leur ROI calculé en permanence quel que soit leur état
-  // - Le numéro de priorité (1 à N) n'est calculé QUE sur les projets staffés
-  // - Les projets sont ordonnés avec les projets staffés selon leur priorité (du numéro 1 au dernier),
-  //   puis tous les projets non staffés par ordre décroissant de ROI
+  // - Le numéro de priorité (1 à N) n'est calculé QUE pour les états cochés "à prioriser"
+  // - Les projets sont ordonnés avec les projets à prioriser selon leur priorité (du numéro 1 au dernier),
+  //   puis tous les projets non priorisés par ordre décroissant de ROI
   const sortedProjectsByPriority = useMemo(() => {
     const list = projects.map((p) => {
       const calculatedRoi = calculateProjectRoi(
@@ -393,18 +410,20 @@ export const ProjectsCapacityTable: React.FC<ProjectsCapacityTableProps> = ({
         p.bonus,
         bonusConfig?.isBonusActive ?? true
       );
+      const isPrioritized = isProjectStatePrioritized(p.stateId);
       const isStaffed = isProjectStaffed(p);
       return {
         project: p,
         roi: calculatedRoi,
+        isPrioritized,
         isStaffed,
         projectNumber: p.projectNumber || 0,
       };
     });
 
-    // 1. Projets staffés
-    const staffedList = list.filter((item) => item.isStaffed);
-    staffedList.sort((a, b) => {
+    // 1. Projets dont l'état est à prioriser
+    const prioritizedList = list.filter((item) => item.isPrioritized);
+    prioritizedList.sort((a, b) => {
       if (a.roi === null && b.roi === null) return a.projectNumber - b.projectNumber;
       if (a.roi === null) return 1;
       if (b.roi === null) return -1;
@@ -413,17 +432,17 @@ export const ProjectsCapacityTable: React.FC<ProjectsCapacityTableProps> = ({
       return a.projectNumber - b.projectNumber;
     });
 
-    // Numérotation de la priorité uniquement sur les projets staffés avec ROI calculé
+    // Numérotation de la priorité uniquement sur les projets dont l'état est à prioriser avec ROI calculé
     const rankMap = new Map<string, number>();
-    staffedList.forEach((item, index) => {
+    prioritizedList.forEach((item, index) => {
       if (item.roi !== null) {
         rankMap.set(item.project.id, index + 1);
       }
     });
 
-    // 2. Projets non staffés (triés par ordre décroissant de ROI)
-    const nonStaffedList = list.filter((item) => !item.isStaffed);
-    nonStaffedList.sort((a, b) => {
+    // 2. Projets dont l'état n'est pas à prioriser (triés par ordre décroissant de ROI)
+    const nonPrioritizedList = list.filter((item) => !item.isPrioritized);
+    nonPrioritizedList.sort((a, b) => {
       if (a.roi === null && b.roi === null) return a.projectNumber - b.projectNumber;
       if (a.roi === null) return 1;
       if (b.roi === null) return -1;
@@ -432,10 +451,10 @@ export const ProjectsCapacityTable: React.FC<ProjectsCapacityTableProps> = ({
       return a.projectNumber - b.projectNumber;
     });
 
-    // 3. Concaténation : projets staffés (priorité 1 au dernier), puis projets non staffés par ROI décroissant
+    // 3. Concaténation : projets à prioriser (priorité 1 au dernier), puis projets non priorisés par ROI décroissant
     const orderedProjects = [
-      ...staffedList.map((i) => i.project),
-      ...nonStaffedList.map((i) => i.project),
+      ...prioritizedList.map((i) => i.project),
+      ...nonPrioritizedList.map((i) => i.project),
     ];
 
     return { orderedProjects, rankMap };
@@ -476,6 +495,7 @@ export const ProjectsCapacityTable: React.FC<ProjectsCapacityTableProps> = ({
       availableBefore: number;
       capacity: number;
       deficit: number;
+      projectDeficit?: number;
     }>();
 
     // Capacités disponibles C par compétence
@@ -523,9 +543,10 @@ export const ProjectsCapacityTable: React.FC<ProjectsCapacityTableProps> = ({
         const totalWithCurrent = Math.round((cumulativeUsed + requested) * 10) / 10;
 
         // Si la demande cumulée (projets plus prioritaires + projet courant) dépasse la capacité totale,
-        // la demande ne peut pas être totalement honorée
+        // la demande de ce projet ne peut pas être totalement honorée
         if (totalWithCurrent > C) {
-          const deficit = Math.round((totalWithCurrent - C) * 10) / 10;
+          // Déficit spécifique pour ce projet (partie de sa demande qui dépasse la capacité restante)
+          const projectDeficit = Math.round((requested - Math.min(requested, availableBefore)) * 10) / 10;
           const key = `${project.id}_${skill.id}`;
           bottleneckCells.add(key);
           bottleneckProjects.add(project.id);
@@ -533,7 +554,8 @@ export const ProjectsCapacityTable: React.FC<ProjectsCapacityTableProps> = ({
             requested,
             availableBefore,
             capacity: C,
-            deficit,
+            deficit: projectDeficit,
+            projectDeficit,
           });
         }
 
@@ -619,6 +641,16 @@ export const ProjectsCapacityTable: React.FC<ProjectsCapacityTableProps> = ({
       // Filtre texte
       if (searchQuery.trim()) {
         const q = searchQuery.trim().toLowerCase();
+        // Si le terme recherché correspond au nom exact d'un projet (ex: clic depuis l'onglet Rapports),
+        // SEUL ce projet doit apparaître dans la liste.
+        const isExactNameTarget = sortedProjectsByPriority.orderedProjects.some(
+          (proj) => proj.name.trim().toLowerCase() === q
+        );
+        if (isExactNameTarget) {
+          if (p.name.trim().toLowerCase() !== q) return false;
+          return true; // Seul ce projet apparaît dans la liste
+        }
+
         const matchesNum = `#${p.projectNumber}`.includes(q) || String(p.projectNumber).includes(q);
         if (isHidden) {
           if (!matchesNum && !'confidentiel'.includes(q)) return false;
@@ -648,15 +680,12 @@ export const ProjectsCapacityTable: React.FC<ProjectsCapacityTableProps> = ({
         if (!p.budgetLineId || !selectedBudgetLineIds.includes(p.budgetLineId)) return false;
       }
 
-      // Filtre Les alertes (dépassements capacitaires et/ou budgétaires)
-      if (filterCapacityOverruns && filterBudgetOverruns) {
-        const hasCapacity = bottleneckData.bottleneckProjects.has(p.id);
-        const hasBudget = budgetOverrunData.overrunProjects.has(p.id);
-        if (!hasCapacity && !hasBudget) return false;
-      } else if (filterCapacityOverruns) {
-        if (!bottleneckData.bottleneckProjects.has(p.id)) return false;
-      } else if (filterBudgetOverruns) {
-        if (!budgetOverrunData.overrunProjects.has(p.id)) return false;
+      // Filtre Les alertes (dépassements capacitaires, dépassements budgétaires, et/ou demandes de staffing non à jour)
+      if (isAlertFilterActive) {
+        const matchesCapacity = filterCapacityOverruns && bottleneckData.bottleneckProjects.has(p.id);
+        const matchesBudget = filterBudgetOverruns && budgetOverrunData.overrunProjects.has(p.id);
+        const matchesOutdatedStaffing = filterOutdatedStaffingDemands && (getProjectMonth(p) !== nextMonthKey);
+        if (!matchesCapacity && !matchesBudget && !matchesOutdatedStaffing) return false;
       }
 
       return true;
@@ -669,8 +698,10 @@ export const ProjectsCapacityTable: React.FC<ProjectsCapacityTableProps> = ({
     selectedStateIds,
     isBudgetLineFilterActive,
     selectedBudgetLineIds,
+    isAlertFilterActive,
     filterCapacityOverruns,
     filterBudgetOverruns,
+    filterOutdatedStaffingDemands,
     bottleneckData,
     budgetOverrunData,
     activeUser,
@@ -871,7 +902,7 @@ export const ProjectsCapacityTable: React.FC<ProjectsCapacityTableProps> = ({
               </span>
             </div>
             <div className="flex items-center gap-2 flex-wrap">
-              <span>Les projets sont classés selon le numéro de priorité des projets staffés (du n°1 au dernier), puis tous les projets non staffés par ROI décroissant.</span>
+              <span>Les projets sont classés par ordre décroissant de ROI (le n°1 est le plus prioritaire), puis apparaissent les projets non priorisés du fait de leur état. Le fait de prioriser ou non un projet dans un état donné est défini dans les paramètres 'Cycle de vie'.</span>
             </div>
           </div>
         </div>
@@ -898,6 +929,7 @@ export const ProjectsCapacityTable: React.FC<ProjectsCapacityTableProps> = ({
               projectStates={projectStates}
               selectedStateIds={selectedStateIds}
               onChange={setSelectedStateIds}
+              quickFilterType="staffing"
             />
           </div>
 
@@ -915,14 +947,18 @@ export const ProjectsCapacityTable: React.FC<ProjectsCapacityTableProps> = ({
             <AlertsFilter
               filterCapacityOverruns={filterCapacityOverruns}
               filterBudgetOverruns={filterBudgetOverruns}
+              filterOutdatedStaffingDemands={filterOutdatedStaffingDemands}
               onToggleCapacityOverruns={setFilterCapacityOverruns}
               onToggleBudgetOverruns={handleToggleBudgetOverruns}
+              onToggleOutdatedStaffingDemands={setFilterOutdatedStaffingDemands}
               onSelectAllProjects={() => {
                 setFilterCapacityOverruns(false);
                 setFilterBudgetOverruns(false);
+                setFilterOutdatedStaffingDemands(false);
               }}
               capacityOverrunCount={bottleneckData.bottleneckProjects.size}
               budgetOverrunCount={budgetOverrunData.overrunProjects.size}
+              outdatedStaffingDemandsCount={outdatedProjectsCount}
             />
           </div>
 
@@ -1027,9 +1063,10 @@ export const ProjectsCapacityTable: React.FC<ProjectsCapacityTableProps> = ({
                 <th
                   scope="col"
                   className={`sticky left-[50px] top-0 bg-slate-100 z-50 px-1 py-2 text-center align-top w-[52px] min-w-[52px] max-w-[52px] border-r border-slate-200 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.06)] table-header-double-bottom ${TABLE_HEADER_TEXT_CLASS}`}
-                  title="Priorité du projet selon le ROI décroissant"
                 >
-                  PRIO.
+                  <Tooltip content="Priorité du projet selon le ROI décroissant" className="w-full inline-block">
+                    <span className="cursor-help">PRIO.</span>
+                  </Tooltip>
                 </th>
 
                 {/* Colonne 3 : Nom du projet (figée à gauche : 102px, top : 0) */}
@@ -1090,10 +1127,11 @@ export const ProjectsCapacityTable: React.FC<ProjectsCapacityTableProps> = ({
                 <th
                   scope="col"
                   className={`sticky ${showBudgetOverruns ? 'left-[582px]' : 'left-[352px]'} top-0 bg-slate-100 z-50 px-1 py-2 text-center align-top w-[60px] min-w-[60px] max-w-[60px] border-r border-slate-200 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.06)] table-header-double-bottom ${TABLE_HEADER_TEXT_CLASS}`}
-                  title="Projets staffés : prise en compte des demandes de compétences clés dans le capacitaire"
                 >
                   <div className="flex flex-col items-center justify-start leading-tight">
-                    <span>STAFFÉ</span>
+                    <Tooltip content="Projets staffés : prise en compte des demandes de compétences clés dans le capacitaire">
+                      <span className="cursor-help">STAFFÉ</span>
+                    </Tooltip>
                     {bottleneckData.bottleneckProjects.size > 0 && (
                       <div className="mt-4">
                         <Tooltip
@@ -1116,10 +1154,11 @@ export const ProjectsCapacityTable: React.FC<ProjectsCapacityTableProps> = ({
                 <th
                   scope="col"
                   className={`sticky ${showBudgetOverruns ? 'left-[642px]' : 'left-[412px]'} top-0 bg-slate-100 z-50 px-2 py-2 text-center align-top w-[130px] min-w-[130px] max-w-[130px] ${TABLE_FROZEN_DIVIDER_CLASS} shadow-[2px_0_4px_-2px_rgba(0,0,0,0.06)] table-header-double-bottom ${TABLE_HEADER_TEXT_CLASS}`}
-                  title="Mois de mise à jour"
                 >
                   <div className="flex flex-col items-center justify-start leading-tight">
-                    <span>MOIS MÀJ</span>
+                    <Tooltip content="Mois de mise à jour des demandes en compétences clés">
+                      <span className="cursor-help">MOIS MÀJ</span>
+                    </Tooltip>
                     {outdatedProjectsCount > 0 && (
                       <div className="mt-4">
                         <Tooltip
@@ -1162,14 +1201,15 @@ export const ProjectsCapacityTable: React.FC<ProjectsCapacityTableProps> = ({
                       >
                         <div className="flex flex-col items-center justify-start gap-1 leading-tight">
                           {/* Nom de la compétence : en gras et rouge uniquement en cas d'alerte dépassement */}
-                          <span
-                            className={`text-xs font-bold truncate max-w-[140px] text-center ${
-                              isAlerting ? 'text-red-700' : 'text-slate-800'
-                            }`}
-                            title={skill.name}
-                          >
-                            {skill.name}
-                          </span>
+                          <Tooltip content={skill.name}>
+                            <span
+                              className={`text-xs font-bold truncate max-w-[140px] text-center cursor-help ${
+                                isAlerting ? 'text-red-700' : 'text-slate-800'
+                              }`}
+                            >
+                              {skill.name}
+                            </span>
+                          </Tooltip>
 
                           {/* Bulle d'information détaillée sur les chiffres */}
                           <Tooltip
@@ -1307,17 +1347,17 @@ export const ProjectsCapacityTable: React.FC<ProjectsCapacityTableProps> = ({
                       <td className={`sticky left-[50px] z-20 px-1 py-2 text-center whitespace-nowrap w-[52px] min-w-[52px] max-w-[52px] border-r border-slate-200 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.06)] ${
                         isStaffed ? 'bg-white group-hover:bg-slate-50/80' : 'bg-slate-100 group-hover:bg-slate-200/90'
                       }`}>
-                        {isStaffed && rank !== undefined ? (
+                        {isProjectStatePrioritized(project.stateId) && rank !== undefined ? (
                           <span
                             className="font-mono font-bold text-xs px-1.5 py-0.5 rounded inline-block min-w-[20px] bg-indigo-50 text-indigo-700 border border-indigo-200 shadow-2xs"
-                            title={`Priorité #${rank} (Projet staffé)`}
+                            title={`Priorité #${rank} (État à prioriser)`}
                           >
                             {rank}
                           </span>
                         ) : (
                           <span
                             className="text-slate-300 font-mono"
-                            title={!isStaffed ? 'Projet non staffé : pas de numéro de priorité' : 'Critères non valorisés'}
+                            title={!isProjectStatePrioritized(project.stateId) ? 'État non à prioriser : pas de numéro de priorité' : 'Critères non valorisés'}
                           >
                             -
                           </span>
@@ -1503,7 +1543,24 @@ export const ProjectsCapacityTable: React.FC<ProjectsCapacityTableProps> = ({
                         }`}
                       >
                         <div className="flex items-center justify-center">
-                          {isStaffed && !stateNeedsStaffing ? (
+                          {!isProjectStatePrioritized(project.stateId) ? (
+                            <Tooltip
+                              variant="default"
+                              placement="top"
+                              content={
+                                <div className="text-left text-xs whitespace-normal max-w-xs font-medium leading-snug">
+                                  Projet non priorisé : un projet ne peut pas être staffé s'il n'est pas dans un état à prioriser.
+                                </div>
+                              }
+                            >
+                              <input
+                                type="checkbox"
+                                checked={false}
+                                disabled={true}
+                                className="w-4 h-4 rounded opacity-30 cursor-not-allowed bg-slate-200 border-slate-300 text-blue-600 focus:ring-0"
+                              />
+                            </Tooltip>
+                          ) : isStaffed && !stateNeedsStaffing ? (
                             <Tooltip
                               variant="error"
                               placement="top"
@@ -1759,7 +1816,7 @@ export const ProjectsCapacityTable: React.FC<ProjectsCapacityTableProps> = ({
                                       <div>• Demande de ce projet : <span className="font-bold">{cellVal} j</span></div>
                                       <div>• Capacité disponible : {cellDetail?.capacity ?? 0} j</div>
                                       <div>• Restant après projets prioritaires : {cellDetail?.availableBefore ?? 0} j</div>
-                                      <div className="font-bold">• Déficit non satisfait : {cellDetail?.deficit ?? 0} j</div>
+                                      <div className="font-bold">• Déficit projet : {cellDetail?.deficit ?? 0} j</div>
                                     </div>
                                     {!userCanEditCapacity && (
                                       <div className="text-[10px] italic opacity-90 pt-0.5">

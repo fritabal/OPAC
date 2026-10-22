@@ -1,6 +1,7 @@
 export interface BudgetLine {
   id: string;
   name: string;
+  description?: string;
   budgetKe: number;
   manager: string;
   color: string;

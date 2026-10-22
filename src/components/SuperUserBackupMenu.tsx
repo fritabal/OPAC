@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import {
-  MoreVertical,
+  Menu,
   Download,
   Upload,
   FileJson,
@@ -201,20 +201,20 @@ export const SuperUserBackupMenu: React.FC<SuperUserBackupMenuProps> = ({
         className="hidden"
       />
 
-      {/* Pictogramme avec trois points superposés remplaçant la barre verticale */}
+      {/* Pictogramme burger menu grossi de 50% */}
       <button
         type="button"
         onClick={() => setIsOpen((prev) => !prev)}
         title="Menu Super User (Export / Import de toutes les données)"
         aria-label="Menu Super User"
         aria-expanded={isOpen}
-        className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all cursor-pointer ${
+        className={`w-9 h-9 rounded-lg flex items-center justify-center transition-all cursor-pointer ${
           isOpen
             ? 'bg-amber-100 text-amber-900 ring-2 ring-amber-400 shadow-2xs'
             : 'text-slate-500 hover:text-slate-800 hover:bg-slate-100'
         }`}
       >
-        <MoreVertical className="w-4 h-4" />
+        <Menu className="w-6 h-6" />
       </button>
 
       {/* Menu déroulant */}

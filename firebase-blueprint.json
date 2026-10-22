@@ -88,6 +88,11 @@
           "description": "Nom unique du critère",
           "maxLength": 128
         },
+        "description": {
+          "type": "string",
+          "description": "Description facultative du critère de priorisation",
+          "maxLength": 500
+        },
         "type": {
           "type": "string",
           "description": "Type de critère : VALEUR ou COÛT",
@@ -130,6 +135,11 @@
           "type": "string",
           "description": "Nom unique de la ligne budgétaire",
           "maxLength": 128
+        },
+        "description": {
+          "type": "string",
+          "description": "Description facultative de la ligne budgétaire",
+          "maxLength": 500
         },
         "budgetKe": {
           "type": "number",

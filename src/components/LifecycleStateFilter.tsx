@@ -7,6 +7,7 @@ interface LifecycleStateFilterProps {
   selectedStateIds: string[];
   onChange: (ids: string[]) => void;
   className?: string;
+  quickFilterType?: 'prioritization' | 'staffing';
 }
 
 export const LifecycleStateFilter: React.FC<LifecycleStateFilterProps> = ({
@@ -14,6 +15,7 @@ export const LifecycleStateFilter: React.FC<LifecycleStateFilterProps> = ({
   selectedStateIds,
   onChange,
   className = '',
+  quickFilterType = 'prioritization',
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -25,20 +27,24 @@ export const LifecycleStateFilter: React.FC<LifecycleStateFilterProps> = ({
 
   const allStateIds = useMemo(() => sortedStates.map((s) => s.id), [sortedStates]);
 
-  const staffingStateIds = useMemo(() => {
-    return sortedStates.filter((s) => s.needsStaffing).map((s) => s.id);
-  }, [sortedStates]);
+  const isPrioritizationMode = quickFilterType === 'prioritization';
+
+  const quickFilterStateIds = useMemo(() => {
+    return sortedStates
+      .filter((s) => (isPrioritizationMode ? Boolean(s.needsPrioritization) : Boolean(s.needsStaffing)))
+      .map((s) => s.id);
+  }, [sortedStates, isPrioritizationMode]);
 
   const allSelected = useMemo(() => {
     if (allStateIds.length === 0) return true;
     return allStateIds.length === selectedStateIds.length && allStateIds.every((id) => selectedStateIds.includes(id));
   }, [allStateIds, selectedStateIds]);
 
-  const isOnlyStaffingSelected = useMemo(() => {
-    if (staffingStateIds.length === 0) return false;
-    if (selectedStateIds.length !== staffingStateIds.length) return false;
-    return staffingStateIds.every((id) => selectedStateIds.includes(id));
-  }, [staffingStateIds, selectedStateIds]);
+  const isOnlyQuickFilterSelected = useMemo(() => {
+    if (quickFilterStateIds.length === 0) return false;
+    if (selectedStateIds.length !== quickFilterStateIds.length) return false;
+    return quickFilterStateIds.every((id) => selectedStateIds.includes(id));
+  }, [quickFilterStateIds, selectedStateIds]);
 
   // Fermer le dropdown lors d'un clic extérieur ou touche Échap
   useEffect(() => {
@@ -74,9 +80,9 @@ export const LifecycleStateFilter: React.FC<LifecycleStateFilterProps> = ({
     }
   };
 
-  const handleSelectStaffingOnly = (e: React.MouseEvent) => {
+  const handleSelectQuickFilterOnly = (e: React.MouseEvent) => {
     e.stopPropagation();
-    onChange(staffingStateIds);
+    onChange(quickFilterStateIds);
   };
 
   const handleToggleState = (stateId: string) => {
@@ -92,8 +98,8 @@ export const LifecycleStateFilter: React.FC<LifecycleStateFilterProps> = ({
     if (allSelected || (selectedStateIds.length === 0 && allStateIds.length === 0)) {
       return `Tous les états (${allStateIds.length})`;
     }
-    if (isOnlyStaffingSelected) {
-      return 'États à staffer uniquement';
+    if (isOnlyQuickFilterSelected) {
+      return isPrioritizationMode ? 'États à prioriser uniquement' : 'États à staffer uniquement';
     }
     if (selectedStateIds.length === 0) {
       return 'Aucun état sélectionné';
@@ -103,7 +109,7 @@ export const LifecycleStateFilter: React.FC<LifecycleStateFilterProps> = ({
       return single ? single.name : '1 état sélectionné';
     }
     return `${selectedStateIds.length} états sélectionnés`;
-  }, [allSelected, isOnlyStaffingSelected, selectedStateIds, allStateIds, sortedStates]);
+  }, [allSelected, isOnlyQuickFilterSelected, isPrioritizationMode, selectedStateIds, allStateIds, sortedStates]);
 
   const isFilterActive = !allSelected;
 
@@ -158,18 +164,18 @@ export const LifecycleStateFilter: React.FC<LifecycleStateFilterProps> = ({
             <span className="text-[11px] text-slate-400 font-normal shrink-0">({sortedStates.length})</span>
           </label>
 
-          {/* Option 2 : Les états à staffer uniquement */}
+          {/* Option 2 : Les états à prioriser ou à staffer uniquement */}
           <button
             type="button"
-            onClick={handleSelectStaffingOnly}
+            onClick={handleSelectQuickFilterOnly}
             className={`w-full text-left px-2.5 py-1.5 text-xs font-medium rounded-lg flex items-center justify-between transition-colors cursor-pointer mt-0.5 ${
-              isOnlyStaffingSelected
+              isOnlyQuickFilterSelected
                 ? 'bg-slate-100 text-slate-900 font-semibold'
                 : 'text-slate-700 hover:bg-slate-50'
             }`}
           >
-            <span>Les états à staffer uniquement</span>
-            <span className="text-[11px] text-slate-400 font-normal">({staffingStateIds.length})</span>
+            <span>{isPrioritizationMode ? 'Les états à prioriser uniquement' : 'Les états à staffer uniquement'}</span>
+            <span className="text-[11px] text-slate-400 font-normal">({quickFilterStateIds.length})</span>
           </button>
 
           {/* Ligne de séparation */}
@@ -195,11 +201,6 @@ export const LifecycleStateFilter: React.FC<LifecycleStateFilterProps> = ({
                     className="w-4 h-4 rounded border-slate-400 text-slate-600 focus:ring-slate-400 focus:ring-offset-0 cursor-pointer accent-slate-600 shrink-0"
                   />
                   <span className="truncate flex-1">{state.name}</span>
-                  {state.needsStaffing && (
-                    <span className="text-[10px] font-normal text-slate-500 bg-slate-100 border border-slate-200 px-1.5 py-0.2 rounded shrink-0">
-                      à staffer
-                    </span>
-                  )}
                 </label>
               );
             })}

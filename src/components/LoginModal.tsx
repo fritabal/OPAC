@@ -60,8 +60,6 @@ export const LoginModal: React.FC<LoginModalProps> = ({
   const [resetSuccessMessage, setResetSuccessMessage] = useState<string | null>(null);
   const [simulatedResetLink, setSimulatedResetLink] = useState<string | null>(null);
 
-  if (!isOpen) return null;
-
   // Validation dynamique en temps réel du nouveau mot de passe (règle des 20 caractères)
   const validation = validatePassword(newPassword);
   const passwordsMatch = newPassword === confirmPassword && confirmPassword.length > 0;
@@ -265,6 +263,8 @@ export const LoginModal: React.FC<LoginModalProps> = ({
       setLoading(false);
     }
   };
+
+  if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/80 backdrop-blur-xs flex items-center justify-center p-4">

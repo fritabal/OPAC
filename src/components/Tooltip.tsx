@@ -10,8 +10,11 @@ import { createPortal } from 'react-dom';
 import {
   TOOLTIP_BG_CLASS,
   TOOLTIP_TEXT_CLASS,
+  TOOLTIP_MAX_WIDTH_CLASS,
+  TOOLTIP_BORDER_CLASS,
   TOOLTIP_ERROR_BG_CLASS,
   TOOLTIP_ERROR_TEXT_CLASS,
+  TOOLTIP_ERROR_BORDER_CLASS,
 } from '../constants/ui';
 
 export type TooltipPlacement = 'auto' | 'top' | 'bottom' | 'right' | 'left';
@@ -46,7 +49,7 @@ export const Tooltip: React.FC<TooltipProps> = ({
   className = 'inline-flex items-center',
   placement = 'auto',
   disabled = false,
-  maxWidthClass = 'max-w-xs',
+  maxWidthClass = TOOLTIP_MAX_WIDTH_CLASS,
   variant = 'default',
 }) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -230,12 +233,12 @@ export const Tooltip: React.FC<TooltipProps> = ({
             {(() => {
               const isError = variant === 'error';
               const bgClass = isError ? TOOLTIP_ERROR_BG_CLASS : TOOLTIP_BG_CLASS;
-              const textClass = isError ? TOOLTIP_ERROR_TEXT_CLASS : `${TOOLTIP_TEXT_CLASS} text-white`;
-              const borderClass = isError ? 'border-red-700/80 shadow-red-950/20' : 'border-slate-500/60';
+              const textClass = isError ? TOOLTIP_ERROR_TEXT_CLASS : TOOLTIP_TEXT_CLASS;
+              const borderClass = isError ? TOOLTIP_ERROR_BORDER_CLASS : TOOLTIP_BORDER_CLASS;
 
               return (
                 <div
-                  className={`${bgClass} ${textClass} p-2.5 rounded-lg shadow-xl border ${borderClass} leading-relaxed whitespace-normal break-words text-left relative`}
+                  className={`${bgClass} ${textClass} p-3 rounded-xl shadow-xl border ${borderClass} leading-relaxed whitespace-normal break-words text-left relative`}
                 >
                   {content}
 

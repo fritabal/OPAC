@@ -22,6 +22,7 @@ import {
 } from '../types/criteria';
 import { BonusConfig, DEFAULT_BONUS_CONFIG } from '../types/bonus';
 import { CriterionModal } from './CriterionModal';
+import { Tooltip } from './Tooltip';
 import { BonusSettingsCard } from './BonusSettingsCard';
 import {
   addCriterion,
@@ -144,16 +145,6 @@ export const CriteriaTable: React.FC<CriteriaTableProps> = ({
     }
   };
 
-  // Calculs statistiques
-  const activeCriteria = criteria.filter((c) => c.isActive !== false);
-  const inactiveCriteria = criteria.filter((c) => c.isActive === false);
-
-  const activeValeurCriteria = activeCriteria.filter((c) => c.type === 'VALEUR');
-  const activeCoutCriteria = activeCriteria.filter((c) => c.type === 'COÛT');
-
-  const totalActiveValeurWeight = activeValeurCriteria.reduce((sum, c) => sum + (c.weight || 1), 0);
-  const totalActiveCoutWeight = activeCoutCriteria.reduce((sum, c) => sum + (c.weight || 1), 0);
-
   const weightBadgeClass = 'bg-slate-100 text-slate-700 border-slate-300';
 
   return (
@@ -167,7 +158,7 @@ export const CriteriaTable: React.FC<CriteriaTableProps> = ({
           </h2>
           <p className="text-xs text-slate-600 mt-1 max-w-2xl">
             {isAdmin
-              ? 'Gérez les critères et leurs 6 échelons textuels associés aux coefficients 0, 1, 2, 3, 5, 8. Les modifications sont sauvegardées en temps réel.'
+              ? "Gérez les critères de priorité sous forme d'abaques sur 6 niveaux (correspondant respectivement à 0, 1, 2, 3, 5, 8 points). Les modifications sont immédiates."
               : "Consultez le référentiel des critères de priorisation défini par l'administrateur."}
           </p>
         </div>
@@ -180,7 +171,7 @@ export const CriteriaTable: React.FC<CriteriaTableProps> = ({
               className="inline-flex items-center gap-2 px-3 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 text-xs font-semibold rounded-lg transition-colors shadow-2xs cursor-pointer"
             >
               <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
-              <span>{seeding ? 'Ajout en cours...' : 'Charger l’exemple « CA additionnel »'}</span>
+              <span>{seeding ? 'Chargement en cours...' : 'Charger les critères par défaut (6 critères)'}</span>
             </button>
           )}
 
@@ -227,10 +218,12 @@ export const CriteriaTable: React.FC<CriteriaTableProps> = ({
                 )}
                 {/* Boîte à cocher Actif */}
                 <th scope="col" className="py-3 px-3 w-16 text-center">
-                  <div className="flex items-center justify-center gap-1" title="Critère actif pour le calcul des priorités">
-                    <CheckSquare className="w-3.5 h-3.5 text-slate-500" />
-                    <span>Actif</span>
-                  </div>
+                  <Tooltip content="Critère actif pour le calcul des priorités" className="w-full inline-block">
+                    <div className="flex items-center justify-center gap-1 cursor-help">
+                      <CheckSquare className="w-3.5 h-3.5 text-slate-500" />
+                      <span>Actif</span>
+                    </div>
+                  </Tooltip>
                 </th>
                 {/* Type */}
                 <th scope="col" className="py-3 px-4 w-24">
@@ -284,13 +277,25 @@ export const CriteriaTable: React.FC<CriteriaTableProps> = ({
                           <p className="text-xs text-slate-400 max-w-sm">
                             Cliquez sur "Ajouter un critère" pour créer votre premier critère de VALEUR ou de COÛT avec son poids et état d'activation.
                           </p>
-                          <button
-                            onClick={handleOpenAdd}
-                            className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 text-indigo-600 hover:bg-indigo-100 rounded-md font-medium text-xs transition-colors cursor-pointer"
-                          >
-                            <Plus className="w-3.5 h-3.5" />
-                            <span>Créer un critère maintenant</span>
-                          </button>
+                          <div className="flex items-center justify-center gap-2 mt-2">
+                            {onSeedExample && (
+                              <button
+                                onClick={onSeedExample}
+                                disabled={seeding}
+                                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 rounded-md font-semibold text-xs transition-colors cursor-pointer border border-indigo-200 shadow-2xs"
+                              >
+                                <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
+                                <span>{seeding ? 'Chargement...' : 'Charger les critères par défaut (6 critères)'}</span>
+                              </button>
+                            )}
+                            <button
+                              onClick={handleOpenAdd}
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 text-white hover:bg-indigo-700 rounded-md font-semibold text-xs transition-colors cursor-pointer shadow-xs"
+                            >
+                              <Plus className="w-3.5 h-3.5" />
+                              <span>Créer un critère</span>
+                            </button>
+                          </div>
                         </>
                       ) : (
                         <p className="text-xs text-slate-400">
@@ -383,20 +388,13 @@ export const CriteriaTable: React.FC<CriteriaTableProps> = ({
 
                       {/* Nom du critère */}
                       <td className="py-2.5 px-4 whitespace-nowrap">
-                        <div className="flex items-center gap-1.5">
-                          <span
-                            className={`font-semibold ${
-                              isActive ? 'text-slate-900' : 'text-slate-400 italic'
-                            }`}
-                          >
-                            {criterion.name}
-                          </span>
-                          {!isActive && (
-                            <span className="text-[10px] bg-slate-200/80 text-slate-500 px-1.5 py-0.5 rounded font-normal italic">
-                              Désactivé
-                            </span>
-                          )}
-                        </div>
+                        <span
+                          className={`font-semibold ${
+                            isActive ? 'text-slate-900' : 'text-slate-400 italic'
+                          }`}
+                        >
+                          {criterion.name}
+                        </span>
                       </td>
 
                       {/* Poids relatif (1, 2, 3, 5, 8, 13) */}
@@ -483,29 +481,6 @@ export const CriteriaTable: React.FC<CriteriaTableProps> = ({
               )}
             </tbody>
           </table>
-        </div>
-
-        {/* Pied de tableau informatif avec total et distinction actifs/inactifs */}
-        <div className="p-3 bg-slate-50 border-t border-slate-200 text-slate-600 text-xs flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-4 flex-wrap">
-            <span>
-              Total critères : <strong>{criteria.length}</strong> (
-              <strong className="text-emerald-700">{activeCriteria.length} actif{activeCriteria.length > 1 ? 's' : ''}</strong>
-              {inactiveCriteria.length > 0 && (
-                <span className="text-slate-400">, {inactiveCriteria.length} désactivé{inactiveCriteria.length > 1 ? 's' : ''}</span>
-              )}
-              )
-            </span>
-            <span className="inline-flex items-center gap-1.5 px-2 py-0.5 bg-emerald-50 text-emerald-800 rounded border border-emerald-200 font-medium">
-              VALEUR : <strong>{activeValeurCriteria.length}</strong> actif(s) • Somme des poids actifs = <strong>{totalActiveValeurWeight}</strong>
-            </span>
-            <span className="inline-flex items-center gap-1.5 px-2 py-0.5 bg-amber-50 text-amber-800 rounded border border-amber-200 font-medium">
-              COÛT : <strong>{activeCoutCriteria.length}</strong> actif(s) • Somme des poids actifs = <strong>{totalActiveCoutWeight}</strong>
-            </span>
-          </div>
-          <span className="text-slate-400">
-            Seuls les critères cochés « Actif » entreront dans les calculs de priorité
-          </span>
         </div>
       </div>
 

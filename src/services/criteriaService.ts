@@ -35,6 +35,7 @@ export function subscribeToCriteria(
         return {
           id: docSnap.id,
           name: data.name || '',
+          description: data.description || '',
           type: data.type || 'VALEUR',
           weight: validWeight,
           isActive: data.isActive !== false,
@@ -62,6 +63,7 @@ export async function addCriterion(data: CriterionFormData): Promise<string> {
   try {
     const docRef = await addDoc(collection(db, COLLECTION_NAME), {
       name: data.name.trim(),
+      description: data.description ? data.description.trim() : '',
       type: data.type,
       weight: data.weight,
       isActive: data.isActive !== false,
@@ -83,6 +85,7 @@ export async function updateCriterion(id: string, data: Partial<CriterionFormDat
       updatedAt: serverTimestamp(),
     };
     if (data.name !== undefined) updatePayload.name = data.name.trim();
+    if (data.description !== undefined) updatePayload.description = data.description.trim();
     if (data.type !== undefined) updatePayload.type = data.type;
     if (data.weight !== undefined) updatePayload.weight = data.weight;
     if (data.isActive !== undefined) updatePayload.isActive = data.isActive;

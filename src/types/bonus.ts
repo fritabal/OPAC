@@ -10,8 +10,8 @@ export interface BonusConfig {
 
 export const DEFAULT_BONUS_CONFIG: BonusConfig = {
   isBonusActive: true,
-  checkQuotas: false,
-  maxBonusedProjects: 10,
-  maxBonusPointsPerProject: 5,
-  maxTotalBonusPoints: 30,
+  checkQuotas: true,
+  maxBonusedProjects: 2,
+  maxBonusPointsPerProject: 10,
+  maxTotalBonusPoints: 15,
 };

@@ -22,17 +22,32 @@ import {
   AlertTriangle,
   HelpCircle,
   ChevronDown,
+  Menu,
+  Download,
+  Upload,
+  CheckSquare,
 } from 'lucide-react';
 import { Project } from '../types/project';
 import { ProjectState } from '../types/lifecycle';
 import { BudgetLine } from '../types/budget';
 import { Criterion } from '../types/criteria';
 import { CustomProjectParam } from '../types/customParam';
+import { KeySkill } from '../types/skill';
 import { AppUser, UserRole } from '../types/user';
 import { BonusConfig, DEFAULT_BONUS_CONFIG } from '../types/bonus';
 import { saveBonusConfig } from '../services/bonusService';
 import { deleteProject, updateProject } from '../services/projectService';
 import { ProjectModal } from './ProjectModal';
+import { ProjectsImportModal } from './ProjectsImportModal';
+import { ProjectsImportResultModal } from './ProjectsImportResultModal';
+import { ExportProjectsModal } from './ExportProjectsModal';
+import { DeleteAllProjectsModal } from './DeleteAllProjectsModal';
+import {
+  ReferenceData,
+  exportProjectsToCsv,
+  downloadFile,
+  ImportResult,
+} from '../services/projectCsvService';
 import { calculateProjectRoi, formatRoi } from '../utils/roiCalculator';
 import { isSuperAdminEmail } from '../services/userService';
 import { Tooltip } from './Tooltip';
@@ -46,7 +61,7 @@ import { ProjectActionButton } from './ProjectActionButton';
 import { LifecycleStateFilter } from './LifecycleStateFilter';
 import { BudgetLineFilter } from './BudgetLineFilter';
 
-export type SortColumn = 'id' | 'roi' | 'name' | 'state' | 'pm' | 'budgetLine' | 'bonus';
+export type SortColumn = 'id' | 'roi' | 'name' | 'state' | 'pm' | 'budgetLine' | 'bonus' | string;
 export type SortDirection = 'asc' | 'desc';
 
 interface ProjectsTableProps {
@@ -63,6 +78,7 @@ interface ProjectsTableProps {
   budgetLines: BudgetLine[];
   criteria: Criterion[];
   customParams: CustomProjectParam[];
+  skills?: KeySkill[];
   users: AppUser[];
   bonusConfig?: BonusConfig;
   showConfidentialProjects?: boolean;
@@ -87,6 +103,7 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
   budgetLines,
   criteria,
   customParams,
+  skills = [],
   users,
   bonusConfig = DEFAULT_BONUS_CONFIG,
   showConfidentialProjects: showConfidentialProjectsProp,
@@ -104,6 +121,65 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
   const [isDeleting, setIsDeleting] = useState(false);
   const [actionSuccess, setActionSuccess] = useState<string | null>(null);
   const [updatingStateProjectId, setUpdatingStateProjectId] = useState<string | null>(null);
+
+  // Menu burger : Export / Import / Suppression de projets
+  const [actionsMenuOpen, setActionsMenuOpen] = useState(false);
+  const actionsMenuRef = useRef<HTMLDivElement>(null);
+  const [exportModalOpen, setExportModalOpen] = useState(false);
+  const [importModalOpen, setImportModalOpen] = useState(false);
+  const [importResultModalOpen, setImportResultModalOpen] = useState(false);
+  const [lastImportResult, setLastImportResult] = useState<ImportResult | null>(null);
+  const [deleteAllModalOpen, setDeleteAllModalOpen] = useState(false);
+
+  // Sélection individuelle de projets (cases à cocher dans le tableau)
+  const [manualSelectionActive, setManualSelectionActive] = useState(false);
+  const [selectedProjectIds, setSelectedProjectIds] = useState<string[]>([]);
+
+  const handleToggleSelectProject = (projectId: string) => {
+    setSelectedProjectIds((prev) =>
+      prev.includes(projectId) ? prev.filter((id) => id !== projectId) : [...prev, projectId]
+    );
+  };
+
+  useEffect(() => {
+    const handleOutsideClick = (event: MouseEvent) => {
+      if (actionsMenuRef.current && !actionsMenuRef.current.contains(event.target as Node)) {
+        setActionsMenuOpen(false);
+      }
+    };
+    if (actionsMenuOpen) {
+      document.addEventListener('mousedown', handleOutsideClick);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleOutsideClick);
+    };
+  }, [actionsMenuOpen]);
+
+  const handleExportProjects = (targetProjects: Project[] = projects) => {
+    try {
+      const refs: ReferenceData = {
+        projectStates,
+        budgetLines,
+        criteria,
+        customParams,
+        skills,
+        users,
+        bonusConfig,
+      };
+      const csvContent = exportProjectsToCsv(targetProjects, refs);
+      const now = new Date();
+      const dateTag = now.toISOString().slice(0, 10);
+      const filename =
+        targetProjects.length < projects.length
+          ? `projets_opac_selection_${dateTag}.csv`
+          : `projets_opac_${dateTag}.csv`;
+      downloadFile(csvContent, filename);
+      setActionSuccess(`${targetProjects.length} projet(s) exporté(s) avec succès au format CSV (|).`);
+      setTimeout(() => setActionSuccess(null), 4000);
+    } catch (err) {
+      console.error('Erreur export projets CSV:', err);
+    }
+  };
 
   // Filtres
   const [searchQuery, setSearchQuery] = useState('');
@@ -151,7 +227,8 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
       isStateFilterActive ||
       isBudgetLineFilterActive ||
       myProjectsOnly ||
-      bonusedOnly
+      bonusedOnly ||
+      manualSelectionActive
   );
 
   // Références de lignes pour le défilement automatique
@@ -196,6 +273,12 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
 
   // Droits globaux : En tant que Resource Manager, interdiction de créer des projets
   const canCreate = !isActingAsResourceManager && (isValueManagementOfficer || isSuperUser || isAdmin || isProjectManager);
+
+  // Droits exclusifs sur le menu burger du portefeuille (Export, Import, Suppression) :
+  // Réservé aux seuls Value Management Officer et au Super User (et pas aux autres rôles)
+  const canAccessBurgerMenu =
+    isSuperUser ||
+    (isValueManagementOfficer && (!effectiveRole || effectiveRole === 'value management officer' || effectiveRole === 'super user'));
 
   // Droits exclusifs sur les bonus dans l'onglet projets : réservé au seul persona Value Management Officer
   const canToggleBonus = isValueManagementOfficer && (
@@ -452,6 +535,66 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
     });
   }, [projects, searchQuery, isStateFilterActive, selectedStateIds, isBudgetLineFilterActive, selectedBudgetLineIds, myProjectsOnly, bonusedOnly, showConfidentialProjects, activeUser, localBonuses, isSuperUser, isValueManagementOfficer]);
 
+  // Bascule de la sélection manuelle :
+  // Ne cocher que les projets qui ont été pré-sélectionnés par un autre filtre.
+  // S'il n'y a pas d'autre filtre prédéfini avant qu'on ne clique sur "sélection manuelle",
+  // alors par défaut, aucun projet ne doit être sélectionné.
+  const handleToggleManualSelection = () => {
+    if (manualSelectionActive) {
+      setManualSelectionActive(false);
+      setSelectedProjectIds([]);
+    } else {
+      setManualSelectionActive(true);
+      const hasOtherFilters = Boolean(
+        searchQuery.trim() ||
+        isStateFilterActive ||
+        isBudgetLineFilterActive ||
+        myProjectsOnly ||
+        bonusedOnly
+      );
+      if (hasOtherFilters) {
+        setSelectedProjectIds(filteredProjects.map((p) => p.id));
+      } else {
+        setSelectedProjectIds([]);
+      }
+    }
+  };
+
+  // Annulation automatique de la sélection manuelle si l'utilisateur applique un filtre prédéfini
+  const cancelManualSelectionIfActive = () => {
+    if (manualSelectionActive) {
+      setManualSelectionActive(false);
+      setSelectedProjectIds([]);
+    }
+  };
+
+  const handleStateFilterChange = (ids: string[]) => {
+    cancelManualSelectionIfActive();
+    setSelectedStateIds(ids);
+  };
+
+  const handleBudgetLineFilterChange = (ids: string[]) => {
+    cancelManualSelectionIfActive();
+    setSelectedBudgetLineIds(ids);
+  };
+
+  const handleToggleMyProjects = () => {
+    cancelManualSelectionIfActive();
+    setMyProjectsOnly((prev) => !prev);
+  };
+
+  const handleSearchChange = (value: string) => {
+    if (manualSelectionActive && value.trim() !== searchQuery.trim()) {
+      cancelManualSelectionIfActive();
+    }
+    setSearchQuery(value);
+  };
+
+  const handleBonusedOnlyChange = (checked: boolean) => {
+    cancelManualSelectionIfActive();
+    setBonusedOnly(checked);
+  };
+
   const getStateName = (stateId: string) => {
     const s = projectStates.find((st) => st.id === stateId);
     return s?.name || stateId || 'État non défini';
@@ -494,6 +637,123 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
     );
   };
 
+  // Paramètres personnalisés affichés dans le tableau selon l'ordre défini
+  const visibleCustomParams = useMemo(() => {
+    return [...customParams]
+      .filter((cp) => Boolean(cp.showInTable))
+      .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+  }, [customParams]);
+
+  const renderCustomParamValue = (cp: CustomProjectParam, val: any) => {
+    switch (cp.type) {
+      case 'case à cocher': {
+        return (
+          <div className="flex items-center justify-center">
+            <input
+              type="checkbox"
+              checked={Boolean(val)}
+              readOnly
+              disabled
+              aria-label={cp.name}
+              className="w-4 h-4 rounded border-slate-300 text-indigo-600 accent-indigo-600 disabled:opacity-85 cursor-default"
+            />
+          </div>
+        );
+      }
+
+      case 'date': {
+        if (val === undefined || val === null || val === '') {
+          return <span className="font-mono text-xs text-slate-400 select-none">__/__/____</span>;
+        }
+        const str = String(val);
+        const match = str.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+        const formatted = match ? `${match[3]}/${match[2]}/${match[1]}` : str;
+        return <span className="font-mono text-xs text-slate-700 font-medium">{formatted}</span>;
+      }
+
+      case 'nombre entier': {
+        if (val === undefined || val === null || val === '') {
+          return <span className="text-slate-300 font-mono">—</span>;
+        }
+        const num = typeof val === 'number' ? val : parseFloat(String(val).replace(/\s/g, '').replace(',', '.'));
+        if (isNaN(num)) {
+          return <span className="font-mono text-xs text-slate-800 font-semibold">{String(val)}</span>;
+        }
+        const formattedNum = new Intl.NumberFormat('fr-FR', {
+          minimumFractionDigits: 0,
+          maximumFractionDigits: 0,
+        }).format(Math.round(num));
+        return <span className="font-mono text-xs text-slate-800 font-semibold">{formattedNum}</span>;
+      }
+
+      case 'nombre avec 2 décimales': {
+        if (val === undefined || val === null || val === '') {
+          return <span className="text-slate-300 font-mono">—</span>;
+        }
+        const num = typeof val === 'number' ? val : parseFloat(String(val).replace(/\s/g, '').replace(',', '.'));
+        if (isNaN(num)) {
+          return <span className="font-mono text-xs text-slate-800 font-semibold">{String(val)}</span>;
+        }
+        const formattedNum = new Intl.NumberFormat('fr-FR', {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        }).format(num);
+        return <span className="font-mono text-xs text-slate-800 font-semibold">{formattedNum}</span>;
+      }
+
+      case 'liste de valeurs': {
+        const items = Array.isArray(val)
+          ? val.filter((item) => item !== null && item !== undefined && String(item).trim() !== '')
+          : val !== null && val !== undefined && String(val).trim() !== ''
+          ? [String(val)]
+          : [];
+
+        if (items.length === 0) {
+          return <span className="text-slate-300 font-mono">—</span>;
+        }
+
+        return (
+          <div className="flex flex-wrap items-center gap-1">
+            {items.map((item, idx) => (
+              <span
+                key={`${item}_${idx}`}
+                className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold bg-violet-50 text-violet-800 border border-violet-200 shadow-2xs whitespace-nowrap"
+                title={item}
+              >
+                {item}
+              </span>
+            ))}
+          </div>
+        );
+      }
+
+      case 'texte long':
+      case 'texte court':
+      default: {
+        if (val === undefined || val === null || val === '') {
+          return <span className="text-slate-300 font-mono">—</span>;
+        }
+        const str = String(val);
+        const isTruncated = str.length > 15;
+        const displayed = isTruncated ? `${str.slice(0, 15)}...` : str;
+        if (isTruncated) {
+          return (
+            <Tooltip content={str}>
+              <span className="text-xs text-slate-800 font-medium whitespace-nowrap cursor-help underline decoration-dotted decoration-slate-300 underline-offset-2">
+                {displayed}
+              </span>
+            </Tooltip>
+          );
+        }
+        return (
+          <span className="text-xs text-slate-800 font-medium whitespace-nowrap">
+            {displayed}
+          </span>
+        );
+      }
+    }
+  };
+
   const handleSort = (col: SortColumn) => {
     if (sortColumn === col) {
       setSortDirection((prev) => (prev === 'asc' ? 'desc' : 'asc'));
@@ -530,13 +790,13 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
           comparison = (a.projectNumber || 0) - (b.projectNumber || 0);
           break;
         case 'roi': {
-          const isStaffedA = isProjectStaffed(a);
-          const isStaffedB = isProjectStaffed(b);
+          const isPrioritizedA = isProjectStatePrioritized(a.stateId);
+          const isPrioritizedB = isProjectStatePrioritized(b.stateId);
 
-          // Les projets staffés avec numéro de priorité viennent en premier (du numéro 1 au dernier),
-          // puis tous les projets non staffés par ordre décroissant de ROI
-          if (isStaffedA !== isStaffedB) {
-            return sortDirection === 'asc' ? (isStaffedA ? 1 : -1) : (isStaffedA ? -1 : 1);
+          // Les projets dont l'état est à prioriser (avec numéro de priorité) viennent en premier (du numéro 1 au dernier),
+          // puis tous les projets non priorisés par ordre décroissant de ROI
+          if (isPrioritizedA !== isPrioritizedB) {
+            return sortDirection === 'asc' ? (isPrioritizedA ? 1 : -1) : (isPrioritizedA ? -1 : 1);
           }
 
           const roiA = getProjectEffectiveRoi(a);
@@ -581,11 +841,47 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
           comparison = bonusA - bonusB;
           break;
         }
+        default: {
+          if (sortColumn.startsWith('cp_')) {
+            const cpId = sortColumn.replace('cp_', '');
+            const cp = customParams.find((c) => c.id === cpId);
+            const valA = a.customParamValues?.[cpId];
+            const valB = b.customParamValues?.[cpId];
+
+            const isEmptyA = valA === undefined || valA === null || valA === '';
+            const isEmptyB = valB === undefined || valB === null || valB === '';
+
+            if (isEmptyA && isEmptyB) {
+              comparison = (a.projectNumber || 0) - (b.projectNumber || 0);
+            } else if (isEmptyA) {
+              comparison = 1;
+            } else if (isEmptyB) {
+              comparison = -1;
+            } else if (cp?.type === 'case à cocher') {
+              const boolA = valA === true ? 1 : 0;
+              const boolB = valB === true ? 1 : 0;
+              comparison = boolA - boolB;
+            } else if (cp?.type === 'nombre entier' || cp?.type === 'nombre avec 2 décimales') {
+              const numA = typeof valA === 'number' ? valA : parseFloat(String(valA)) || 0;
+              const numB = typeof valB === 'number' ? valB : parseFloat(String(valB)) || 0;
+              comparison = numA - numB;
+            } else if (cp?.type === 'date') {
+              comparison = String(valA).localeCompare(String(valB));
+            } else if (Array.isArray(valA) || Array.isArray(valB)) {
+              const strA = Array.isArray(valA) ? valA.join(', ') : String(valA);
+              const strB = Array.isArray(valB) ? valB.join(', ') : String(valB);
+              comparison = strA.localeCompare(strB, 'fr', { sensitivity: 'base' });
+            } else {
+              comparison = String(valA).localeCompare(String(valB), 'fr', { sensitivity: 'base' });
+            }
+          }
+          break;
+        }
       }
       return sortDirection === 'asc' ? comparison : -comparison;
     });
     return list;
-  }, [filteredProjects, sortColumn, sortDirection, criteria, projectStates, budgetLines, users, bonusConfig, localBonuses]);
+  }, [filteredProjects, sortColumn, sortDirection, criteria, projectStates, budgetLines, users, bonusConfig, localBonuses, customParams]);
 
   // Analyse des quotas de bonus et identification du premier projet en dépassement selon le tri courant
   const bonusQuotaAnalysis = useMemo(() => {
@@ -678,26 +974,26 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
   }, [sortedProjects, bonusConfig]);
 
   // Classement des projets selon leur priorité :
-  // Le numéro de priorité ne doit être calculé que sur les projets staffés.
-  // Les projets non staffés ne doivent pas avoir un numéro de priorité.
+  // Le numéro de priorité ne doit être calculé que sur les projets dont l'état est coché "à prioriser".
+  // Les projets non priorisés ne doivent pas avoir un numéro de priorité.
   const projectRoiRanks = useMemo(() => {
-    const staffedWithRoi: { id: string; roi: number; projectNumber: number }[] = [];
+    const prioritizedWithRoi: { id: string; roi: number; projectNumber: number }[] = [];
     for (const p of projects) {
-      if (!isProjectStaffed(p)) continue;
+      if (!isProjectStatePrioritized(p.stateId)) continue;
       const roi = getProjectEffectiveRoi(p);
       if (roi !== null) {
-        staffedWithRoi.push({ id: p.id, roi, projectNumber: p.projectNumber || 0 });
+        prioritizedWithRoi.push({ id: p.id, roi, projectNumber: p.projectNumber || 0 });
       }
     }
     // Tri décroissant selon le ROI (et par #ID pour départager en cas d'égalité)
-    staffedWithRoi.sort((a, b) => {
+    prioritizedWithRoi.sort((a, b) => {
       const diff = b.roi - a.roi;
       if (diff !== 0) return diff;
       return a.projectNumber - b.projectNumber;
     });
 
     const rankMap = new Map<string, number>();
-    staffedWithRoi.forEach((item, index) => {
+    prioritizedWithRoi.forEach((item, index) => {
       rankMap.set(item.id, index + 1);
     });
     return rankMap;
@@ -742,6 +1038,32 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
     sortDirection,
   ]);
 
+  // Projets sélectionnés au lancement de l'option de suppression
+  const projectsSelectedForDeletion = useMemo(() => {
+    if (selectedProjectIds.length > 0) {
+      return projects.filter((p) => selectedProjectIds.includes(p.id));
+    }
+    if (filteredProjects.length < projects.length) {
+      return filteredProjects;
+    }
+    return [];
+  }, [projects, selectedProjectIds, filteredProjects]);
+
+  const isAllVisibleSelected =
+    sortedProjects.length > 0 && sortedProjects.every((p) => selectedProjectIds.includes(p.id));
+  const isSomeVisibleSelected =
+    sortedProjects.some((p) => selectedProjectIds.includes(p.id)) && !isAllVisibleSelected;
+
+  const handleToggleSelectAllVisible = () => {
+    if (isAllVisibleSelected) {
+      const visibleIds = new Set(sortedProjects.map((p) => p.id));
+      setSelectedProjectIds((prev) => prev.filter((id) => !visibleIds.has(id)));
+    } else {
+      const visibleIds = sortedProjects.map((p) => p.id);
+      setSelectedProjectIds((prev) => Array.from(new Set([...prev, ...visibleIds])));
+    }
+  };
+
   return (
     <div className="flex-1 min-h-0 flex flex-col space-y-3">
       {/* En-tête de section */}
@@ -760,15 +1082,120 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
           </p>
         </div>
 
-        {canCreate && (
-          <button
-            onClick={handleOpenCreate}
-            className="inline-flex items-center gap-2 px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-lg shadow-xs transition-colors cursor-pointer shrink-0"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Nouveau projet</span>
-          </button>
-        )}
+        <div className="flex items-center gap-2 shrink-0">
+          {/* Menu burger (Export, Import, Supprimer des projets) directement sur le fond de la frame - Réservé au Value Management Officer et au Super User */}
+          {canAccessBurgerMenu && (
+            <div className="relative" ref={actionsMenuRef}>
+              <button
+                type="button"
+                onClick={() => setActionsMenuOpen((prev) => !prev)}
+                title="Menu Portefeuille (Export, Import, Suppression)"
+                aria-label="Menu Portefeuille"
+                className="p-1 text-slate-600 hover:text-slate-900 transition-colors cursor-pointer flex items-center justify-center rounded-lg hover:bg-slate-200/60"
+              >
+                <Menu className="w-6 h-6" />
+              </button>
+
+              {actionsMenuOpen && (
+                <div className="absolute right-0 top-full mt-2 w-80 bg-white rounded-xl shadow-xl border border-slate-200 z-50 p-1.5 animate-in fade-in zoom-in-95">
+                  {/* En-tête / Titre du menu */}
+                  <div className="px-3 py-2 border-b border-slate-100 mb-1">
+                    <div className="text-[11px] font-bold text-blue-800 uppercase tracking-wider flex items-center gap-1.5">
+                      <Briefcase className="w-3.5 h-3.5 text-blue-600" />
+                      <span>Portefeuille Projets</span>
+                    </div>
+                    <p className="text-[11px] text-slate-500 mt-0.5">
+                      Import, export et gestion des projets
+                    </p>
+                  </div>
+
+                  <div className="space-y-0.5">
+                    {/* Option 1 : Exporter des projets */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setActionsMenuOpen(false);
+                        setExportModalOpen(true);
+                      }}
+                      disabled={projects.length === 0}
+                      className="w-full text-left px-3 py-2.5 rounded-lg hover:bg-slate-50 text-slate-800 transition-colors flex items-start gap-2.5 group cursor-pointer disabled:opacity-50"
+                    >
+                      <div className="p-1.5 rounded-md bg-indigo-50 text-indigo-600 group-hover:bg-indigo-100 transition-colors shrink-0 mt-0.5">
+                        <Download className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <div className="text-xs font-bold text-slate-900 group-hover:text-indigo-600 transition-colors">
+                          Exporter des projets
+                        </div>
+                        <div className="text-[11px] text-slate-500 mt-0.5 leading-tight">
+                          Exporte tous les projets ou seulement ceux qui sont sélectionnés au format CSV (|)
+                        </div>
+                      </div>
+                    </button>
+
+                    {/* Option 2 : Importer des projets */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setActionsMenuOpen(false);
+                        setImportModalOpen(true);
+                      }}
+                      disabled={!canCreate}
+                      className="w-full text-left px-3 py-2.5 rounded-lg hover:bg-slate-50 text-slate-800 transition-colors flex items-start gap-2.5 group cursor-pointer disabled:opacity-50"
+                    >
+                      <div className="p-1.5 rounded-md bg-amber-50 text-amber-600 group-hover:bg-amber-100 transition-colors shrink-0 mt-0.5">
+                        <Upload className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <div className="text-xs font-bold text-slate-900 group-hover:text-amber-700 transition-colors">
+                          Importer des projets
+                        </div>
+                        <div className="text-[11px] text-slate-500 mt-0.5 leading-tight">
+                          Charge ou met à jour des projets depuis un fichier .csv (|) avec journal d'audit
+                        </div>
+                      </div>
+                    </button>
+
+                    {/* Option 3 : Supprimer des projets */}
+                    <div className="pt-1 border-t border-slate-100 mt-1">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setActionsMenuOpen(false);
+                          setDeleteAllModalOpen(true);
+                        }}
+                        disabled={!canCreate || projects.length === 0}
+                        className="w-full text-left px-3 py-2.5 rounded-lg hover:bg-rose-50 text-rose-700 transition-colors flex items-start gap-2.5 group cursor-pointer disabled:opacity-50"
+                      >
+                        <div className="p-1.5 rounded-md bg-rose-100 text-rose-600 group-hover:bg-rose-200 transition-colors shrink-0 mt-0.5">
+                          <Trash2 className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <div className="text-xs font-bold text-rose-700 group-hover:text-rose-800 transition-colors">
+                            Supprimer des projets
+                          </div>
+                          <div className="text-[11px] text-slate-500 mt-0.5 leading-tight">
+                            Supprime définitivement tous les projets ou seulement ceux sélectionnés
+                          </div>
+                        </div>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {canCreate && (
+            <button
+              onClick={handleOpenCreate}
+              className="inline-flex items-center gap-2 px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-lg shadow-xs transition-colors cursor-pointer shrink-0 h-8"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Nouveau projet</span>
+            </button>
+          )}
+        </div>
       </div>
 
       {actionSuccess && (
@@ -784,12 +1211,12 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
       <div className="shrink-0 bg-white p-3 rounded-xl border border-slate-200 shadow-2xs space-y-2.5 relative z-20">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3">
           {/* Recherche textuelle */}
-          <div className="lg:col-span-4 relative">
+          <div className="lg:col-span-3 relative">
             <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
             <input
               type="text"
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={(e) => handleSearchChange(e.target.value)}
               placeholder="Rechercher par nom, #ID, chef de projet..."
               className="w-full pl-9 pr-3 py-2 border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-indigo-500"
             />
@@ -800,16 +1227,17 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
             <LifecycleStateFilter
               projectStates={projectStates}
               selectedStateIds={selectedStateIds}
-              onChange={setSelectedStateIds}
+              onChange={handleStateFilterChange}
+              quickFilterType="prioritization"
             />
           </div>
 
           {/* Filtre Ligne budgétaire */}
-          <div className="lg:col-span-3">
+          <div className="lg:col-span-2">
             <BudgetLineFilter
               budgetLines={budgetLines}
               selectedBudgetLineIds={selectedBudgetLineIds}
-              onChange={setSelectedBudgetLineIds}
+              onChange={handleBudgetLineFilterChange}
             />
           </div>
 
@@ -817,7 +1245,7 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
           <div className="lg:col-span-2 flex items-center">
             <button
               type="button"
-              onClick={() => setMyProjectsOnly(!myProjectsOnly)}
+              onClick={handleToggleMyProjects}
               className={`w-full py-2 px-3 rounded-lg text-xs font-semibold border transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
                 myProjectsOnly
                   ? 'bg-indigo-600 text-white border-indigo-600 shadow-2xs'
@@ -826,6 +1254,32 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
             >
               <User className="w-3.5 h-3.5" />
               <span>Mes projets</span>
+            </button>
+          </div>
+
+          {/* Bouton bascule Sélection manuelle */}
+          <div className="lg:col-span-2 flex items-center">
+            <button
+              type="button"
+              onClick={handleToggleManualSelection}
+              className={`w-full py-2 px-2.5 rounded-lg text-xs font-semibold border transition-all cursor-pointer flex items-center justify-center gap-1.5 whitespace-nowrap ${
+                manualSelectionActive
+                  ? 'bg-indigo-600 text-white border-indigo-600 shadow-2xs'
+                  : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200'
+              }`}
+              title={
+                manualSelectionActive
+                  ? `${selectedProjectIds.length} projet(s) sélectionné(s) - Cliquer pour désactiver`
+                  : 'Activer la sélection manuelle de projets'
+              }
+            >
+              <CheckSquare className="w-3.5 h-3.5 shrink-0" />
+              <span>Sélection manuelle</span>
+              {manualSelectionActive && (
+                <span className="px-1.5 py-0.2 rounded-full text-[10px] font-bold bg-white/20 text-white">
+                  {selectedProjectIds.length}
+                </span>
+              )}
             </button>
           </div>
         </div>
@@ -840,7 +1294,9 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
                   : 'bg-slate-100 border border-slate-200 text-slate-600'
               }`}
             >
-              {hasActiveFilters
+              {manualSelectionActive
+                ? `${selectedProjectIds.length} projet${selectedProjectIds.length > 1 ? 's' : ''} sur ${projects.length} projet${projects.length > 1 ? 's' : ''} au total`
+                : hasActiveFilters
                 ? `${filteredProjects.length} projet${filteredProjects.length > 1 ? 's' : ''} sur ${projects.length} projet${projects.length > 1 ? 's' : ''} au total`
                 : `${projects.length} projet${projects.length > 1 ? 's' : ''} au total`}
             </span>
@@ -854,6 +1310,8 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
                   setSelectedBudgetLineIds(budgetLines.map((b) => b.id));
                   setMyProjectsOnly(false);
                   setBonusedOnly(false);
+                  setManualSelectionActive(false);
+                  setSelectedProjectIds([]);
                 }}
                 className="text-indigo-600 hover:text-indigo-800 hover:underline flex items-center gap-1.5 cursor-pointer text-xs font-semibold"
               >
@@ -1008,7 +1466,7 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
                     checked={bonusedOnly}
                     onChange={(e) => {
                       e.stopPropagation();
-                      setBonusedOnly(e.target.checked);
+                      handleBonusedOnlyChange(e.target.checked);
                     }}
                     className="h-4 w-4 rounded border-slate-300 text-teal-600 focus:ring-teal-500 cursor-pointer shrink-0"
                   />
@@ -1094,6 +1552,26 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
             <table className="w-full text-left text-xs border-collapse">
               <thead className="sticky top-0 z-30 bg-slate-100 uppercase font-semibold tracking-wider select-none">
                 <tr>
+                  {/* Case à cocher de sélection groupée (affichée uniquement lorsque la sélection manuelle est activée) */}
+                  {manualSelectionActive && (
+                    <th
+                      scope="col"
+                      className="sticky top-0 bg-slate-100 z-30 py-2.5 px-2 w-9 min-w-[36px] max-w-[36px] text-center border-r border-slate-200 table-header-double-bottom select-none"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={isAllVisibleSelected}
+                        ref={(el) => {
+                          if (el) el.indeterminate = isSomeVisibleSelected;
+                        }}
+                        onChange={handleToggleSelectAllVisible}
+                        title="Sélectionner tous les projets affichés"
+                        aria-label="Sélectionner tous les projets affichés"
+                        className="h-3.5 w-3.5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                      />
+                    </th>
+                  )}
+
                   {/* ID */}
                   <th
                     scope="col"
@@ -1111,12 +1589,13 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
                     scope="col"
                     onClick={() => handleSort('roi')}
                     className="sticky top-0 bg-slate-100 z-30 py-2.5 px-1.5 w-24 min-w-[96px] max-w-[96px] text-center cursor-pointer select-none group hover:bg-slate-200/60 transition-colors border-r border-slate-200 table-header-double-bottom"
-                    title="Trier par priorité (rang selon ROI décroissant)"
                   >
-                    <div className="flex items-center justify-center gap-1">
-                      <span>PRIORITE</span>
-                      {renderSortIcon('roi')}
-                    </div>
+                    <Tooltip content="Trier par priorité (rang selon ROI décroissant)" className="w-full inline-block">
+                      <div className="flex items-center justify-center gap-1 cursor-help">
+                        <span>PRIORITE</span>
+                        {renderSortIcon('roi')}
+                      </div>
+                    </Tooltip>
                   </th>
 
                   {/* Projet (Nom & Description) */}
@@ -1179,6 +1658,67 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
                     </div>
                   </th>
 
+                  {/* Paramètres personnalisés affichés dans le tableau (dans l'ordre défini) */}
+                  {visibleCustomParams.map((cp) => {
+                    const colKey = `cp_${cp.id}`;
+                    const isCheckbox = cp.type === 'case à cocher';
+                    const isDate = cp.type === 'date';
+                    const isNumber = cp.type === 'nombre entier' || cp.type === 'nombre avec 2 décimales';
+                    const isCentered = isCheckbox || isDate;
+                    const isRightAligned = isNumber;
+                    const widthClass = isCheckbox
+                      ? 'w-px min-w-[50px] px-2'
+                      : isDate
+                      ? 'w-px min-w-[95px] px-2'
+                      : isNumber
+                      ? 'w-px min-w-[90px] px-2'
+                      : 'min-w-[130px] px-3';
+                    const maxTitleWidth = isCheckbox
+                      ? 'max-w-[48px]'
+                      : isDate
+                      ? 'max-w-[70px]'
+                      : isNumber
+                      ? 'max-w-[75px]'
+                      : 'max-w-[150px]';
+
+                    const tooltipContent = (
+                      <div className="space-y-1">
+                        <div className="font-bold text-white text-sm">{cp.name}</div>
+                        {cp.description ? (
+                          <div className="text-white/90 text-xs font-normal leading-relaxed">
+                            {cp.description}
+                          </div>
+                        ) : (
+                          <div className="text-white/70 text-[11px] font-normal italic">
+                            Paramètre personnalisé ({cp.type})
+                          </div>
+                        )}
+                      </div>
+                    );
+
+                    return (
+                      <th
+                        key={cp.id}
+                        scope="col"
+                        onClick={() => handleSort(colKey)}
+                        className={`sticky top-0 bg-slate-100 z-30 py-2.5 ${widthClass} cursor-pointer select-none group hover:bg-slate-200/60 transition-colors border-r border-slate-200 table-header-double-bottom ${
+                          isCentered ? 'text-center' : isRightAligned ? 'text-right' : 'text-left'
+                        }`}
+                      >
+                        <Tooltip content={tooltipContent} className="w-full inline-block" placement="bottom">
+                          <div
+                            className={`flex items-center gap-1 ${
+                              isCentered ? 'justify-center' : isRightAligned ? 'justify-end' : 'justify-start'
+                            }`}
+                          >
+                            <span className={`truncate ${maxTitleWidth}`}>{cp.name}</span>
+                            {renderSortIcon(colKey)}
+                          </div>
+                        </Tooltip>
+                      </th>
+                    );
+                  })}
+
                   {/* Actions */}
                   <th scope="col" className="sticky top-0 bg-slate-100 z-30 py-2.5 px-4 w-24 text-right table-header-double-bottom">
                     Actions
@@ -1208,6 +1748,23 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
                           : 'hover:bg-slate-50/70'
                       }`}
                     >
+                      {/* Case à cocher de sélection individuelle (affichée uniquement lorsque la sélection manuelle est activée) */}
+                      {manualSelectionActive && (
+                        <td
+                          className="py-2.5 px-2 text-center whitespace-nowrap border-r border-slate-200 select-none"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={selectedProjectIds.includes(p.id)}
+                            onChange={() => handleToggleSelectProject(p.id)}
+                            title={`Sélectionner le projet #${p.projectNumber} ${p.name}`}
+                            aria-label={`Sélectionner le projet #${p.projectNumber} ${p.name}`}
+                            className="h-3.5 w-3.5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                          />
+                        </td>
+                      )}
+
                       {/* Colonne 1 : Identifiant de création unique */}
                       <td className="py-2.5 px-1.5 text-center whitespace-nowrap border-r border-slate-200">
                         <span className="font-mono font-bold text-xs bg-slate-900 text-white px-1.5 py-0.5 rounded-full shadow-2xs">
@@ -1215,14 +1772,14 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
                         </span>
                       </td>
 
-                      {/* Colonne 2 : PRIORITE (Numéro de priorité pour projets staffés, ROI affiché pour tous) */}
+                      {/* Colonne 2 : PRIORITE (Numéro de priorité pour états cochés "à prioriser", ROI affiché pour tous) */}
                       <td className="py-2.5 px-1.5 text-center whitespace-nowrap border-r border-slate-200">
                         {projectRoi !== null ? (
-                          isProjectStaffed(p) && projectRoiRanks.has(p.id) ? (
+                          isProjectStatePrioritized(p.stateId) && projectRoiRanks.has(p.id) ? (
                             <div className="inline-flex items-center justify-center gap-1">
                               <span
                                 className="font-mono font-bold text-xs px-1.5 py-0.5 rounded-md bg-indigo-50 text-indigo-700 border border-indigo-200 shadow-2xs min-w-[20px] text-center"
-                                title={`Priorité #${projectRoiRanks.get(p.id)} (Projet staffé)`}
+                                title={`Priorité #${projectRoiRanks.get(p.id)} (État à prioriser)`}
                               >
                                 {projectRoiRanks.get(p.id)}
                               </span>
@@ -1236,7 +1793,7 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
                           ) : (
                             <div
                               className="inline-flex items-center justify-center"
-                              title="Projet non staffé : pas de numéro de priorité"
+                              title="État non à prioriser : pas de numéro de priorité"
                             >
                               <span className="font-mono text-xs text-slate-500 font-medium">
                                 ({formatRoi(projectRoi)})
@@ -1459,7 +2016,35 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
                         )}
                       </td>
 
-                      {/* Colonne 8 : Actions */}
+                      {/* Colonnes des paramètres personnalisés affichés dans le tableau (dans l'ordre défini) */}
+                      {visibleCustomParams.map((cp) => {
+                        const rawVal = isConfidentialHidden ? null : p.customParamValues?.[cp.id];
+                        const isCheckbox = cp.type === 'case à cocher';
+                        const isDate = cp.type === 'date';
+                        const isNumber = cp.type === 'nombre entier' || cp.type === 'nombre avec 2 décimales';
+                        const isCentered = isCheckbox || isDate;
+                        const isRightAligned = isNumber;
+                        const tdWidthClass = (isCheckbox || isDate || isNumber)
+                          ? 'w-px px-2'
+                          : 'px-3';
+
+                        return (
+                          <td
+                            key={cp.id}
+                            className={`py-2.5 ${tdWidthClass} border-r border-slate-200 whitespace-nowrap ${
+                              isCentered ? 'text-center' : isRightAligned ? 'text-right' : 'text-left'
+                            }`}
+                          >
+                            {isConfidentialHidden ? (
+                              <span className="text-slate-300 font-mono">—</span>
+                            ) : (
+                              renderCustomParamValue(cp, rawVal)
+                            )}
+                          </td>
+                        );
+                      })}
+
+                      {/* Colonne : Actions */}
                       <td className="py-2.5 px-4 text-right whitespace-nowrap">
                         <div className="flex items-center justify-end">
                           <ProjectActionButton
@@ -1553,6 +2138,61 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
           </div>
         </div>
       )}
+
+      {/* Fenêtre 1 : Lancement de l'importation de projets (CSV) */}
+      <ProjectsImportModal
+        isOpen={importModalOpen}
+        onClose={() => setImportModalOpen(false)}
+        refs={{
+          projectStates,
+          budgetLines,
+          criteria,
+          customParams,
+          skills,
+          users,
+          bonusConfig,
+        }}
+        currentProjects={projects}
+        currentUserEmail={activeUser?.email || ''}
+        onSuccess={(result) => {
+          setImportModalOpen(false);
+          setLastImportResult(result);
+          setImportResultModalOpen(true);
+          setActionSuccess(
+            `Import terminé : ${result.successCount} projet(s) importé(s) (${result.warningCount} avertissement(s), ${result.errorCount} échec(s)).`
+          );
+          setTimeout(() => setActionSuccess(null), 6000);
+        }}
+      />
+
+      {/* Fenêtre 2 : Restitution du résultat de l'importation & journal d'audit */}
+      <ProjectsImportResultModal
+        isOpen={importResultModalOpen}
+        onClose={() => setImportResultModalOpen(false)}
+        result={lastImportResult}
+      />
+
+      {/* Modal d'export de projets (tous ou sélectionnés) */}
+      <ExportProjectsModal
+        isOpen={exportModalOpen}
+        onClose={() => setExportModalOpen(false)}
+        projects={projects}
+        selectedProjects={projectsSelectedForDeletion}
+        onExport={(targets) => handleExportProjects(targets)}
+      />
+
+      {/* Modal de suppression de projets (tous ou sélectionnés) */}
+      <DeleteAllProjectsModal
+        isOpen={deleteAllModalOpen}
+        onClose={() => setDeleteAllModalOpen(false)}
+        projects={projects}
+        selectedProjects={projectsSelectedForDeletion}
+        onSuccess={(count) => {
+          setSelectedProjectIds([]);
+          setActionSuccess(`${count} projet(s) supprimé(s) avec succès.`);
+          setTimeout(() => setActionSuccess(null), 5000);
+        }}
+      />
     </div>
   );
 };

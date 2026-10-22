@@ -38,9 +38,15 @@ import { BonusConfig } from './types/bonus';
 import { subscribeToCriteria, addCriterion } from './services/criteriaService';
 import { subscribeToBudgetLines, addBudgetLine } from './services/budgetService';
 import { subscribeToKeySkills, addKeySkill } from './services/skillService';
+import {
+  DEFAULT_CRITERIA_SEED,
+  DEFAULT_BUDGET_LINES_SEED,
+  DEFAULT_KEY_SKILLS_SEED,
+  DEFAULT_CUSTOM_PARAMS_SEED,
+} from './constants/defaultLpmParams';
 import { subscribeToResources } from './services/resourceService';
-import { subscribeToProjectStates } from './services/lifecycleService';
-import { subscribeToCustomParams } from './services/customParamService';
+import { subscribeToProjectStates, seedDefaultProjectLifecycle } from './services/lifecycleService';
+import { subscribeToCustomParams, addCustomParam } from './services/customParamService';
 import { subscribeToProjects } from './services/projectService';
 import { subscribeToBonusConfig, getCachedBonusConfig } from './services/bonusService';
 import {
@@ -63,6 +69,7 @@ import { UserManagement } from './components/UserManagement';
 import { LoginModal } from './components/LoginModal';
 import { UserProfileModal, UserAvatarPictogram } from './components/UserProfileModal';
 import { SuperUserBackupMenu } from './components/SuperUserBackupMenu';
+import { GlobalTooltip } from './components/GlobalTooltip';
 import { BUDGET_PALETTE_32 } from './constants/colors';
 import { getUserInitials } from './utils/userUtils';
 
@@ -188,6 +195,7 @@ function Dashboard() {
   const [skills, setSkills] = useState<KeySkill[]>([]);
   const [loadingSkills, setLoadingSkills] = useState(true);
   const [seedingSkill, setSeedingSkill] = useState(false);
+  const [seedingAll, setSeedingAll] = useState(false);
 
   const [resources, setResources] = useState<Resource[]>([]);
   const [loadingResources, setLoadingResources] = useState(true);
@@ -210,6 +218,9 @@ function Dashboard() {
   // Maintien du tri appliqué sur la liste des projets dans l'onglet Priorités lors du changement d'onglet
   const [projectsSortColumn, setProjectsSortColumn] = useState<SortColumn>('id');
   const [projectsSortDirection, setProjectsSortDirection] = useState<SortDirection>('desc');
+
+  // Filtre texte contrôlé pour l'onglet capacitaire (permet de cibler un projet précis depuis l'onglet Rapports)
+  const [capacitySearchQuery, setCapacitySearchQuery] = useState('');
 
   // Seul l'Administrateur (et le Super User sans rôle endossé restrictif) peut gérer les compétences clés
   const canManageSkills = isAdmin || (isSuperUser && !assumedRole);
@@ -320,23 +331,11 @@ function Dashboard() {
     if (!isAdmin) return;
     setSeedingCriteria(true);
     try {
-      await addCriterion({
-        name: 'CA additionnel',
-        type: 'VALEUR',
-        weight: 5,
-        isActive: true,
-        levels: [
-          '0 K€/an',
-          'de 0 à 10 K€/an',
-          'de 10 à 50 K€/an',
-          'de 50 à 200 K€/an',
-          'de 200 à 500 K€/an',
-          'plus de 500 K€/an',
-        ],
-        order: 0,
-      });
+      for (const crit of DEFAULT_CRITERIA_SEED) {
+        await addCriterion(crit);
+      }
     } catch (error) {
-      console.error('Erreur ajout exemple critère:', error);
+      console.error('Erreur chargement critères par défaut:', error);
     } finally {
       setSeedingCriteria(false);
     }
@@ -346,16 +345,11 @@ function Dashboard() {
     if (!isAdmin) return;
     setSeedingBudget(true);
     try {
-      await addBudgetLine({
-        name: 'Innovation & Transformation Digitale',
-        budgetKe: 350,
-        manager: activeUser?.displayName || 'Stéphane Labati',
-        color: BUDGET_PALETTE_32[22].hex,
-        isActive: true,
-        order: 0,
-      });
+      for (const bl of DEFAULT_BUDGET_LINES_SEED) {
+        await addBudgetLine(bl);
+      }
     } catch (error) {
-      console.error('Erreur ajout exemple budget:', error);
+      console.error('Erreur chargement lignes budgétaires par défaut:', error);
     } finally {
       setSeedingBudget(false);
     }
@@ -365,26 +359,121 @@ function Dashboard() {
     if (!canManageSkills) return;
     setSeedingSkill(true);
     try {
-      const rm = allUsers.find((u) => u.roles?.includes('resource manager') || u.role === 'resource manager') || activeUser;
-      const allocs = budgetLines.map((bl, i) => ({
-        budgetLineId: bl.id,
-        budgetLineName: bl.name,
-        percentage: i === 0 ? 60 : i === 1 ? 40 : 0,
-      }));
+      let currentBudgets = [...budgetLines];
+      // Si aucune ligne budgétaire n'est encore créée, on charge d'abord les 3 lignes budgétaires standard pour permettre l'association des allocations
+      if (currentBudgets.length === 0) {
+        for (const bl of DEFAULT_BUDGET_LINES_SEED) {
+          const newId = await addBudgetLine(bl);
+          currentBudgets.push({
+            id: newId,
+            ...bl,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          });
+        }
+      }
 
-      await addKeySkill({
-        name: 'Architecture Cloud & DevOps',
-        resourceManagerId: rm?.email || '',
-        resourceManagerName: rm?.displayName || 'Stéphane super user',
-        description: 'Conception d’infrastructures haute disponibilité, pipelines CI/CD et sécurité cloud.',
-        isCapped: budgetLines.length > 0,
-        budgetAllocations: allocs,
-        order: 0,
-      });
+      const rm = allUsers.find((u) => u.roles?.includes('resource manager') || u.role === 'resource manager') || activeUser;
+      
+      for (const skillItem of DEFAULT_KEY_SKILLS_SEED) {
+        // Associer les pourcentages de plafonnement aux lignes budgétaires existantes
+        const skillAllocs = currentBudgets.map((bl) => {
+          const matched = skillItem.allocations.find(
+            (a) => a.budgetLineName.toLowerCase() === bl.name.toLowerCase()
+          );
+          return {
+            budgetLineId: bl.id,
+            budgetLineName: bl.name,
+            percentage: matched ? matched.percentage : 0,
+          };
+        });
+
+        await addKeySkill({
+          name: skillItem.name,
+          resourceManagerId: rm?.email || '',
+          resourceManagerName: rm?.displayName || 'Stéphane Super User',
+          description: skillItem.description,
+          isCapped: skillItem.isCapped,
+          alertOnDemandOverrun: skillItem.alertOnDemandOverrun,
+          budgetAllocations: skillAllocs,
+          order: skillItem.order,
+        });
+      }
     } catch (error) {
-      console.error('Erreur ajout exemple compétence clé:', error);
+      console.error('Erreur chargement compétences clés par défaut:', error);
     } finally {
       setSeedingSkill(false);
+    }
+  };
+
+  const handleSeedAllLpmDefaults = async () => {
+    if (!isAdmin) return;
+    setSeedingAll(true);
+    try {
+      // 1. Lignes budgétaires (3)
+      let currentBudgets = [...budgetLines];
+      if (currentBudgets.length === 0) {
+        for (const bl of DEFAULT_BUDGET_LINES_SEED) {
+          const newId = await addBudgetLine(bl);
+          currentBudgets.push({
+            id: newId,
+            ...bl,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          });
+        }
+      }
+
+      // 2. Critères de priorisation (6)
+      if (criteria.length === 0) {
+        for (const crit of DEFAULT_CRITERIA_SEED) {
+          await addCriterion(crit);
+        }
+      }
+
+      // 3. Cycle de vie (7 états)
+      if (projectStates.length === 0) {
+        await seedDefaultProjectLifecycle();
+      }
+
+      // 4. Paramètres projets personnalisés (6)
+      if (customParams.length === 0) {
+        for (const cp of DEFAULT_CUSTOM_PARAMS_SEED) {
+          await addCustomParam(cp);
+        }
+      }
+
+      // 5. Compétences clés (8)
+      if (skills.length === 0) {
+        const rm = allUsers.find((u) => u.roles?.includes('resource manager') || u.role === 'resource manager') || activeUser;
+        for (const skillItem of DEFAULT_KEY_SKILLS_SEED) {
+          const skillAllocs = currentBudgets.map((bl) => {
+            const matched = skillItem.allocations.find(
+              (a) => a.budgetLineName.toLowerCase() === bl.name.toLowerCase()
+            );
+            return {
+              budgetLineId: bl.id,
+              budgetLineName: bl.name,
+              percentage: matched ? matched.percentage : 0,
+            };
+          });
+
+          await addKeySkill({
+            name: skillItem.name,
+            resourceManagerId: rm?.email || '',
+            resourceManagerName: rm?.displayName || 'Stéphane Super User',
+            description: skillItem.description,
+            isCapped: skillItem.isCapped,
+            alertOnDemandOverrun: skillItem.alertOnDemandOverrun,
+            budgetAllocations: skillAllocs,
+            order: skillItem.order,
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Erreur initialisation globale référentiel LPM:', error);
+    } finally {
+      setSeedingAll(false);
     }
   };
 
@@ -966,6 +1055,7 @@ function Dashboard() {
             budgetLines={budgetLines}
             criteria={criteria}
             customParams={customParams}
+            skills={skills}
             users={allUsers}
             bonusConfig={bonusConfig}
             showConfidentialProjects={showConfidentialProjects}
@@ -999,6 +1089,8 @@ function Dashboard() {
             bonusConfig={bonusConfig}
             showConfidentialProjects={showConfidentialProjects}
             setShowConfidentialProjects={setShowConfidentialProjects}
+            searchQuery={capacitySearchQuery}
+            setSearchQuery={setCapacitySearchQuery}
           />
         )}
 
@@ -1007,11 +1099,19 @@ function Dashboard() {
           <ProjectsReportsView
             projects={projects}
             skills={skills}
+            resources={resources}
             projectStates={projectStates}
             budgetLines={budgetLines}
             criteria={criteria}
+            customParams={customParams}
+            currentUserEmail={activeUser?.email || ''}
+            showConfidentialProjects={showConfidentialProjects}
             users={allUsers}
             bonusConfig={bonusConfig}
+            onNavigateToCapacityProject={(projectName: string) => {
+              setCapacitySearchQuery(projectName);
+              setActiveTab('projects_capacity');
+            }}
           />
         )}
 
@@ -1029,6 +1129,33 @@ function Dashboard() {
             allUsers={allUsers}
           />
         )}
+        {/* Bannière d'initialisation rapide si le référentiel LPM est entièrement vierge */}
+        {isAdmin && criteria.length === 0 && budgetLines.length === 0 && skills.length === 0 && customParams.length === 0 && ['criteria', 'budgets', 'lifecycle', 'custom_params', 'skills'].includes(activeTab) && (
+          <div className="bg-gradient-to-r from-indigo-50 via-sky-50 to-teal-50 border border-indigo-200 rounded-xl p-4 mb-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 shadow-2xs">
+            <div className="flex items-start gap-3">
+              <div className="w-9 h-9 rounded-lg bg-indigo-600 text-white flex items-center justify-center shrink-0 shadow-xs">
+                <Sparkles className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-slate-900">
+                  Démarrage d'un référentiel LPM à partir de zéro
+                </h3>
+                <p className="text-xs text-slate-600 mt-0.5 max-w-3xl">
+                  Vous pouvez initialiser en un clic l'intégralité du référentiel standard complet : <strong>6 critères de priorisation</strong>, <strong>3 lignes budgétaires</strong>, <strong>8 compétences clés</strong>, <strong>6 paramètres personnalisés</strong> et <strong>7 états de cycle de vie</strong>, ou précharger chaque paramètre onglet par onglet.
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={handleSeedAllLpmDefaults}
+              disabled={seedingAll}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-lg shadow-xs transition-colors shrink-0 cursor-pointer"
+            >
+              <Sparkles className="w-4 h-4" />
+              <span>{seedingAll ? 'Initialisation en cours...' : 'Initialiser tout le référentiel LPM standard'}</span>
+            </button>
+          </div>
+        )}
+
         {/* Onglet 1 : Critères de priorisation */}
         {activeTab === 'criteria' && (
           <div className="space-y-6">
@@ -1184,6 +1311,7 @@ export default function App() {
   return (
     <AuthProvider>
       <Dashboard />
+      <GlobalTooltip />
     </AuthProvider>
   );
 }

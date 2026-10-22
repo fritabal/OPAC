@@ -21,6 +21,7 @@ export const BudgetLineModal: React.FC<BudgetLineModalProps> = ({
   isReadOnly = false,
 }) => {
   const [name, setName] = useState('');
+  const [description, setDescription] = useState('');
   const [budgetKe, setBudgetKe] = useState<number | ''>('');
   const [manager, setManager] = useState('');
   const [color, setColor] = useState('');
@@ -39,12 +40,14 @@ export const BudgetLineModal: React.FC<BudgetLineModalProps> = ({
   useEffect(() => {
     if (lineToEdit) {
       setName(lineToEdit.name);
+      setDescription(lineToEdit.description || '');
       setBudgetKe(lineToEdit.budgetKe);
       setManager(lineToEdit.manager);
       setColor(lineToEdit.color || getFirstAvailableColor(usedColors));
       setIsActive(lineToEdit.isActive !== false);
     } else {
       setName('');
+      setDescription('');
       setBudgetKe('');
       setManager('');
       setColor(getFirstAvailableColor(usedColors));
@@ -52,6 +55,16 @@ export const BudgetLineModal: React.FC<BudgetLineModalProps> = ({
     }
     setError(null);
   }, [lineToEdit, isOpen, usedColors]);
+
+  // Nombre d'attributs obligatoires non renseignés
+  const missingRequiredCount = useMemo(() => {
+    let count = 0;
+    if (!name.trim()) count++;
+    if (budgetKe === '' || isNaN(Number(budgetKe)) || Number(budgetKe) < 0) count++;
+    if (!manager.trim()) count++;
+    if (!color) count++;
+    return count;
+  }, [name, budgetKe, manager, color]);
 
   if (!isOpen) return null;
 
@@ -110,6 +123,7 @@ export const BudgetLineModal: React.FC<BudgetLineModalProps> = ({
 
       await onSave({
         name: trimmedName,
+        description: description.trim(),
         budgetKe: Number(budgetKe),
         manager: trimmedManager,
         color,
@@ -129,15 +143,16 @@ export const BudgetLineModal: React.FC<BudgetLineModalProps> = ({
   );
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-xl shadow-xl border border-slate-200 w-full max-w-lg overflow-hidden animate-in fade-in zoom-in-95 duration-150 my-6">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 bg-slate-50/50">
+    <div className="fixed inset-0 z-50 overflow-hidden bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-5">
+      <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-4xl max-h-[92vh] sm:max-h-[90vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+        {/* En-tête (toujours visible) */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 bg-slate-50 shrink-0">
           <div className="flex items-center gap-3">
             <div className="p-2.5 bg-teal-100 text-teal-600 rounded-xl border border-teal-200 shrink-0">
               <Coins className="w-5 h-5 text-teal-600" />
             </div>
             <div>
-              <h3 className="font-semibold text-slate-900 text-lg">
+              <h3 className="font-semibold text-slate-900 text-base">
                 {isReadOnly
                   ? `Ligne budgétaire : ${lineToEdit?.name || ''}`
                   : lineToEdit
@@ -159,13 +174,15 @@ export const BudgetLineModal: React.FC<BudgetLineModalProps> = ({
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-4 max-h-[80vh] overflow-y-auto">
-          {error && (
-            <div className="p-3 bg-red-50 border border-red-200 rounded-lg flex items-start gap-2.5 text-red-700 text-sm">
-              <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
-              <span>{error}</span>
-            </div>
-          )}
+        {/* Formulaire avec zone défilable et bandeau d'actions fixe */}
+        <form onSubmit={handleSubmit} className="flex-1 min-h-0 flex flex-col overflow-hidden">
+          <div className="flex-1 min-h-0 overflow-y-auto px-6 py-5 space-y-5 [scrollbar-width:thin]">
+            {error && (
+              <div className="p-3 bg-red-50 border border-red-200 rounded-lg flex items-start gap-2.5 text-red-700 text-sm">
+                <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
+                <span>{error}</span>
+              </div>
+            )}
 
           {/* Nom unique */}
           <div>
@@ -184,6 +201,27 @@ export const BudgetLineModal: React.FC<BudgetLineModalProps> = ({
                 className="w-full pl-9 pr-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 disabled:bg-slate-50 disabled:text-slate-700"
               />
             </div>
+          </div>
+
+          {/* Description (facultative) */}
+          <div>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider">
+                Description (facultative)
+              </label>
+              <span className={`text-[11px] font-mono ${description.length > 500 ? 'text-red-600 font-bold' : 'text-slate-400'}`}>
+                {description.length} / 500 car.
+              </span>
+            </div>
+            <textarea
+              rows={2}
+              maxLength={500}
+              disabled={isReadOnly}
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="Saisissez une description..."
+              className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 disabled:bg-slate-50 disabled:text-slate-700 resize-y"
+            />
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -318,7 +356,7 @@ export const BudgetLineModal: React.FC<BudgetLineModalProps> = ({
           </div>
 
           {/* Boîte à cocher Activation */}
-          <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg flex items-center justify-between">
+          <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg flex items-center">
             <label htmlFor="budget-is-active" className={`flex items-center gap-2.5 ${isReadOnly ? 'cursor-default' : 'cursor-pointer'}`}>
               <input
                 type="checkbox"
@@ -337,18 +375,24 @@ export const BudgetLineModal: React.FC<BudgetLineModalProps> = ({
                 </span>
               </div>
             </label>
-            <span
-              className={`text-xs font-bold px-2 py-0.5 rounded border ${
-                isActive
-                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                  : 'bg-slate-100 text-slate-500 border-slate-200 italic'
-              }`}
-            >
-              {isActive ? 'Active' : 'Désactivée'}
-            </span>
           </div>
+        </div>
 
-          <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-200">
+        {/* Bandeau d'actions fixe */}
+        <div className="shrink-0 px-6 py-4 border-t border-slate-200 bg-slate-50/80 flex items-center justify-between gap-3">
+          <div className="flex-1 min-w-0">
+            {!isReadOnly && missingRequiredCount > 0 && (
+              <div className="flex items-center gap-1.5 text-xs font-semibold text-red-600 animate-in fade-in">
+                <AlertCircle className="w-4 h-4 text-red-600 shrink-0" />
+                <span>
+                  {missingRequiredCount === 1
+                    ? '1 attribut obligatoire non renseigné'
+                    : `${missingRequiredCount} attributs obligatoires non renseignés`}
+                </span>
+              </div>
+            )}
+          </div>
+          <div className="flex items-center gap-3 shrink-0">
             {isReadOnly ? (
               <button
                 type="button"
@@ -368,16 +412,17 @@ export const BudgetLineModal: React.FC<BudgetLineModalProps> = ({
                 </button>
                 <button
                   type="submit"
-                  disabled={saving}
-                  className="px-4 py-2 text-sm font-medium bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors shadow-xs disabled:opacity-50 inline-flex items-center gap-2 cursor-pointer"
+                  disabled={saving || missingRequiredCount > 0}
+                  className="px-4 py-2 text-sm font-medium bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors shadow-xs disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-2 cursor-pointer"
                 >
-                  {saving ? 'Enregistrement...' : lineToEdit ? 'Mettre à jour' : 'Ajouter la ligne'}
+                  {saving ? 'Enregistrement...' : lineToEdit ? 'Enregistrer les modifications' : 'Créer la ligne'}
                 </button>
               </>
             )}
           </div>
-        </form>
-      </div>
+        </div>
+      </form>
     </div>
-  );
+  </div>
+);
 };

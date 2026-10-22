@@ -4,28 +4,35 @@ import { ChevronDown, AlertTriangle } from 'lucide-react';
 interface AlertsFilterProps {
   filterCapacityOverruns: boolean;
   filterBudgetOverruns: boolean;
+  filterOutdatedStaffingDemands?: boolean;
   onToggleCapacityOverruns: (val: boolean) => void;
   onToggleBudgetOverruns: (val: boolean) => void;
+  onToggleOutdatedStaffingDemands?: (val: boolean) => void;
   onSelectAllProjects: () => void;
   capacityOverrunCount?: number;
   budgetOverrunCount?: number;
+  outdatedStaffingDemandsCount?: number;
   className?: string;
 }
 
 export const AlertsFilter: React.FC<AlertsFilterProps> = ({
   filterCapacityOverruns,
   filterBudgetOverruns,
+  filterOutdatedStaffingDemands = false,
   onToggleCapacityOverruns,
   onToggleBudgetOverruns,
+  onToggleOutdatedStaffingDemands,
   onSelectAllProjects,
   capacityOverrunCount = 0,
   budgetOverrunCount = 0,
+  outdatedStaffingDemandsCount = 0,
   className = '',
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const isFilterActive = filterCapacityOverruns || filterBudgetOverruns;
+  const isFilterActive =
+    filterCapacityOverruns || filterBudgetOverruns || filterOutdatedStaffingDemands;
 
   // Fermer le dropdown lors d'un clic extérieur ou touche Échap
   useEffect(() => {
@@ -54,8 +61,16 @@ export const AlertsFilter: React.FC<AlertsFilterProps> = ({
 
   // Libellé synthétique affiché sur le bouton
   const buttonLabel = useMemo(() => {
-    if (filterCapacityOverruns && filterBudgetOverruns) {
-      return 'Dépassements cap. & budg.';
+    const activeCount =
+      (filterCapacityOverruns ? 1 : 0) +
+      (filterBudgetOverruns ? 1 : 0) +
+      (filterOutdatedStaffingDemands ? 1 : 0);
+
+    if (activeCount > 1) {
+      if (filterCapacityOverruns && filterBudgetOverruns && !filterOutdatedStaffingDemands) {
+        return 'Dépassements cap. & budg.';
+      }
+      return `Alertes (${activeCount})`;
     }
     if (filterCapacityOverruns) {
       return 'Dépassements capacitaires';
@@ -63,8 +78,11 @@ export const AlertsFilter: React.FC<AlertsFilterProps> = ({
     if (filterBudgetOverruns) {
       return 'Dépassements budgétaires';
     }
+    if (filterOutdatedStaffingDemands) {
+      return 'Staffing non à jour';
+    }
     return 'Les alertes';
-  }, [filterCapacityOverruns, filterBudgetOverruns]);
+  }, [filterCapacityOverruns, filterBudgetOverruns, filterOutdatedStaffingDemands]);
 
   const handleSelectAll = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -162,6 +180,28 @@ export const AlertsFilter: React.FC<AlertsFilterProps> = ({
             {budgetOverrunCount > 0 && (
               <span className="text-[10px] font-semibold text-amber-700 bg-amber-100 border border-amber-200 px-1.5 py-0.5 rounded-full shrink-0">
                 {budgetOverrunCount}
+              </span>
+            )}
+          </label>
+
+          {/* Option 4 : Les projets non mis à jour de leurs demandes de staffing */}
+          <label
+            className={`flex items-center gap-2.5 px-2.5 py-1.5 text-xs rounded-lg cursor-pointer select-none transition-colors mt-0.5 ${
+              filterOutdatedStaffingDemands
+                ? 'bg-orange-50 text-orange-900 font-medium'
+                : 'text-slate-700 hover:bg-slate-50'
+            }`}
+          >
+            <input
+              type="checkbox"
+              checked={filterOutdatedStaffingDemands}
+              onChange={(e) => onToggleOutdatedStaffingDemands?.(e.target.checked)}
+              className="w-4 h-4 rounded border-slate-400 text-slate-600 focus:ring-slate-400 focus:ring-offset-0 cursor-pointer accent-slate-600 shrink-0"
+            />
+            <span className="truncate flex-1">Staffing non à jour</span>
+            {outdatedStaffingDemandsCount > 0 && (
+              <span className="text-[10px] font-semibold text-orange-700 bg-orange-100 border border-orange-200 px-1.5 py-0.5 rounded-full shrink-0">
+                {outdatedStaffingDemandsCount}
               </span>
             )}
           </label>

@@ -202,48 +202,13 @@ export async function reorderProjectStates(states: ProjectState[]): Promise<void
   }
 }
 
+import { DEFAULT_LIFECYCLE_STATES_SEED } from '../constants/defaultLpmParams';
+
 /**
- * Initialisation d'un cycle de vie par défaut pour tester immédiatement.
+ * Initialisation d'un cycle de vie standard LPM par défaut (7 états).
  */
 export async function seedDefaultProjectLifecycle(): Promise<void> {
-  const defaultStates: Omit<ProjectStateFormData, 'order'>[] = [
-    {
-      name: 'Idée / Opportunité',
-      description: 'Nouvelle proposition de projet ou besoin émergent en attente de qualification initiale.',
-      needsStaffing: false,
-      needsPrioritization: false,
-    },
-    {
-      name: 'Étude & Cadrage',
-      description: 'Analyse de faisabilité, estimation des coûts, ROI et critères de valeur pour arbitrage.',
-      needsStaffing: false,
-      needsPrioritization: true, // À prioriser
-    },
-    {
-      name: 'Arbitré / À staffer',
-      description: 'Projet validé lors du comité de priorisation, en attente d’allocation des compétences clés.',
-      needsStaffing: true, // À staffer
-      needsPrioritization: true, // À prioriser
-    },
-    {
-      name: 'En cours de réalisation',
-      description: 'Équipe constituée et ressources allouées, développement et livraison active.',
-      needsStaffing: true, // À staffer
-      needsPrioritization: false,
-    },
-    {
-      name: 'Déployé / Terminé',
-      description: 'Livrables validés en production, bilan post-projet et clôture.',
-      needsStaffing: false,
-      needsPrioritization: false,
-    },
-    {
-      name: 'Abandonné / Reporté',
-      description: 'Projet non retenu lors des arbitrages ou gelé pour des raisons stratégiques.',
-      needsStaffing: false,
-      needsPrioritization: false,
-    },
-  ];
+  const defaultStates = DEFAULT_LIFECYCLE_STATES_SEED;
 
   try {
     const batch = writeBatch(db);

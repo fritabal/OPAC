@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { X, GitFork, AlertCircle, CheckCircle2, UserCheck, SlidersHorizontal } from 'lucide-react';
 import { ProjectState, ProjectStateFormData } from '../types/lifecycle';
 
@@ -41,6 +41,13 @@ export const LifecycleStateModal: React.FC<LifecycleStateModalProps> = ({
     setError(null);
   }, [editingState, isOpen]);
 
+  // Nombre d'attributs obligatoires non renseignés
+  const missingRequiredCount = useMemo(() => {
+    let count = 0;
+    if (!name.trim()) count++;
+    return count;
+  }, [name]);
+
   if (!isOpen) return null;
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -82,16 +89,16 @@ export const LifecycleStateModal: React.FC<LifecycleStateModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-lg overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-        {/* En-tête */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 bg-slate-50/50">
+    <div className="fixed inset-0 z-50 overflow-hidden bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-5">
+      <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-4xl max-h-[92vh] sm:max-h-[90vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+        {/* En-tête (toujours visible) */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 bg-slate-50 shrink-0">
           <div className="flex items-center gap-3">
             <div className="p-2.5 bg-slate-200 text-blue-950 rounded-xl border border-slate-300 shrink-0">
               <GitFork className="w-5 h-5 text-blue-950" />
             </div>
             <div>
-              <h3 className="font-semibold text-slate-900 text-lg">
+              <h3 className="font-semibold text-slate-900 text-base">
                 {isReadOnly
                   ? `Etat du cycle de vie projet : ${editingState?.name || ''}`
                   : editingState
@@ -114,14 +121,15 @@ export const LifecycleStateModal: React.FC<LifecycleStateModalProps> = ({
           </button>
         </div>
 
-        {/* Formulaire */}
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
-          {error && (
-            <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-red-700 text-xs flex items-start gap-2">
-              <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
-              <span>{error}</span>
-            </div>
-          )}
+        {/* Formulaire avec zone défilable et bandeau d'actions fixe */}
+        <form onSubmit={handleSubmit} className="flex-1 min-h-0 flex flex-col overflow-hidden">
+          <div className="flex-1 min-h-0 overflow-y-auto px-6 py-5 space-y-5 [scrollbar-width:thin]">
+            {error && (
+              <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-red-700 text-xs flex items-start gap-2">
+                <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                <span>{error}</span>
+              </div>
+            )}
 
           {/* Nom (clé unique, obligatoire) */}
           <div className="space-y-1.5">
@@ -149,16 +157,22 @@ export const LifecycleStateModal: React.FC<LifecycleStateModalProps> = ({
 
           {/* Description (facultative) */}
           <div className="space-y-1.5">
-            <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider">
-              Description <span className="text-slate-400 font-normal lowercase">(facultative)</span>
-            </label>
+            <div className="flex items-center justify-between">
+              <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider">
+                Description (facultative)
+              </label>
+              <span className={`text-[11px] font-mono ${description.length > 500 ? 'text-red-600 font-bold' : 'text-slate-400'}`}>
+                {description.length} / 500 car.
+              </span>
+            </div>
             <textarea
-              rows={3}
+              rows={2}
+              maxLength={500}
               disabled={isReadOnly}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="Précisez la signification, les livrables attendus ou les conditions d'entrée/sortie de cet état..."
-              className="w-full px-3.5 py-2 border border-slate-300 rounded-lg text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none disabled:bg-slate-50 disabled:text-slate-700"
+              placeholder="Saisissez une description..."
+              className="w-full px-3.5 py-2 border border-slate-300 rounded-lg text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-y disabled:bg-slate-50 disabled:text-slate-700"
             />
           </div>
 
@@ -187,11 +201,6 @@ export const LifecycleStateModal: React.FC<LifecycleStateModalProps> = ({
                 <div className="flex items-center gap-1.5 font-bold text-xs">
                   <UserCheck className="w-3.5 h-3.5 text-emerald-600" />
                   <span>À staffer</span>
-                  {needsStaffing && (
-                    <span className="text-[10px] bg-emerald-100 text-emerald-800 font-semibold px-1.5 py-0.2 rounded-full border border-emerald-200">
-                      Actif
-                    </span>
-                  )}
                 </div>
                 <p className="text-[11px] text-slate-500 mt-0.5 leading-relaxed">
                   Cochez cette case si les projets ayant cet état nécessitent l'affectation ou le suivi des compétences clés et ressources (Resource Managers).
@@ -218,11 +227,6 @@ export const LifecycleStateModal: React.FC<LifecycleStateModalProps> = ({
                 <div className="flex items-center gap-1.5 font-bold text-xs">
                   <SlidersHorizontal className="w-3.5 h-3.5 text-indigo-600" />
                   <span>À prioriser</span>
-                  {needsPrioritization && (
-                    <span className="text-[10px] bg-indigo-100 text-indigo-800 font-semibold px-1.5 py-0.2 rounded-full border border-indigo-200">
-                      Actif
-                    </span>
-                  )}
                 </div>
                 <p className="text-[11px] text-slate-500 mt-0.5 leading-relaxed">
                   Cochez cette case si les projets à cet état doivent être évalués sur la grille des critères de priorisation (Valeur & Coût) et soumis aux arbitrages.
@@ -230,9 +234,23 @@ export const LifecycleStateModal: React.FC<LifecycleStateModalProps> = ({
               </div>
             </label>
           </div>
+        </div>
 
-          {/* Boutons d'action */}
-          <div className="pt-4 border-t border-slate-200 flex items-center justify-end gap-2.5">
+        {/* Boutons d'action (bandeau inférieur fixe) */}
+        <div className="shrink-0 px-6 py-4 border-t border-slate-200 bg-slate-50/80 flex items-center justify-between gap-2.5">
+          <div className="flex-1 min-w-0">
+            {!isReadOnly && missingRequiredCount > 0 && (
+              <div className="flex items-center gap-1.5 text-xs font-semibold text-red-600 animate-in fade-in">
+                <AlertCircle className="w-4 h-4 text-red-600 shrink-0" />
+                <span>
+                  {missingRequiredCount === 1
+                    ? '1 attribut obligatoire non renseigné'
+                    : `${missingRequiredCount} attributs obligatoires non renseignés`}
+                </span>
+              </div>
+            )}
+          </div>
+          <div className="flex items-center gap-2.5 shrink-0">
             {isReadOnly ? (
               <button
                 type="button"
@@ -252,17 +270,18 @@ export const LifecycleStateModal: React.FC<LifecycleStateModalProps> = ({
                 </button>
                 <button
                   type="submit"
-                  disabled={saving}
-                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-semibold shadow-xs transition-colors cursor-pointer disabled:opacity-50 flex items-center gap-1.5"
+                  disabled={saving || missingRequiredCount > 0}
+                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-semibold shadow-xs transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
                 >
                   <CheckCircle2 className="w-4 h-4" />
-                  <span>{saving ? 'Enregistrement...' : editingState ? 'Enregistrer les modifications' : 'Créer l’état'}</span>
+                  <span>{saving ? 'Enregistrement...' : editingState ? 'Enregistrer les modifications' : "Créer l'état"}</span>
                 </button>
               </>
             )}
           </div>
-        </form>
-      </div>
+        </div>
+      </form>
     </div>
-  );
+  </div>
+);
 };

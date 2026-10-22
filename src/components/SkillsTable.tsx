@@ -22,6 +22,7 @@ import { BudgetLine } from '../types/budget';
 import { AppUser } from '../types/user';
 import { resolveUserDisplayName } from '../utils/userUtils';
 import { SkillModal } from './SkillModal';
+import { Tooltip } from './Tooltip';
 import {
   addKeySkill,
   updateKeySkill,
@@ -135,10 +136,6 @@ export const SkillsTable: React.FC<SkillsTableProps> = ({
     }
   };
 
-  const cappedCount = skills.filter((s) => s.isCapped).length;
-  const uncappedCount = skills.filter((s) => !s.isCapped).length;
-  const alertCount = skills.filter((s) => s.alertOnDemandOverrun).length;
-
   return (
     <div className="space-y-6">
       {/* En-tête avec titre, sous-titre et bouton d'action */}
@@ -163,7 +160,7 @@ export const SkillsTable: React.FC<SkillsTableProps> = ({
               className="inline-flex items-center gap-2 px-3 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 text-xs font-semibold rounded-lg transition-colors shadow-2xs cursor-pointer"
             >
               <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
-              <span>{seeding ? 'Ajout en cours...' : 'Charger l’exemple « Architecture Cloud & DevOps »'}</span>
+              <span>{seeding ? 'Chargement en cours...' : 'Charger les compétences clés par défaut (8 compétences)'}</span>
             </button>
           )}
 
@@ -231,10 +228,12 @@ export const SkillsTable: React.FC<SkillsTableProps> = ({
                 </th>
                 {/* Alerte dépassement */}
                 <th scope="col" className="py-3 px-3 w-36 text-center border-r border-slate-200">
-                  <div className="flex items-center justify-center gap-1.5" title="Alerter en cas de dépassement des demandes dans l'onglet Capacitaire">
-                    <Bell className="w-3.5 h-3.5 text-slate-500" />
-                    <span>Alerte dépassement</span>
-                  </div>
+                  <Tooltip content="Alerter en cas de dépassement des demandes dans l'onglet Capacitaire" className="w-full inline-block">
+                    <div className="flex items-center justify-center gap-1.5 cursor-help">
+                      <Bell className="w-3.5 h-3.5 text-slate-500" />
+                      <span>Alerte dépassement</span>
+                    </div>
+                  </Tooltip>
                 </th>
                 {/* Indicateur de répartition */}
                 <th scope="col" className="py-3 px-4 w-44 text-center border-r border-slate-200">
@@ -266,15 +265,27 @@ export const SkillsTable: React.FC<SkillsTableProps> = ({
                       {canManage ? (
                         <>
                           <p className="text-xs text-slate-400 max-w-sm">
-                            Cliquez sur "Ajouter une compétence clé" pour déclarer les ressources critiques susceptibles de devenir des goulets d’étranglement.
+                            Cliquez sur "Déclarer une compétence" ou préchargez le référentiel standard de compétences clés.
                           </p>
-                          <button
-                            onClick={handleOpenAdd}
-                            className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 text-indigo-600 hover:bg-indigo-100 rounded-md font-medium text-xs transition-colors cursor-pointer"
-                          >
-                            <Plus className="w-3.5 h-3.5" />
-                            <span>Déclarer une compétence maintenant</span>
-                          </button>
+                          <div className="flex items-center justify-center gap-2 mt-2">
+                            {onSeedExample && (
+                              <button
+                                onClick={onSeedExample}
+                                disabled={seeding}
+                                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 rounded-md font-semibold text-xs transition-colors cursor-pointer border border-indigo-200 shadow-2xs"
+                              >
+                                <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
+                                <span>{seeding ? 'Chargement...' : 'Charger les compétences clés par défaut (8 compétences)'}</span>
+                              </button>
+                            )}
+                            <button
+                              onClick={handleOpenAdd}
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 text-white hover:bg-indigo-700 rounded-md font-semibold text-xs transition-colors cursor-pointer shadow-xs"
+                            >
+                              <Plus className="w-3.5 h-3.5" />
+                              <span>Déclarer une compétence</span>
+                            </button>
+                          </div>
                         </>
                       ) : (
                         <p className="text-xs text-slate-400">
@@ -415,28 +426,6 @@ export const SkillsTable: React.FC<SkillsTableProps> = ({
           </table>
         </div>
 
-        {/* Pied de tableau informatif */}
-        <div className="p-3 bg-slate-50 border-t border-slate-200 text-slate-600 text-xs flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-4 flex-wrap">
-            <span>
-              Total compétences clés : <strong>{skills.length}</strong>
-            </span>
-            <span className="inline-flex items-center gap-1.5 px-2 py-0.5 bg-rose-50 text-rose-800 rounded border border-rose-200 font-medium">
-              Alertes dépassement actives : <strong>{alertCount}</strong>
-            </span>
-            <span className="inline-flex items-center gap-1.5 px-2 py-0.5 bg-indigo-50 text-indigo-800 rounded border border-indigo-200 font-medium">
-              Capées par ligne : <strong>{cappedCount}</strong>
-            </span>
-            <span className="inline-flex items-center gap-1.5 px-2 py-0.5 bg-slate-100 text-slate-700 rounded border border-slate-200 font-medium">
-              Non capées : <strong>{uncappedCount}</strong>
-            </span>
-          </div>
-          <span className="text-slate-400">
-            {canManage
-              ? "Cliquez sur l'icône crayon pour modifier la fiche ou consulter le camembert"
-              : "Cliquez sur l'icône œil pour consulter la fiche de la ressource et visualiser le camembert"}
-          </span>
-        </div>
       </div>
 
       {/* Modal d'ajout / modification ou consultation */}

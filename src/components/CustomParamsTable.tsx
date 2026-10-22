@@ -16,6 +16,8 @@ import {
   Sparkles,
   Eye,
   Lock,
+  CheckSquare,
+  List,
 } from 'lucide-react';
 import {
   CustomProjectParam,
@@ -26,8 +28,12 @@ import {
   deleteCustomParam,
   moveCustomParam,
   addCustomParam,
+  toggleCustomParamRequired,
+  toggleCustomParamShowInTable,
 } from '../services/customParamService';
 import { CustomParamModal } from './CustomParamModal';
+import { Tooltip } from './Tooltip';
+import { DEFAULT_CUSTOM_PARAMS_SEED } from '../constants/defaultLpmParams';
 
 interface CustomParamsTableProps {
   params: CustomProjectParam[];
@@ -86,37 +92,10 @@ export const CustomParamsTable: React.FC<CustomParamsTableProps> = ({
   const handleSeedDefaults = async () => {
     setSeeding(true);
     try {
-      const defaults = [
-        {
-          name: 'Référence contrat',
-          description: 'Numéro officiel ou référence du contrat associé au projet',
-          type: 'texte court' as CustomParamType,
-          order: 0,
-        },
-        {
-          name: 'Date de début souhaitée',
-          description: 'Date cible de démarrage des travaux ou du cadrage',
-          type: 'date' as CustomParamType,
-          order: 1,
-        },
-        {
-          name: 'Gain ETP estimé',
-          description: 'Équivalent temps plein économisé ou redéployé',
-          type: 'nombre avec 2 décimales' as CustomParamType,
-          order: 2,
-        },
-        {
-          name: 'Notes & Contexte stratégique',
-          description: 'Contexte métier détaillé et hypothèses de faisabilité',
-          type: 'texte long' as CustomParamType,
-          order: 3,
-        },
-      ];
-
-      for (const d of defaults) {
+      for (const d of DEFAULT_CUSTOM_PARAMS_SEED) {
         await addCustomParam(d);
       }
-      setActionSuccess('Paramètres personnalisés exemples créés avec succès.');
+      setActionSuccess('Paramètres personnalisés standards chargés avec succès.');
       setTimeout(() => setActionSuccess(null), 4000);
     } catch (err: any) {
       alert('Erreur lors de l’initialisation : ' + err?.message);
@@ -125,41 +104,57 @@ export const CustomParamsTable: React.FC<CustomParamsTableProps> = ({
     }
   };
 
-  const getTypeBadge = (type: CustomParamType) => {
-    switch (type) {
+  const getTypeBadge = (param: CustomProjectParam) => {
+    switch (param.type) {
       case 'texte court':
         return (
-          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-semibold bg-blue-50 text-blue-800 border border-blue-200">
-            <FileText className="w-3 h-3 text-blue-600" />
+          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-semibold bg-sky-50 text-sky-900 border border-sky-200">
+            <FileText className="w-3 h-3 text-sky-600" />
             <span>Texte court (50 car.)</span>
           </span>
         );
       case 'texte long':
         return (
-          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-semibold bg-indigo-50 text-indigo-800 border border-indigo-200">
-            <FileText className="w-3 h-3 text-indigo-600" />
+          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-semibold bg-sky-50 text-sky-900 border border-sky-200">
+            <FileText className="w-3 h-3 text-sky-600" />
             <span>Texte long (1000 car.)</span>
           </span>
         );
       case 'date':
         return (
-          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200">
-            <Calendar className="w-3 h-3 text-emerald-600" />
+          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-semibold bg-sky-50 text-sky-900 border border-sky-200">
+            <Calendar className="w-3 h-3 text-sky-600" />
             <span>Date</span>
           </span>
         );
       case 'nombre entier':
         return (
-          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-semibold bg-amber-50 text-amber-800 border border-amber-200">
-            <Hash className="w-3 h-3 text-amber-600" />
+          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-semibold bg-sky-50 text-sky-900 border border-sky-200">
+            <Hash className="w-3 h-3 text-sky-600" />
             <span>Nombre entier</span>
           </span>
         );
       case 'nombre avec 2 décimales':
         return (
-          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-semibold bg-purple-50 text-purple-800 border border-purple-200">
-            <Calculator className="w-3 h-3 text-purple-600" />
+          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-semibold bg-sky-50 text-sky-900 border border-sky-200">
+            <Calculator className="w-3 h-3 text-sky-600" />
             <span>Décimal (2 déc.)</span>
+          </span>
+        );
+      case 'case à cocher':
+        return (
+          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-semibold bg-sky-50 text-sky-900 border border-sky-200">
+            <CheckSquare className="w-3 h-3 text-sky-600" />
+            <span>Case à cocher (Vrai / Faux)</span>
+          </span>
+        );
+      case 'liste de valeurs':
+        return (
+          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-semibold bg-sky-50 text-sky-900 border border-sky-200">
+            <List className="w-3 h-3 text-sky-600" />
+            <span>
+              Liste ({param.allowMultiple ? 'choix multiple' : 'choix unique'})
+            </span>
           </span>
         );
     }
@@ -176,8 +171,8 @@ export const CustomParamsTable: React.FC<CustomParamsTableProps> = ({
           </h2>
           <p className="text-xs text-slate-600 mt-1 max-w-2xl">
             {isAdmin
-              ? 'Définissez les attributs spécifiques configurables qui enrichiront l’encart « Autres » de chaque projet (texte, date, nombres).'
-              : 'Consultez les paramètres personnalisés configurés pour les projets.'}
+              ? 'Définissez les paramètres personnalisés des projets. Ils apparaissent dans la section « Autres » de la fenêtre détaillée du projet.'
+              : 'Consultez les paramètres personnalisés des projets.'}
           </p>
         </div>
 
@@ -189,7 +184,7 @@ export const CustomParamsTable: React.FC<CustomParamsTableProps> = ({
               className="inline-flex items-center gap-2 px-3 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 text-xs font-semibold rounded-lg transition-colors shadow-2xs cursor-pointer"
             >
               <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
-              <span>{seeding ? 'Création...' : 'Charger des exemples de paramètres'}</span>
+              <span>{seeding ? 'Chargement...' : 'Charger les paramètres projet personnalisés par défaut'}</span>
             </button>
           )}
 
@@ -215,15 +210,6 @@ export const CustomParamsTable: React.FC<CustomParamsTableProps> = ({
         </div>
       )}
 
-      {actionSuccess && (
-        <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-800 text-xs flex items-center justify-between animate-in fade-in">
-          <span>{actionSuccess}</span>
-          <button onClick={() => setActionSuccess(null)} className="text-emerald-700 font-bold hover:underline cursor-pointer">
-            Fermer
-          </button>
-        </div>
-      )}
-
       {/* Tableau des paramètres personnalisés */}
       <div className="bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden">
         {loading ? (
@@ -242,13 +228,23 @@ export const CustomParamsTable: React.FC<CustomParamsTableProps> = ({
               Les paramètres personnalisés permettent d’ajouter des champs sur-mesure aux fiches projets.
             </p>
             {isAdmin && (
-              <button
-                onClick={handleOpenAdd}
-                className="inline-flex items-center gap-2 px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-lg shadow-xs transition-colors cursor-pointer"
-              >
-                <Plus className="w-4 h-4" />
-                <span>Créer le premier paramètre</span>
-              </button>
+              <div className="flex items-center justify-center gap-2">
+                <button
+                  onClick={handleSeedDefaults}
+                  disabled={seeding}
+                  className="inline-flex items-center gap-2 px-3.5 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 text-xs font-semibold rounded-lg shadow-2xs transition-colors cursor-pointer"
+                >
+                  <Sparkles className="w-4 h-4 text-indigo-600" />
+                  <span>{seeding ? 'Chargement...' : 'Charger les paramètres projet par défaut (6 paramètres)'}</span>
+                </button>
+                <button
+                  onClick={handleOpenAdd}
+                  className="inline-flex items-center gap-2 px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-lg shadow-xs transition-colors cursor-pointer"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>Créer le premier paramètre</span>
+                </button>
+              </div>
             )}
           </div>
         ) : (
@@ -259,6 +255,8 @@ export const CustomParamsTable: React.FC<CustomParamsTableProps> = ({
                   {isAdmin && <th className="py-3 px-4 w-16 text-center">Ordre</th>}
                   <th className="py-3 px-4 min-w-[200px]">Nom (Clé unique)</th>
                   <th className="py-3 px-4 min-w-[180px]">Type de donnée</th>
+                  <th className="py-3 px-4 w-28 text-center">Obligatoire</th>
+                  <th className="py-3 px-4 w-36 text-center">Affiché dans le tableau</th>
                   <th className="py-3 px-4 min-w-[280px]">Description</th>
                   <th className="py-3 px-4 w-28 text-right">Actions</th>
                 </tr>
@@ -296,6 +294,9 @@ export const CustomParamsTable: React.FC<CustomParamsTableProps> = ({
                     <td className="py-3 px-4">
                       <div className="font-bold text-slate-900 flex items-center gap-1.5">
                         <span>{p.name}</span>
+                        {p.isRequired && (
+                          <span className="text-red-500 font-bold text-sm leading-none" title="Paramètre obligatoire">*</span>
+                        )}
                         <span className="text-[10px] font-mono text-slate-400 font-normal">
                           ({p.name.length}/30 car.)
                         </span>
@@ -304,13 +305,77 @@ export const CustomParamsTable: React.FC<CustomParamsTableProps> = ({
 
                     {/* Colonne 3 : Type */}
                     <td className="py-3 px-4">
-                      {getTypeBadge(p.type)}
+                      {getTypeBadge(p)}
                     </td>
 
-                    {/* Colonne 4 : Description */}
+                    {/* Colonne 4 : Obligatoire (case à cocher seule) */}
+                    <td className="py-3 px-4 text-center whitespace-nowrap">
+                      <div className="flex items-center justify-center">
+                        <input
+                          type="checkbox"
+                          checked={Boolean(p.isRequired)}
+                          disabled={!isAdmin}
+                          onChange={async () => {
+                            if (!isAdmin) return;
+                            try {
+                              await toggleCustomParamRequired(p.id, !p.isRequired);
+                            } catch (err: any) {
+                              alert('Erreur : ' + err?.message);
+                            }
+                          }}
+                          className={`w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 accent-indigo-600 ${
+                            isAdmin ? 'cursor-pointer' : 'cursor-default disabled:opacity-80'
+                          }`}
+                          title={
+                            isAdmin
+                              ? p.isRequired
+                                ? 'Paramètre obligatoire (cliquer pour rendre facultatif)'
+                                : 'Paramètre facultatif (cliquer pour rendre obligatoire)'
+                              : p.isRequired
+                              ? 'Paramètre obligatoire'
+                              : 'Paramètre facultatif'
+                          }
+                        />
+                      </div>
+                    </td>
+
+                    {/* Colonne 5 : Affiché dans le tableau (case à cocher seule) */}
+                    <td className="py-3 px-4 text-center whitespace-nowrap">
+                      <div className="flex items-center justify-center">
+                        <input
+                          type="checkbox"
+                          checked={Boolean(p.showInTable)}
+                          disabled={!isAdmin}
+                          onChange={async () => {
+                            if (!isAdmin) return;
+                            try {
+                              await toggleCustomParamShowInTable(p.id, !p.showInTable);
+                            } catch (err: any) {
+                              alert('Erreur : ' + err?.message);
+                            }
+                          }}
+                          className={`w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 accent-indigo-600 ${
+                            isAdmin ? 'cursor-pointer' : 'cursor-default disabled:opacity-80'
+                          }`}
+                          title={
+                            isAdmin
+                              ? p.showInTable
+                                ? 'Affiché dans le tableau des projets (cliquer pour masquer)'
+                                : 'Masqué dans le tableau des projets (cliquer pour afficher)'
+                              : p.showInTable
+                              ? 'Affiché dans le tableau des projets'
+                              : 'Masqué dans le tableau des projets'
+                          }
+                        />
+                      </div>
+                    </td>
+
+                    {/* Colonne 6 : Description */}
                     <td className="py-3 px-4 text-slate-600 max-w-md truncate">
                       {p.description ? (
-                        <span title={p.description}>{p.description}</span>
+                        <Tooltip content={p.description}>
+                          <span className="truncate block cursor-help">{p.description}</span>
+                        </Tooltip>
                       ) : (
                         <span className="text-slate-400 italic text-[11px]">Aucune description</span>
                       )}

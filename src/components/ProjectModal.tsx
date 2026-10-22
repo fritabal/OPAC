@@ -190,6 +190,37 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
     );
   }, [criteriaValues, criteria, bonus, bonusConfig?.isBonusActive]);
 
+  // Nombre d'attributs obligatoires non renseignés
+  const missingRequiredCount = useMemo(() => {
+    let count = 0;
+    if (!name.trim()) count++;
+    if (!stateId) count++;
+    if (!projectManagerEmail.trim()) count++;
+    if (!budgetLineId) count++;
+    count += criteria.filter((c) => criteriaValues[c.id] === undefined).length;
+    for (const param of customParams) {
+      if (param.isRequired) {
+        const val = customParamValues[param.id];
+        let isFilled = false;
+        if (param.type === 'case à cocher') {
+          isFilled = val === true;
+        } else if (param.type === 'liste de valeurs') {
+          if (param.allowMultiple) {
+            isFilled = Array.isArray(val) && val.length > 0;
+          } else {
+            isFilled = val !== null && val !== undefined && String(val).trim() !== '';
+          }
+        } else if (param.type === 'nombre entier' || param.type === 'nombre avec 2 décimales') {
+          isFilled = val !== null && val !== undefined && val !== '' && !isNaN(Number(val));
+        } else {
+          isFilled = val !== null && val !== undefined && String(val).trim() !== '';
+        }
+        if (!isFilled) count++;
+      }
+    }
+    return count;
+  }, [name, stateId, projectManagerEmail, budgetLineId, criteria, criteriaValues, customParams, customParamValues]);
+
   if (!isOpen) return null;
 
   const handleOpenLongTextModal = (param: CustomProjectParam) => {
@@ -227,8 +258,8 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
       return;
     }
 
-    if (description.length > 3000) {
-      setError('La description détaillée ne peut pas dépasser 3000 caractères.');
+    if (description.length > 500) {
+      setError('La description ne peut pas dépasser 500 caractères.');
       return;
     }
 
@@ -250,15 +281,42 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
       }
     }
 
+    // Vérifier que tous les paramètres personnalisés obligatoires sont renseignés
+    for (const param of customParams) {
+      if (param.isRequired) {
+        const val = customParamValues[param.id];
+        let isFilled = false;
+
+        if (param.type === 'case à cocher') {
+          isFilled = val === true;
+        } else if (param.type === 'liste de valeurs') {
+          if (param.allowMultiple) {
+            isFilled = Array.isArray(val) && val.length > 0;
+          } else {
+            isFilled = val !== null && val !== undefined && String(val).trim() !== '';
+          }
+        } else if (param.type === 'nombre entier' || param.type === 'nombre avec 2 décimales') {
+          isFilled = val !== null && val !== undefined && val !== '' && !isNaN(Number(val));
+        } else {
+          isFilled = val !== null && val !== undefined && String(val).trim() !== '';
+        }
+
+        if (!isFilled) {
+          setError(`Le paramètre personnalisé « ${param.name} » est obligatoire. Veuillez le renseigner.`);
+          return;
+        }
+      }
+    }
+
     const selectedState = projectStates.find((s) => s.id === stateId);
     const stateNeedsStaffing = selectedState ? Boolean(selectedState.needsStaffing) : false;
 
-    // Recalcul de l'état "à staffer" :
-    // - À la création : recalculé selon l'attribut « À staffer » (needsStaffing) de l'état choisi
-    // - Lors de la modification : si l'état a changé, recalculé selon l'attribut du nouvel état
-    // - Si l'état n'a pas changé en mode édition : conserve la valeur actuelle
+    const isStatePrioritized = selectedState ? Boolean(selectedState.needsPrioritization) : false;
     const isStateChanged = projectToEdit ? projectToEdit.stateId !== stateId : true;
-    const computedIsStaffed = isStateChanged
+    // Règle : Interdire de staffer un projet qui n'est pas priorisé
+    const computedIsStaffed = !isStatePrioritized
+      ? false
+      : isStateChanged
       ? stateNeedsStaffing
       : (projectToEdit?.isStaffed !== undefined ? projectToEdit.isStaffed : stateNeedsStaffing);
 
@@ -349,9 +407,10 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
           </button>
         </div>
 
-        {/* Corps défilable avec les 4 encarts */}
-        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 space-y-6">
-          {error && (
+        {/* Formulaire avec zone défilable et bandeau d'actions fixe */}
+        <form onSubmit={handleSubmit} className="flex-1 min-h-0 flex flex-col overflow-hidden">
+          <div className="flex-1 min-h-0 overflow-y-auto p-6 space-y-6 [scrollbar-width:thin]">
+            {error && (
             <div className="p-3.5 bg-red-50 border border-red-200 rounded-xl flex items-start gap-2.5 text-red-700 text-xs">
               <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
               <span>{error}</span>
@@ -423,24 +482,24 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
                 </select>
               </div>
 
-              {/* Description détaillée sur 3000 car. max */}
+              {/* Description (facultative) sur 500 car. max */}
               <div className="md:col-span-12">
                 <div className="flex items-center justify-between mb-1">
                   <label className="text-xs font-semibold text-slate-700 uppercase tracking-wider">
-                    Description détaillée du projet
+                    Description (facultative)
                   </label>
-                  <span className={`text-[10px] font-mono ${description.length > 3000 ? 'text-red-600 font-bold' : 'text-slate-400'}`}>
-                    {description.length}/3000 car.
+                  <span className={`text-[10px] font-mono ${description.length > 500 ? 'text-red-600 font-bold' : 'text-slate-400'}`}>
+                    {description.length} / 500 car.
                   </span>
                 </div>
                 <textarea
-                  rows={3}
+                  rows={2}
                   disabled={isReadOnly}
-                  maxLength={3000}
+                  maxLength={500}
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
-                  placeholder="Objectifs stratégiques, livrables attendus, périmètre et hypothèses de réalisation..."
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs leading-relaxed focus:ring-2 focus:ring-indigo-500 disabled:bg-slate-100"
+                  placeholder="Saisissez une description..."
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm text-slate-900 placeholder-slate-400 leading-relaxed focus:ring-2 focus:ring-indigo-500 disabled:bg-slate-100 resize-y"
                 />
               </div>
             </div>
@@ -794,19 +853,25 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
                         param.type === 'texte long' ? 'sm:items-start' : 'sm:items-center'
                       }`}
                     >
-                      {/* Nom du paramètre avec pictogramme point d'interrogation dans un cercle */}
-                      <div className={`flex items-center gap-2 sm:w-1/3 shrink-0 ${param.type === 'texte long' ? 'pt-1.5' : ''}`}>
+                      {/* Nom du paramètre avec étoile rouge si obligatoire et pictogramme point d'interrogation systématique */}
+                      <div className={`flex items-center gap-1.5 sm:w-1/3 shrink-0 ${param.type === 'texte long' ? 'pt-1.5' : ''}`}>
                         <span className="text-xs font-bold text-slate-900">{param.name}</span>
-                        {param.description && (
-                          <Tooltip
-                            content={param.description}
-                            placement="right"
-                            maxWidthClass="w-64"
-                            className="inline-flex items-center cursor-help"
+                        {param.isRequired && (
+                          <span
+                            className="text-red-500 font-bold text-sm leading-none ml-0.5"
+                            title="Ce paramètre personnalisé est obligatoire"
                           >
-                            <HelpCircle className="w-4 h-4 text-indigo-500 hover:text-indigo-600 transition-colors" />
-                          </Tooltip>
+                            *
+                          </span>
                         )}
+                        <Tooltip
+                          content={param.description && param.description.trim() ? param.description.trim() : param.name}
+                          placement="right"
+                          maxWidthClass="w-64"
+                          className="inline-flex items-center cursor-help ml-1"
+                        >
+                          <HelpCircle className="w-4 h-4 text-indigo-500 hover:text-indigo-600 transition-colors shrink-0" />
+                        </Tooltip>
                       </div>
 
                       {/* Champ de saisie adapté au type */}
@@ -908,6 +973,130 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
                             className="w-full sm:w-48 px-3 py-1.5 border border-slate-300 rounded-lg text-xs font-mono focus:ring-2 focus:ring-indigo-500 disabled:bg-slate-100"
                           />
                         )}
+
+                        {param.type === 'case à cocher' && (
+                          <label className={`inline-flex items-center py-1 ${isReadOnly ? 'cursor-default' : 'cursor-pointer select-none'}`}>
+                            <input
+                              type="checkbox"
+                              disabled={isReadOnly}
+                              checked={Boolean(currentValue)}
+                              onChange={(e) =>
+                                setCustomParamValues((prev) => ({
+                                  ...prev,
+                                  [param.id]: e.target.checked,
+                                }))
+                              }
+                              className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 accent-indigo-600 disabled:opacity-60 cursor-pointer disabled:cursor-not-allowed"
+                            />
+                          </label>
+                        )}
+
+                        {param.type === 'liste de valeurs' && (
+                          param.allowMultiple ? (
+                            /* Choix multiple */
+                            <div className="space-y-1.5">
+                              {(() => {
+                                const selectedValues = Array.isArray(currentValue)
+                                  ? (currentValue as string[])
+                                  : currentValue
+                                  ? [String(currentValue)]
+                                  : [];
+                                const optionsList = param.options || [];
+
+                                if (isReadOnly) {
+                                  return selectedValues.length > 0 ? (
+                                    <div className="flex flex-wrap gap-1.5">
+                                      {selectedValues.map((val) => (
+                                        <span
+                                          key={val}
+                                          className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-violet-50 text-violet-800 border border-violet-200"
+                                        >
+                                          {val}
+                                        </span>
+                                      ))}
+                                    </div>
+                                  ) : (
+                                    <span className="text-xs text-slate-400 italic">Aucune valeur sélectionnée</span>
+                                  );
+                                }
+
+                                if (optionsList.length === 0) {
+                                  return (
+                                    <span className="text-xs text-slate-400 italic">
+                                      Aucune valeur prédéfinie configurée dans les paramètres.
+                                    </span>
+                                  );
+                                }
+
+                                return (
+                                  <div className="flex flex-wrap items-center gap-1.5">
+                                    {optionsList.map((opt) => {
+                                      const isSelected = selectedValues.includes(opt);
+                                      return (
+                                        <button
+                                          key={opt}
+                                          type="button"
+                                          onClick={() => {
+                                            const next = isSelected
+                                              ? selectedValues.filter((v) => v !== opt)
+                                              : [...selectedValues, opt];
+                                            setCustomParamValues((prev) => ({
+                                              ...prev,
+                                              [param.id]: next,
+                                            }));
+                                          }}
+                                          className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold border transition-all cursor-pointer ${
+                                            isSelected
+                                              ? 'bg-violet-100 text-violet-900 border-violet-300 shadow-2xs'
+                                              : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300 hover:bg-slate-50'
+                                          }`}
+                                        >
+                                          <div
+                                            className={`w-3.5 h-3.5 rounded border flex items-center justify-center text-[10px] ${
+                                              isSelected ? 'bg-violet-600 border-violet-600 text-white' : 'border-slate-300 bg-white'
+                                            }`}
+                                          >
+                                            {isSelected && <Check className="w-2.5 h-2.5 stroke-[3]" />}
+                                          </div>
+                                          <span>{opt}</span>
+                                        </button>
+                                      );
+                                    })}
+                                  </div>
+                                );
+                              })()}
+                            </div>
+                          ) : (
+                            /* Choix unique */
+                            isReadOnly ? (
+                              currentValue ? (
+                                <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-semibold bg-violet-50 text-violet-800 border border-violet-200">
+                                  {String(currentValue)}
+                                </span>
+                              ) : (
+                                <span className="text-xs text-slate-400 italic">Non renseigné</span>
+                              )
+                            ) : (
+                              <select
+                                value={currentValue !== null && currentValue !== undefined ? String(currentValue) : ''}
+                                onChange={(e) =>
+                                  setCustomParamValues((prev) => ({
+                                    ...prev,
+                                    [param.id]: e.target.value === '' ? null : e.target.value,
+                                  }))
+                                }
+                                className="w-full sm:w-64 px-3 py-1.5 border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-indigo-500 bg-white text-slate-800 font-medium cursor-pointer"
+                              >
+                                <option value="">-- Sélectionner une valeur --</option>
+                                {(param.options || []).map((opt) => (
+                                  <option key={opt} value={opt}>
+                                    {opt}
+                                  </option>
+                                ))}
+                              </select>
+                            )
+                          )
+                        )}
                       </div>
                     </div>
                   );
@@ -915,9 +1104,23 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
               </div>
             )}
           </div>
+        </div>
 
-          {/* Pied de page modal */}
-          <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-200">
+        {/* Pied de page modal fixe (toujours visible) */}
+        <div className="shrink-0 px-6 py-4 border-t border-slate-200 bg-slate-50/80 flex items-center justify-between gap-3">
+          <div className="flex-1 min-w-0">
+            {!isReadOnly && missingRequiredCount > 0 && (
+              <div className="flex items-center gap-1.5 text-xs font-semibold text-red-600 animate-in fade-in">
+                <AlertCircle className="w-4 h-4 text-red-600 shrink-0" />
+                <span>
+                  {missingRequiredCount === 1
+                    ? '1 attribut obligatoire non renseigné'
+                    : `${missingRequiredCount} attributs obligatoires non renseignés`}
+                </span>
+              </div>
+            )}
+          </div>
+          <div className="flex items-center gap-3 shrink-0">
             <button
               type="button"
               onClick={onClose}
@@ -928,15 +1131,16 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
             {!isReadOnly && (
               <button
                 type="submit"
-                disabled={saving}
-                className="px-5 py-2 text-xs font-semibold bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors shadow-xs cursor-pointer flex items-center gap-1.5"
+                disabled={saving || missingRequiredCount > 0}
+                className="px-5 py-2 text-xs font-semibold bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors shadow-xs cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
               >
                 <Check className="w-4 h-4" />
                 <span>{saving ? 'Enregistrement...' : projectToEdit ? 'Enregistrer les modifications' : 'Créer le projet'}</span>
               </button>
             )}
           </div>
-        </form>
+        </div>
+      </form>
 
         {/* ======================================================== */}
         {/* MINI-FENÊTRE DE SAISIE POUR TEXTE LONG (1000 car. max) */}

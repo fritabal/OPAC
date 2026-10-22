@@ -10,7 +10,6 @@ import {
   SlidersHorizontal,
   Sparkles,
   AlertCircle,
-  CheckCircle2,
   Lock,
   Layers,
   HelpCircle,
@@ -135,9 +134,6 @@ export const LifecycleStatesTable: React.FC<LifecycleStatesTableProps> = ({
     }
   };
 
-  const staffingCount = states.filter((s) => s.needsStaffing).length;
-  const priorizationCount = states.filter((s) => s.needsPrioritization).length;
-
   return (
     <div className="space-y-6">
       {/* En-tête de section avec titre, explication et boutons d'action directement sur le fond gris */}
@@ -148,7 +144,7 @@ export const LifecycleStatesTable: React.FC<LifecycleStatesTableProps> = ({
             <span>Cycle de vie des projets</span>
           </h2>
           <p className="text-xs text-slate-600 mt-1 max-w-2xl">
-            Définissez la séquence des états par lesquels transitent les projets. Chaque état possède un nom unique, une description facultative, et deux attributs commutables : « À prioriser » (soumis aux critères d'arbitrage) et « À staffer » (mobilisation des compétences clés).
+            Définissez la séquence des états par lesquels transitent les projets. Ordonnez-les selon la séquence nominale, même s'il est possible de passer de n'importe quel état à n'importe quel autre.
           </p>
         </div>
 
@@ -160,7 +156,7 @@ export const LifecycleStatesTable: React.FC<LifecycleStatesTableProps> = ({
               className="inline-flex items-center gap-2 px-3 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 text-xs font-semibold rounded-lg transition-colors shadow-2xs cursor-pointer"
             >
               <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
-              <span>{seeding ? 'Chargement...' : 'Charger cycle de vie standard (6 états)'}</span>
+              <span>{seeding ? 'Chargement...' : 'Charger cycle de vie standard (7 états)'}</span>
             </button>
           )}
 
@@ -186,21 +182,7 @@ export const LifecycleStatesTable: React.FC<LifecycleStatesTableProps> = ({
         </div>
       )}
 
-      {/* Alertes de succès / erreur */}
-      {actionSuccess && (
-        <div className="p-3.5 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-800 text-xs flex items-center justify-between animate-in fade-in">
-          <div className="flex items-center gap-2">
-            <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-            <span>{actionSuccess}</span>
-          </div>
-          <button
-            onClick={() => setActionSuccess(null)}
-            className="text-emerald-700 hover:text-emerald-900 cursor-pointer font-bold text-sm px-1"
-          >
-            ×
-          </button>
-        </div>
-      )}
+
 
       {actionError && (
         <div className="p-3.5 bg-red-50 border border-red-200 rounded-xl text-red-700 text-xs flex items-center justify-between animate-in fade-in">
@@ -268,7 +250,7 @@ export const LifecycleStatesTable: React.FC<LifecycleStatesTableProps> = ({
                             className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded-lg text-xs font-semibold cursor-pointer shadow-2xs transition-colors"
                           >
                             <Sparkles className="w-4 h-4 text-indigo-600" />
-                            <span>{seeding ? 'Chargement...' : 'Charger cycle de vie standard (6 états)'}</span>
+                            <span>{seeding ? 'Chargement...' : 'Charger cycle de vie standard (7 états)'}</span>
                           </button>
                           <button
                             onClick={handleOpenAdd}
@@ -412,26 +394,6 @@ export const LifecycleStatesTable: React.FC<LifecycleStatesTableProps> = ({
           </table>
         </div>
 
-        {/* Pied de tableau avec statistiques */}
-        <div className="p-3 bg-slate-50 border-t border-slate-200 text-slate-600 text-xs flex justify-between items-center flex-wrap gap-2">
-          <div className="flex items-center gap-4 flex-wrap">
-            <span>
-              Total des états : <strong>{states.length}</strong>
-            </span>
-            <span className="text-emerald-700">
-              États à staffer : <strong>{staffingCount}</strong>
-            </span>
-            <span className="text-indigo-700">
-              États à prioriser : <strong>{priorizationCount}</strong>
-            </span>
-          </div>
-
-          <span className="text-slate-400 text-[11px]">
-            {isAdmin
-              ? 'Utilisez les flèches pour modifier l’ordre séquentiel du workflow. Cochez directement les attributs dans la grille.'
-              : 'Vue en lecture seule. Seul un administrateur peut modifier le cycle de vie des projets.'}
-          </span>
-        </div>
       </div>
 
       {/* Modal d'ajout / modification ou consultation */}
