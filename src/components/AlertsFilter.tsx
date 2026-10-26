@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ChevronDown, AlertTriangle } from 'lucide-react';
 
 interface AlertsFilterProps {
@@ -28,6 +29,7 @@ export const AlertsFilter: React.FC<AlertsFilterProps> = ({
   outdatedStaffingDemandsCount = 0,
   className = '',
 }) => {
+  const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -68,21 +70,21 @@ export const AlertsFilter: React.FC<AlertsFilterProps> = ({
 
     if (activeCount > 1) {
       if (filterCapacityOverruns && filterBudgetOverruns && !filterOutdatedStaffingDemands) {
-        return 'Dépassements cap. & budg.';
+        return t('filters.alerts_combined');
       }
-      return `Alertes (${activeCount})`;
+      return t('filters.alerts_count', { count: activeCount });
     }
     if (filterCapacityOverruns) {
-      return 'Dépassements capacitaires';
+      return t('filters.capacity_overruns_short');
     }
     if (filterBudgetOverruns) {
-      return 'Dépassements budgétaires';
+      return t('filters.budget_overruns_short');
     }
     if (filterOutdatedStaffingDemands) {
-      return 'Staffing non à jour';
+      return t('filters.outdated_staffing');
     }
-    return 'Les alertes';
-  }, [filterCapacityOverruns, filterBudgetOverruns, filterOutdatedStaffingDemands]);
+    return t('filters.alerts_title');
+  }, [filterCapacityOverruns, filterBudgetOverruns, filterOutdatedStaffingDemands, t]);
 
   const handleSelectAll = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -102,7 +104,7 @@ export const AlertsFilter: React.FC<AlertsFilterProps> = ({
             ? 'border-rose-400 bg-rose-50/40 text-rose-900 font-medium'
             : 'border-slate-300 hover:border-slate-400 text-slate-700'
         }`}
-        title={`Filtre : ${buttonLabel}`}
+        title={t('filters.filter_prefix', { label: buttonLabel })}
       >
         <span className="truncate flex items-center gap-1.5 font-normal">
           {isFilterActive && <AlertTriangle className="w-3.5 h-3.5 text-rose-600 shrink-0" />}
@@ -118,7 +120,7 @@ export const AlertsFilter: React.FC<AlertsFilterProps> = ({
       {isOpen && (
         <div className="absolute left-0 top-full mt-1.5 w-full min-w-[280px] bg-white border border-slate-200 rounded-xl shadow-xl z-50 p-2 text-slate-800 animate-in fade-in zoom-in-95 duration-100">
           <div className="px-2 py-1 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-            Les alertes
+            {t('filters.alerts_title')}
           </div>
 
           {/* Option 1 : Tous les projets (sans case à cocher) */}
@@ -131,9 +133,9 @@ export const AlertsFilter: React.FC<AlertsFilterProps> = ({
                 : 'text-slate-700 hover:bg-slate-50'
             }`}
           >
-            <span>Tous les projets</span>
+            <span>{t('filters.all_projects')}</span>
             {!isFilterActive && (
-              <span className="text-[11px] text-slate-500 font-normal">Actif</span>
+              <span className="text-[11px] text-slate-500 font-normal">{t('filters.active')}</span>
             )}
           </button>
 
@@ -154,7 +156,7 @@ export const AlertsFilter: React.FC<AlertsFilterProps> = ({
               onChange={(e) => onToggleCapacityOverruns(e.target.checked)}
               className="w-4 h-4 rounded border-slate-400 text-slate-600 focus:ring-slate-400 focus:ring-offset-0 cursor-pointer accent-slate-600 shrink-0"
             />
-            <span className="truncate flex-1">Les dépassements capacitaires</span>
+            <span className="truncate flex-1">{t('filters.capacity_overruns')}</span>
             {capacityOverrunCount > 0 && (
               <span className="text-[10px] font-semibold text-rose-700 bg-rose-100 border border-rose-200 px-1.5 py-0.5 rounded-full shrink-0">
                 {capacityOverrunCount}
@@ -176,7 +178,7 @@ export const AlertsFilter: React.FC<AlertsFilterProps> = ({
               onChange={(e) => onToggleBudgetOverruns(e.target.checked)}
               className="w-4 h-4 rounded border-slate-400 text-slate-600 focus:ring-slate-400 focus:ring-offset-0 cursor-pointer accent-slate-600 shrink-0"
             />
-            <span className="truncate flex-1">Les dépassements budgétaires</span>
+            <span className="truncate flex-1">{t('filters.budget_overruns')}</span>
             {budgetOverrunCount > 0 && (
               <span className="text-[10px] font-semibold text-amber-700 bg-amber-100 border border-amber-200 px-1.5 py-0.5 rounded-full shrink-0">
                 {budgetOverrunCount}
@@ -198,7 +200,7 @@ export const AlertsFilter: React.FC<AlertsFilterProps> = ({
               onChange={(e) => onToggleOutdatedStaffingDemands?.(e.target.checked)}
               className="w-4 h-4 rounded border-slate-400 text-slate-600 focus:ring-slate-400 focus:ring-offset-0 cursor-pointer accent-slate-600 shrink-0"
             />
-            <span className="truncate flex-1">Staffing non à jour</span>
+            <span className="truncate flex-1">{t('filters.outdated_staffing')}</span>
             {outdatedStaffingDemandsCount > 0 && (
               <span className="text-[10px] font-semibold text-orange-700 bg-orange-100 border border-orange-200 px-1.5 py-0.5 rounded-full shrink-0">
                 {outdatedStaffingDemandsCount}

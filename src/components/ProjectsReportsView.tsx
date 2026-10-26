@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   BarChart3,
   Clock,
@@ -28,6 +29,7 @@ import { BonusConfig } from '../types/bonus';
 import { BUDGET_PALETTE_32 } from '../constants/colors';
 import { getWorkingDaysInMonth } from '../utils/workingDays';
 import { calculateProjectRoi, formatRoi } from '../utils/roiCalculator';
+import { getNextPeriodInfo, normalizePeriodKey } from '../utils/dateUtils';
 import { Tooltip } from './Tooltip';
 import { ProjectModal } from './ProjectModal';
 import {
@@ -162,52 +164,18 @@ export const ProjectsReportsView: React.FC<ProjectsReportsViewProps> = ({
   bonusConfig,
   onNavigateToCapacityProject,
 }) => {
-  // Mois cible de la prochaine période (mois M+1)
+  const { t, i18n } = useTranslation();
+  // Mois cible de la prochaine période (mois M+1) internationalisé
   const { nextMonthKey, nextMonthLabel, nextMonthShort, nextMonthYear, nextMonthMonth } = useMemo(() => {
-    const now = new Date();
-    const nextDate = new Date(now.getFullYear(), now.getMonth() + 1, 1);
-    const year = nextDate.getFullYear();
-    const month = nextDate.getMonth() + 1;
-    const key = `${year}-${String(month).padStart(2, '0')}`;
-    const monthNames = [
-      'janvier',
-      'février',
-      'mars',
-      'avril',
-      'mai',
-      'juin',
-      'juillet',
-      'août',
-      'septembre',
-      'octobre',
-      'novembre',
-      'décembre',
-    ];
-    const monthNamesShort = [
-      'Janv.',
-      'Févr.',
-      'Mars',
-      'Avr.',
-      'Mai',
-      'Juin',
-      'Juil.',
-      'Août',
-      'Sept.',
-      'Oct.',
-      'Nov.',
-      'Déc.',
-    ];
-    const monthNameCapitalized =
-      monthNames[nextDate.getMonth()].charAt(0).toUpperCase() +
-      monthNames[nextDate.getMonth()].slice(1);
+    const info = getNextPeriodInfo(new Date(), i18n.language);
     return {
-      nextMonthKey: key, // ex: "2026-11"
-      nextMonthLabel: `${monthNameCapitalized} ${year}`, // ex: "Novembre 2026"
-      nextMonthShort: `${monthNamesShort[nextDate.getMonth()]} ${year}`, // ex: "Nov. 2026"
-      nextMonthYear: year,
-      nextMonthMonth: month,
+      nextMonthKey: info.key, // ex: "2026-11"
+      nextMonthLabel: info.longLabel, // ex: "Novembre 2026" / "November 2026"
+      nextMonthShort: info.shortLabel, // ex: "Nov. 2026" / "Nov 2026"
+      nextMonthYear: info.year,
+      nextMonthMonth: info.month,
     };
-  }, []);
+  }, [i18n.language]);
 
   // Jours ouvrés du mois cible
   const workingDaysNextMonth = useMemo(() => {
@@ -249,7 +217,7 @@ export const ProjectsReportsView: React.FC<ProjectsReportsViewProps> = ({
   // Projets dont les demandes de compétence n'ont pas été mises à jour pour la prochaine période
   const notUpdatedStaffedProjects = useMemo(() => {
     return staffedProjects.filter((p) => {
-      const m = p.capacityUpdatedMonth;
+      const m = normalizePeriodKey(p.capacityUpdatedMonth);
       return !m || m < nextMonthKey;
     });
   }, [staffedProjects, nextMonthKey]);
@@ -471,7 +439,7 @@ export const ProjectsReportsView: React.FC<ProjectsReportsViewProps> = ({
       const realPct = totalReal > 0 ? (unassignedRealKe / totalReal) * 100 : 0;
       items.push({
         id: 'unassigned',
-        name: 'Non assigné',
+        name: t('reports.budget_distribution.unassigned'),
         color: '#94a3b8',
         wishedKe: 0,
         wishedPct: 0,
@@ -525,7 +493,7 @@ export const ProjectsReportsView: React.FC<ProjectsReportsViewProps> = ({
       totalReal,
       relevantProjectsCount: relevantProjects.length,
     };
-  }, [projects, budgetLines, budgetScopeStaffedOnly, projectStates]);
+  }, [projects, budgetLines, budgetScopeStaffedOnly, projectStates, t]);
 
   interface PlacedLabelItem extends BudgetDistributionItem {
     xAnchor: number;
@@ -577,11 +545,12 @@ export const ProjectsReportsView: React.FC<ProjectsReportsViewProps> = ({
       const isRight = Math.cos(rad) >= 0;
 
       const deltaPct = item.realPct - item.wishedPct;
-      let soitText = '(soit 0.0 %)';
+      const soitWord = t('reports.budget_distribution.soit');
+      let soitText = `(${soitWord} 0.0 %)`;
       if (deltaPct > 0) {
-        soitText = `(soit + ${deltaPct.toFixed(1)} %)`;
+        soitText = `(${soitWord} + ${deltaPct.toFixed(1)} %)`;
       } else if (deltaPct < 0) {
-        soitText = `(soit - ${Math.abs(deltaPct).toFixed(1)} %)`;
+        soitText = `(${soitWord} - ${Math.abs(deltaPct).toFixed(1)} %)`;
       }
 
       return {
@@ -652,7 +621,7 @@ export const ProjectsReportsView: React.FC<ProjectsReportsViewProps> = ({
     layoutSide(leftItems);
 
     return [...rightItems, ...leftItems];
-  }, [budgetDistributionData]);
+  }, [budgetDistributionData, t]);
 
   // Résolution du nom complet du chef de projet
   const getUserName = (email: string) => {
@@ -772,7 +741,7 @@ export const ProjectsReportsView: React.FC<ProjectsReportsViewProps> = ({
     const subject = `Demande de mise à jour des compétences clé requises pour ${nextMonthLabel}`;
     const body = `Bonjour ${pm.name},
 
-Sauf erreur de notre part, les demandes de compétences clés nécessaires pour la prochaine période (${nextMonthLabel}) n'ont pas encore été renseignées pour le(s) projet(s) staffé(s) suivant(s) dont vous avez la responsabilité :
+Sauf erreur de notre part, les demandes de compétences clés nécessaires pour la prochaine période (${nextMonthLabel}) n'ont pas encore été renseignées pour ${pm.notUpdatedProjects.length > 1 ? 'les projets staffés suivants' : 'le projet staffé suivant'} dont vous avez la responsabilité :
 
 ${projectListStr}
 
@@ -798,7 +767,7 @@ Le PMO / Value Management Office`;
         const projs = pm.notUpdatedProjects
           .map((p) => `  - #${p.projectNumber} ${p.name}`)
           .join('\n');
-        return `• ${pm.name} (${pm.notUpdatedProjects.length} projet(s) en attente) :\n${projs}`;
+        return `• ${pm.name} (${pm.notUpdatedProjects.length} ${pm.notUpdatedProjects.length > 1 ? 'projets en attente' : 'projet en attente'}) :\n${projs}`;
       })
       .join('\n\n');
 
@@ -991,9 +960,9 @@ Le PMO / Value Management Office`;
 
       const bl = budgetLines.find((b) => b.id === p.budgetLineId);
       const color = bl?.color || '#64748b';
-      const budgetLineName = bl?.name || 'Sans ligne budgétaire';
+      const budgetLineName = bl?.name || t('reports.matrix.no_budget_line');
       const stateObj = projectStates.find((s) => s.id === p.stateId);
-      const stateName = stateObj?.name || p.stateName || 'Non défini';
+      const stateName = stateObj?.name || p.stateName || t('reports.matrix.not_defined');
 
       const matchesSearch =
         matrixSearchQuery.trim() === '' ||
@@ -1033,7 +1002,6 @@ Le PMO / Value Management Office`;
       }
       if (a.priority === null) return -1;
       if (b.priority === null) return 1;
-
       // Du plus grand numéro de priorité (le moins prioritaire, ex: 25)
       // au plus petit numéro (le plus prioritaire, ex: 1)
       return b.priority - a.priority;
@@ -1058,6 +1026,7 @@ Le PMO / Value Management Office`;
     matrixSelectedBudgetLineId,
     criteria,
     bonusConfig,
+    t,
   ]);
 
   // Graduations pour l'axe X (Coût)
@@ -1091,17 +1060,17 @@ Le PMO / Value Management Office`;
         <div>
           <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2.5">
             <BarChart3 className="w-5 h-5 text-slate-700 shrink-0" />
-            <span>Rapports & Indicateurs de gouvernance</span>
+            <span>{t('reports.governance_title')}</span>
           </h2>
           <p className="text-xs text-slate-600 mt-1 max-w-3xl leading-relaxed">
-            Tableau de bord de suivi du portefeuille et relance des chefs de projet.
+            {t('reports.governance_subtitle')}
           </p>
         </div>
 
         <div className="flex items-center gap-2">
           <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-white border border-slate-200 text-slate-700 shadow-2xs">
             <Clock className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
-            <span>Prochaine période : <strong className="text-slate-900">{nextMonthLabel}</strong></span>
+            <span>{t('reports.next_period')} <strong className="text-slate-900">{nextMonthLabel}</strong></span>
           </span>
         </div>
       </div>
@@ -1128,18 +1097,21 @@ Le PMO / Value Management Office`;
               <div className="flex flex-col justify-center leading-tight">
                 <div className="flex items-center gap-1.5 flex-wrap">
                   <span className="text-base sm:text-lg font-bold text-[#e7000b]">
-                    projet{notUpdatedCount > 1 ? 's' : ''} non à jour
+                    {notUpdatedCount > 1
+                      ? t('reports.outdated_projects.title_other')
+                      : t('reports.outdated_projects.title_one')}
                   </span>
                   <span className="text-xs sm:text-sm font-semibold text-slate-500">
-                    de {notUpdatedCount > 1 ? 'leurs' : 'ses'} demandes pour
+                    {notUpdatedCount > 1
+                      ? t('reports.outdated_projects.desc_for_other')
+                      : t('reports.outdated_projects.desc_for_one')}
                   </span>
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-semibold bg-emerald-100 text-emerald-800 border border-emerald-300 shadow-2xs shrink-0">
-                    <Check className="w-3 h-3 text-emerald-600 shrink-0" />
+                  <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-semibold bg-emerald-100 text-emerald-800 border border-emerald-300 shadow-2xs shrink-0">
                     <span>{nextMonthShort}</span>
                   </span>
                 </div>
                 <span className="text-xs sm:text-sm font-semibold text-slate-500 mt-1">
-                  / {totalStaffedCount} projet{totalStaffedCount > 1 ? 's' : ''} au total
+                  / {totalStaffedCount} {totalStaffedCount > 1 ? t('common.words.project_other') : t('common.words.project_one')} {t('common.total')}
                 </span>
               </div>
             </div>
@@ -1153,10 +1125,10 @@ Le PMO / Value Management Office`;
                   <CheckCircle2 className="w-5 h-5" />
                 </div>
                 <h5 className="text-xs font-bold text-slate-900">
-                  Tous les projets staffés sont à jour pour {nextMonthShort} !
+                  {t('reports.outdated_projects.empty', { period: nextMonthShort })}
                 </h5>
                 <p className="text-[11px] text-slate-500 max-w-xs mx-auto">
-                  Aucun chef de projet incriminé pour cette période.
+                  {t('reports.outdated_projects.no_pms')}
                 </p>
               </div>
             ) : (
@@ -1170,7 +1142,7 @@ Le PMO / Value Management Office`;
                         className={`py-2.5 px-3 text-left align-middle font-bold text-slate-700 border-r border-slate-200 ${TABLE_HEADER_DOUBLE_BOTTOM_CLASS} w-[130px]`}
                         title="Chef de Projet"
                       >
-                        CdP
+                        {t('reports.table.cdp')}
                       </th>
 
                       {/* Colonne 2 : # */}
@@ -1179,7 +1151,7 @@ Le PMO / Value Management Office`;
                         className={`py-2.5 px-2 text-center align-middle font-bold text-slate-700 border-r border-slate-200 ${TABLE_HEADER_DOUBLE_BOTTOM_CLASS} w-[45px]`}
                         title="Nombre de projets non mis à jour"
                       >
-                        #
+                        {t('reports.table.nb')}
                       </th>
 
                       {/* Colonne 3 : Projets */}
@@ -1188,7 +1160,7 @@ Le PMO / Value Management Office`;
                         className={`py-2.5 px-3 text-left align-middle font-bold text-slate-700 ${TABLE_HEADER_DOUBLE_BOTTOM_CLASS}`}
                         title="Projets non mis à jour"
                       >
-                        Projets
+                        {t('reports.table.projects')}
                       </th>
 
                       {/* Colonne 4 : Enveloppe action avec bulle d'information (sans boîte, comme les autres pictogrammes d'action) */}
@@ -1199,12 +1171,12 @@ Le PMO / Value Management Office`;
                         <div className="flex items-center justify-center">
                           <Tooltip
                             placement="top"
-                            content="Envoyer un email de demande de mise à jour à tous les chefs de projet concernés"
+                            content={t('reports.outdated_projects.tooltip_all')}
                           >
                             <button
                               type="button"
                               onClick={handleSendEmailToAllPms}
-                              aria-label="Envoyer un email de demande de mise à jour à tous les chefs de projet concerné"
+                              aria-label={t('reports.outdated_projects.tooltip_all')}
                               className="p-1.5 rounded-md text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 transition-colors cursor-pointer"
                             >
                               <Mail className="w-4 h-4" />
@@ -1306,19 +1278,18 @@ Le PMO / Value Management Office`;
               <div className="flex flex-col justify-center leading-tight">
                 {/* Ligne 1 : compétences clés (gris et plus petit) */}
                 <span className="text-xs sm:text-sm font-semibold text-slate-500">
-                  compétence{bottleneckSkills.length > 1 ? 's' : ''} clé{bottleneckSkills.length > 1 ? 's' : ''}
+                  {bottleneckSkills.length > 1 ? t('common.words.skill_other') : t('common.words.skill_one')}
                 </span>
 
                 {/* Ligne 2 : goulets d'étranglement (gros et rouge) + "pour " en gris clair + badge de période */}
                 <div className="flex items-center gap-1.5 flex-wrap mt-0.5">
                   <span className="text-base sm:text-lg font-bold text-[#e7000b]">
-                    goulet{bottleneckSkills.length > 1 ? 's' : ''} d'étranglement
+                    {bottleneckSkills.length > 1 ? t('reports.bottlenecks.title_other') : t('reports.bottlenecks.title_one')}
                   </span>
                   <span className="text-xs sm:text-sm font-semibold text-slate-500">
-                    pour
+                    {t('reports.bottlenecks.for_period')}
                   </span>
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-semibold bg-emerald-100 text-emerald-800 border border-emerald-300 shadow-2xs shrink-0">
-                    <Check className="w-3 h-3 text-emerald-600 shrink-0" />
+                  <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-semibold bg-emerald-100 text-emerald-800 border border-emerald-300 shadow-2xs shrink-0">
                     <span>{nextMonthShort}</span>
                   </span>
                 </div>
@@ -1334,10 +1305,10 @@ Le PMO / Value Management Office`;
                   <CheckCircle2 className="w-5 h-5" />
                 </div>
                 <h5 className="text-xs font-bold text-slate-900">
-                  Aucun goulet d'étranglement pour {nextMonthShort} !
+                  {t('reports.bottlenecks.empty', { period: nextMonthShort })}
                 </h5>
                 <p className="text-[11px] text-slate-500 max-w-xs mx-auto">
-                  Toutes les compétences clés disposent d'une capacité suffisante pour couvrir les demandes des projets staffés.
+                  {t('reports.bottlenecks.empty', { period: nextMonthShort })}
                 </p>
               </div>
             ) : (
@@ -1351,7 +1322,7 @@ Le PMO / Value Management Office`;
                         className={`py-2.5 px-3 text-left align-middle font-bold text-slate-700 border-r border-slate-200 ${TABLE_HEADER_DOUBLE_BOTTOM_CLASS}`}
                         title="Compétence clé en déficit de capacité par rapport aux demandes"
                       >
-                        Compétence clé
+                        {t('reports.table.skill')}
                       </th>
 
                       {/* Colonne 2 : Manque */}
@@ -1360,7 +1331,7 @@ Le PMO / Value Management Office`;
                         className={`py-2.5 px-2 text-center align-middle font-bold text-slate-700 border-r border-slate-200 ${TABLE_HEADER_DOUBLE_BOTTOM_CLASS} w-[80px]`}
                         title="Nombre de jours manquants par rapport à la demande totale (Demande - Capacité)"
                       >
-                        Manque
+                        {t('reports.table.missing')}
                       </th>
 
                       {/* Colonne 3 : Projets bloqués */}
@@ -1369,7 +1340,7 @@ Le PMO / Value Management Office`;
                         className={`py-2.5 px-2 text-center align-middle font-bold text-slate-700 border-r border-slate-200 ${TABLE_HEADER_DOUBLE_BOTTOM_CLASS} w-[105px]`}
                         title="Nombre de projets staffés dont la demande ne peut pas être totalement honorée"
                       >
-                        Projets bloqués
+                        {t('reports.table.blocked')}
                       </th>
 
                       {/* Colonne 4 : Capacité */}
@@ -1378,7 +1349,7 @@ Le PMO / Value Management Office`;
                         className={`py-2.5 px-2 text-center align-middle font-bold text-slate-700 ${TABLE_HEADER_DOUBLE_BOTTOM_CLASS} w-[80px]`}
                         title="Capacité disponible totale en nombre de jours pour ce mois"
                       >
-                        Capacité
+                        {t('reports.table.capacity')}
                       </th>
                     </tr>
                   </thead>
@@ -1400,7 +1371,7 @@ Le PMO / Value Management Office`;
 
                         {/* Colonne 2 : Manque (en rouge comme sur le croquis) */}
                         <td className="py-2.5 px-2 text-center align-middle font-mono font-bold text-xs text-red-600 border-r border-slate-200 whitespace-nowrap">
-                          {formatDaysVal(item.missingDays)} j
+                          {formatDaysVal(item.missingDays)} {t('unavailabilities.days_short')}
                         </td>
 
                         {/* Colonne 3 : Projets bloqués (en rouge avec bulle de détail des projets) */}
@@ -1411,7 +1382,9 @@ Le PMO / Value Management Office`;
                               content={
                                 <div className="text-left text-xs space-y-1">
                                   <div className="font-bold border-b border-white/20 pb-0.5">
-                                    {item.blockedProjectsCount} projet{item.blockedProjectsCount > 1 ? 's' : ''} bloqué{item.blockedProjectsCount > 1 ? 's' : ''} :
+                                    {item.blockedProjectsCount > 1
+                                      ? t('reports.bottlenecks.blocked_projects_other', { count: item.blockedProjectsCount })
+                                      : t('reports.bottlenecks.blocked_projects_one', { count: item.blockedProjectsCount })} :
                                   </div>
                                   <div className="space-y-0.5 font-normal">
                                     {item.blockedProjects.map((bp) => (
@@ -1424,17 +1397,17 @@ Le PMO / Value Management Office`;
                               }
                             >
                               <span className="font-mono font-bold text-xs text-red-600 cursor-help underline decoration-dotted decoration-red-300">
-                                {item.blockedProjectsCount} proj{item.blockedProjectsCount > 1 ? '.' : ''}
+                                {item.blockedProjectsCount} {t('capacity.badges.proj_short')}
                               </span>
                             </Tooltip>
                           ) : (
-                            <span className="font-mono text-xs text-slate-400">0 proj.</span>
+                            <span className="font-mono text-xs text-slate-400">0 {t('capacity.badges.proj_short')}</span>
                           )}
                         </td>
 
                         {/* Colonne 4 : Capacité disponible */}
                         <td className="py-2.5 px-2 text-center align-middle font-mono font-medium text-xs text-slate-700 whitespace-nowrap">
-                          {formatDaysVal(item.capacity)} j
+                          {formatDaysVal(item.capacity)} {t('unavailabilities.days_short')}
                         </td>
                       </tr>
                     ))}
@@ -1462,10 +1435,10 @@ Le PMO / Value Management Office`;
               </div>
               <div>
                 <h3 className="text-base sm:text-lg font-bold text-slate-900 leading-tight">
-                  Répartition budgétaire : Engagé vs Budgété
+                  {t('reports.budget_distribution.title')}
                 </h3>
                 <p className="text-xs text-slate-500 mt-0.5">
-                  Centre : engagé sur les projets • Périphérie : budgétée
+                  {t('reports.budget_distribution.subtitle')}
                 </p>
               </div>
             </div>
@@ -1481,7 +1454,7 @@ Le PMO / Value Management Office`;
                     : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
-                Tous ({projects.length})
+                {t('reports.budget_distribution.all_scope', { count: projects.length })}
               </button>
               <button
                 type="button"
@@ -1492,7 +1465,7 @@ Le PMO / Value Management Office`;
                     : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
-                Staffés ({staffedProjects.length})
+                {t('reports.budget_distribution.staffed_scope', { count: staffedProjects.length })}
               </button>
             </div>
           </div>
@@ -1504,10 +1477,10 @@ Le PMO / Value Management Office`;
                 <PieChart className="w-5 h-5" />
               </div>
               <h5 className="text-xs font-bold text-slate-900">
-                Aucune ligne budgétaire active
+                {t('reports.budget_distribution.empty_title')}
               </h5>
               <p className="text-[11px] text-slate-500 max-w-sm mx-auto">
-                Configurez des lignes budgétaires dans les paramètres pour afficher la répartition souhaitée et réelle.
+                {t('reports.budget_distribution.empty_desc')}
               </p>
             </div>
           ) : (
@@ -1515,15 +1488,15 @@ Le PMO / Value Management Office`;
               {/* Bandeau de synthèse des totaux */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-mono shadow-2xs">
                 <div className="flex flex-col">
-                  <span className="text-[10px] text-slate-500 font-sans font-medium uppercase tracking-wider">Budgété</span>
+                  <span className="text-[10px] text-slate-500 font-sans font-medium uppercase tracking-wider">{t('reports.budget_distribution.budgeted')}</span>
                   <strong className="text-slate-900 font-bold text-xs">{formatAmount(budgetDistributionData.totalWished)} K€</strong>
                 </div>
                 <div className="flex flex-col">
-                  <span className="text-[10px] text-slate-500 font-sans font-medium uppercase tracking-wider">Engagé</span>
+                  <span className="text-[10px] text-slate-500 font-sans font-medium uppercase tracking-wider">{t('reports.budget_distribution.committed')}</span>
                   <strong className="text-slate-900 font-bold text-xs">{formatAmount(budgetDistributionData.totalReal)} K€</strong>
                 </div>
                 <div className="flex flex-col">
-                  <span className="text-[10px] text-slate-500 font-sans font-medium uppercase tracking-wider">Écart global</span>
+                  <span className="text-[10px] text-slate-500 font-sans font-medium uppercase tracking-wider">{t('reports.budget_distribution.global_variance')}</span>
                   {(() => {
                     const totalDelta = budgetDistributionData.totalReal - budgetDistributionData.totalWished;
                     return (
@@ -1547,9 +1520,9 @@ Le PMO / Value Management Office`;
                   })()}
                 </div>
                 <div className="flex flex-col">
-                  <span className="text-[10px] text-slate-500 font-sans font-medium uppercase tracking-wider">Nb projets</span>
+                  <span className="text-[10px] text-slate-500 font-sans font-medium uppercase tracking-wider">{t('reports.budget_distribution.nb_projects')}</span>
                   <strong className="text-slate-900 font-bold text-xs">
-                    {budgetDistributionData.relevantProjectsCount} projet{budgetDistributionData.relevantProjectsCount > 1 ? 's' : ''}
+                    {budgetDistributionData.relevantProjectsCount} {budgetDistributionData.relevantProjectsCount > 1 ? t('common.words.project_other') : t('common.words.project_one')}
                   </strong>
                 </div>
               </div>
@@ -1732,9 +1705,9 @@ Le PMO / Value Management Office`;
                                       )} K€)`
                                   )
                                   .join('\n')
-                              : 'Aucun projet associé';
+                              : t('reports.budget_distribution.no_projects_associated');
                           return (
-                            <title>{`Le TOP 10 des projets de ${it.name} :\n${projectsList}`}</title>
+                            <title>{t('reports.budget_distribution.top10_title', { name: it.name }) + '\n' + projectsList}</title>
                           );
                         })()}
 
@@ -1807,7 +1780,7 @@ Le PMO / Value Management Office`;
                           fill={subTextColor}
                           className="select-none font-sans"
                         >
-                          vs {formatAmount(it.wishedKe)} K€ ({it.wishedPct.toFixed(1)} %) budgété
+                          vs {formatAmount(it.wishedKe)} K€ ({it.wishedPct.toFixed(1)} %) {t('reports.budget_distribution.budgeted_word')}
                         </text>
 
                         {/* Ligne 4 : écart entre réalisé et budgété sous la forme (soit + %) ou (soit - %) */}
@@ -1843,13 +1816,13 @@ Le PMO / Value Management Office`;
             </div>
             <div>
               <h3 className="text-base sm:text-lg font-bold text-slate-900 flex items-center gap-2 leading-tight">
-                <span>Matrice : Coût x Valeur</span>
+                <span>{t('reports.matrix.title')}</span>
                 <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200">
-                  {matrixPlotData.length} projet{matrixPlotData.length > 1 ? 's' : ''}
+                  {matrixPlotData.length} {matrixPlotData.length > 1 ? t('common.words.project_other') : t('common.words.project_one')}
                 </span>
               </h3>
               <p className="text-xs text-slate-500 mt-0.5">
-                Coût (max {maxCost}) • Valeur (max {maxValue}) • Priorité au 1er plan
+                {t('reports.matrix.subtitle', { maxCost, maxValue })}
               </p>
             </div>
           </div>
@@ -1861,7 +1834,7 @@ Le PMO / Value Management Office`;
               <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
               <input
                 type="text"
-                placeholder="Filtrer (# ou nom)..."
+                placeholder={t('reports.matrix.filter_placeholder')}
                 value={matrixSearchQuery}
                 onChange={(e) => setMatrixSearchQuery(e.target.value)}
                 className="pl-8 pr-2.5 py-1 text-xs rounded-xl border border-slate-200 bg-slate-50/70 text-slate-800 focus:bg-white focus:outline-none focus:ring-1 focus:ring-violet-500 focus:border-violet-500 w-32 sm:w-36 transition-all"
@@ -1888,7 +1861,7 @@ Le PMO / Value Management Office`;
                     : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
-                Tous ({projects.length})
+                {t('reports.matrix.all_scope', { count: projects.length })}
               </button>
               <button
                 type="button"
@@ -1899,7 +1872,7 @@ Le PMO / Value Management Office`;
                     : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
-                Staffés ({staffedProjects.length})
+                {t('reports.matrix.staffed_scope', { count: staffedProjects.length })}
               </button>
             </div>
           </div>
@@ -1909,9 +1882,9 @@ Le PMO / Value Management Office`;
         {costCriteria.length === 0 && valueCriteria.length === 0 ? (
           <div className="p-8 text-center bg-slate-50 rounded-xl border border-dashed border-slate-300">
             <Info className="w-8 h-8 text-slate-400 mx-auto mb-2" />
-            <h4 className="text-sm font-bold text-slate-700">Aucun critère configuré</h4>
+            <h4 className="text-sm font-bold text-slate-700">{t('reports.matrix.no_criteria_title')}</h4>
             <p className="text-xs text-slate-500 mt-1 max-w-md mx-auto">
-              Veuillez définir au moins un critère de coût et un critère de valeur dans les paramètres pour afficher la matrice de priorisation.
+              {t('reports.matrix.no_criteria_desc')}
             </p>
           </div>
         ) : (
@@ -2054,7 +2027,7 @@ Le PMO / Value Management Office`;
                     fill="#059669"
                     letterSpacing="0.04em"
                   >
-                    FORTE VALEUR • FAIBLE COÛT
+                    {t('reports.matrix.quadrants.high_val_low_cost')}
                   </text>
                   <text
                     x={matrixOriginX + 14}
@@ -2063,7 +2036,7 @@ Le PMO / Value Management Office`;
                     fontWeight="500"
                     fill="#10b981"
                   >
-                    (Gains rapides / Pépites prioritaires)
+                    {t('reports.matrix.quadrants.high_val_low_cost_sub')}
                   </text>
                 </g>
 
@@ -2078,7 +2051,7 @@ Le PMO / Value Management Office`;
                     fill="#2563eb"
                     letterSpacing="0.04em"
                   >
-                    FORTE VALEUR • FORT COÛT
+                    {t('reports.matrix.quadrants.high_val_high_cost')}
                   </text>
                   <text
                     x={matrixOriginX + matrixPlotW - 14}
@@ -2088,7 +2061,7 @@ Le PMO / Value Management Office`;
                     fontWeight="500"
                     fill="#3b82f6"
                   >
-                    (Projets stratégiques / Grands chantiers)
+                    {t('reports.matrix.quadrants.high_val_high_cost_sub')}
                   </text>
                 </g>
 
@@ -2102,7 +2075,7 @@ Le PMO / Value Management Office`;
                     fill="#64748b"
                     letterSpacing="0.04em"
                   >
-                    FAIBLE VALEUR • FAIBLE COÛT
+                    {t('reports.matrix.quadrants.low_val_low_cost')}
                   </text>
                   <text
                     x={matrixOriginX + 14}
@@ -2111,7 +2084,7 @@ Le PMO / Value Management Office`;
                     fontWeight="500"
                     fill="#94a3b8"
                   >
-                    (Opportunités secondaires / Améliorations mineures)
+                    {t('reports.matrix.quadrants.low_val_low_cost_sub')}
                   </text>
                 </g>
 
@@ -2126,7 +2099,7 @@ Le PMO / Value Management Office`;
                     fill="#e11d48"
                     letterSpacing="0.04em"
                   >
-                    FAIBLE VALEUR • FORT COÛT
+                    {t('reports.matrix.quadrants.low_val_high_cost')}
                   </text>
                   <text
                     x={matrixOriginX + matrixPlotW - 14}
@@ -2136,7 +2109,7 @@ Le PMO / Value Management Office`;
                     fontWeight="500"
                     fill="#f43f5e"
                   >
-                    (À réévaluer / Moins prioritaires)
+                    {t('reports.matrix.quadrants.low_val_high_cost_sub')}
                   </text>
                 </g>
 
@@ -2213,7 +2186,7 @@ Le PMO / Value Management Office`;
                   fontWeight="700"
                   fill="#1e293b"
                 >
-                  Coût (Somme pondérée des critères de coût — Max : {maxCost}) →
+                  {t('reports.matrix.axis_cost', { maxCost })}
                 </text>
 
                 {/* Graduations Axe Y (Valeur) */}
@@ -2254,7 +2227,7 @@ Le PMO / Value Management Office`;
                   fontWeight="700"
                   fill="#1e293b"
                 >
-                  ← Valeur (Somme pondérée des critères de valeur — Max : {maxValue})
+                  ← {t('reports.matrix.axis_value', { maxValue }).replace(' →', '')}
                 </text>
 
                 {/* 6. Pastilles de chaque projet (affichant sa priorité calculée et couleur de sa ligne budgétaire) */}
@@ -2366,13 +2339,13 @@ Le PMO / Value Management Office`;
                     {/* 2. La priorité calculée, suivie du ROI et entre parenthèses (V / C) */}
                     <div className="py-1.5 px-2.5 rounded-lg bg-slate-800/90 border border-slate-700/60 text-xs space-y-1">
                       <div className="flex items-center justify-between gap-2">
-                        <span className="text-slate-300 font-semibold">Priorité :</span>
+                        <span className="text-slate-300 font-semibold">{t('reports.matrix.tooltip_priority')}</span>
                         <span className="font-bold font-mono text-emerald-400 text-sm">
                           {hoveredMatrixProject.priority !== null ? hoveredMatrixProject.priority : '-'}
                         </span>
                       </div>
                       <div className="flex items-center justify-between gap-2 text-[11px] pt-1 border-t border-slate-700/50">
-                        <span className="text-slate-400">ROI :</span>
+                        <span className="text-slate-400">{t('reports.matrix.tooltip_roi')}</span>
                         <span className="font-mono text-indigo-300 font-semibold">
                           {formatRoi(hoveredMatrixProject.roi)} ({hoveredMatrixProject.valueScore} / {hoveredMatrixProject.costScore})
                         </span>
@@ -2381,7 +2354,7 @@ Le PMO / Value Management Office`;
 
                     {/* 3. L'état */}
                     <div className="flex items-center justify-between text-xs px-0.5">
-                      <span className="text-slate-400 font-medium">État :</span>
+                      <span className="text-slate-400 font-medium">{t('reports.matrix.tooltip_state')}</span>
                       <span className="font-semibold text-slate-200">{hoveredMatrixProject.stateName}</span>
                     </div>
                   </div>
@@ -2393,7 +2366,7 @@ Le PMO / Value Management Office`;
             <div className="flex flex-wrap items-center gap-2 pt-1 text-xs">
               <span className="font-semibold text-slate-500 mr-1 flex items-center gap-1">
                 <Layers className="w-3.5 h-3.5" />
-                <span>Lignes budgétaires :</span>
+                <span>{t('reports.matrix.budget_lines_label')}</span>
               </span>
               <button
                 type="button"
@@ -2404,7 +2377,7 @@ Le PMO / Value Management Office`;
                     : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                 }`}
               >
-                Toutes ({matrixPlotData.length})
+                {t('reports.matrix.all_budget_lines', { count: matrixPlotData.length })}
               </button>
               {budgetLines.map((bl) => {
                 const count = matrixPlotData.filter((it) => it.project.budgetLineId === bl.id).length;
@@ -2483,7 +2456,7 @@ Le PMO / Value Management Office`;
               <div>
                 <div className="flex items-center justify-between mb-1">
                   <span className="font-semibold text-slate-700 uppercase tracking-wider text-[11px]">
-                    Destinataire(s)
+                    {emailModal.recipients.length > 1 ? 'Destinataires' : 'Destinataire'}
                   </span>
                   <button
                     type="button"

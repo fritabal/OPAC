@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Sliders,
   SlidersHorizontal,
@@ -46,6 +47,7 @@ export const CustomParamsTable: React.FC<CustomParamsTableProps> = ({
   loading,
   isAdmin,
 }) => {
+  const { t } = useTranslation();
   const [modalOpen, setModalOpen] = useState(false);
   const [paramToEdit, setParamToEdit] = useState<CustomProjectParam | null>(null);
   const [isReadOnlyModal, setIsReadOnlyModal] = useState(false);
@@ -110,42 +112,42 @@ export const CustomParamsTable: React.FC<CustomParamsTableProps> = ({
         return (
           <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-semibold bg-sky-50 text-sky-900 border border-sky-200">
             <FileText className="w-3 h-3 text-sky-600" />
-            <span>Texte court (50 car.)</span>
+            <span>{t('settings.custom_params.types.text_short')}</span>
           </span>
         );
       case 'texte long':
         return (
           <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-semibold bg-sky-50 text-sky-900 border border-sky-200">
             <FileText className="w-3 h-3 text-sky-600" />
-            <span>Texte long (1000 car.)</span>
+            <span>{t('settings.custom_params.types.text_long')}</span>
           </span>
         );
       case 'date':
         return (
           <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-semibold bg-sky-50 text-sky-900 border border-sky-200">
             <Calendar className="w-3 h-3 text-sky-600" />
-            <span>Date</span>
+            <span>{t('settings.custom_params.types.date')}</span>
           </span>
         );
       case 'nombre entier':
         return (
           <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-semibold bg-sky-50 text-sky-900 border border-sky-200">
             <Hash className="w-3 h-3 text-sky-600" />
-            <span>Nombre entier</span>
+            <span>{t('settings.custom_params.types.integer')}</span>
           </span>
         );
       case 'nombre avec 2 décimales':
         return (
           <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-semibold bg-sky-50 text-sky-900 border border-sky-200">
             <Calculator className="w-3 h-3 text-sky-600" />
-            <span>Décimal (2 déc.)</span>
+            <span>{t('settings.custom_params.types.decimal')}</span>
           </span>
         );
       case 'case à cocher':
         return (
           <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-semibold bg-sky-50 text-sky-900 border border-sky-200">
             <CheckSquare className="w-3 h-3 text-sky-600" />
-            <span>Case à cocher (Vrai / Faux)</span>
+            <span>{t('settings.custom_params.types.boolean')}</span>
           </span>
         );
       case 'liste de valeurs':
@@ -153,7 +155,11 @@ export const CustomParamsTable: React.FC<CustomParamsTableProps> = ({
           <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-semibold bg-sky-50 text-sky-900 border border-sky-200">
             <List className="w-3 h-3 text-sky-600" />
             <span>
-              Liste ({param.allowMultiple ? 'choix multiple' : 'choix unique'})
+              {t('settings.custom_params.types.list', {
+                mode: param.allowMultiple
+                  ? t('settings.custom_params.types.multi_choice')
+                  : t('settings.custom_params.types.single_choice'),
+              })}
             </span>
           </span>
         );
@@ -167,12 +173,12 @@ export const CustomParamsTable: React.FC<CustomParamsTableProps> = ({
         <div>
           <h2 className="text-xl font-bold text-sky-500 flex items-center gap-2.5">
             <SlidersHorizontal className="w-5 h-5 text-sky-500 shrink-0" />
-            <span>Paramètres personnalisés de projet</span>
+            <span>{t('settings.custom_params.title')}</span>
           </h2>
           <p className="text-xs text-slate-600 mt-1 max-w-2xl">
             {isAdmin
-              ? 'Définissez les paramètres personnalisés des projets. Ils apparaissent dans la section « Autres » de la fenêtre détaillée du projet.'
-              : 'Consultez les paramètres personnalisés des projets.'}
+              ? t('settings.custom_params.subtitle_admin')
+              : t('settings.custom_params.subtitle_consult')}
           </p>
         </div>
 
@@ -184,7 +190,7 @@ export const CustomParamsTable: React.FC<CustomParamsTableProps> = ({
               className="inline-flex items-center gap-2 px-3 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 text-xs font-semibold rounded-lg transition-colors shadow-2xs cursor-pointer"
             >
               <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
-              <span>{seeding ? 'Chargement...' : 'Charger les paramètres projet personnalisés par défaut'}</span>
+              <span>{seeding ? t('settings.custom_params.loading_defaults') : t('settings.custom_params.load_defaults')}</span>
             </button>
           )}
 
@@ -194,7 +200,7 @@ export const CustomParamsTable: React.FC<CustomParamsTableProps> = ({
               className="inline-flex items-center gap-2 px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-lg shadow-xs transition-colors cursor-pointer"
             >
               <Plus className="w-4 h-4" />
-              <span>Nouveau paramètre</span>
+              <span>{t('settings.custom_params.add_button')}</span>
             </button>
           )}
         </div>
@@ -205,7 +211,7 @@ export const CustomParamsTable: React.FC<CustomParamsTableProps> = ({
         <div className="p-3.5 bg-amber-50 border border-amber-200 rounded-xl flex items-center gap-3 text-amber-800 text-xs">
           <Lock className="w-4 h-4 text-amber-600 shrink-0" />
           <span>
-            <strong>Mode consultation :</strong> En tant que Chef de projet ou Resource Manager, vous visualisez la liste des paramètres personnalisés de projet définis par l'administrateur, mais la configuration est réservée au profil Administrateur.
+            <strong>{t('settings.common.consultation_mode')}</strong> {t('settings.custom_params.consult_notice')}
           </span>
         </div>
       )}
@@ -214,7 +220,7 @@ export const CustomParamsTable: React.FC<CustomParamsTableProps> = ({
       <div className="bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden">
         {loading ? (
           <div className="p-12 text-center text-slate-500 text-xs">
-            Chargement des paramètres personnalisés...
+            {t('settings.common.loading')}
           </div>
         ) : params.length === 0 ? (
           <div className="p-12 text-center">
@@ -222,10 +228,10 @@ export const CustomParamsTable: React.FC<CustomParamsTableProps> = ({
               <Sliders className="w-6 h-6" />
             </div>
             <h3 className="text-sm font-bold text-slate-800 mb-1">
-              Aucun paramètre personnalisé configuré
+              {t('settings.custom_params.empty')}
             </h3>
             <p className="text-xs text-slate-500 max-w-sm mx-auto mb-4">
-              Les paramètres personnalisés permettent d’ajouter des champs sur-mesure aux fiches projets.
+              {t('settings.custom_params.empty_hint')}
             </p>
             {isAdmin && (
               <div className="flex items-center justify-center gap-2">
@@ -234,15 +240,15 @@ export const CustomParamsTable: React.FC<CustomParamsTableProps> = ({
                   disabled={seeding}
                   className="inline-flex items-center gap-2 px-3.5 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 text-xs font-semibold rounded-lg shadow-2xs transition-colors cursor-pointer"
                 >
-                  <Sparkles className="w-4 h-4 text-indigo-600" />
-                  <span>{seeding ? 'Chargement...' : 'Charger les paramètres projet par défaut (6 paramètres)'}</span>
+                  <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
+                  <span>{seeding ? t('settings.custom_params.loading_defaults') : t('settings.custom_params.load_defaults')}</span>
                 </button>
                 <button
                   onClick={handleOpenAdd}
                   className="inline-flex items-center gap-2 px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-lg shadow-xs transition-colors cursor-pointer"
                 >
                   <Plus className="w-4 h-4" />
-                  <span>Créer le premier paramètre</span>
+                  <span>{t('settings.custom_params.add_button')}</span>
                 </button>
               </div>
             )}
@@ -252,13 +258,13 @@ export const CustomParamsTable: React.FC<CustomParamsTableProps> = ({
             <table className="w-full text-left text-xs border-collapse">
               <thead className="bg-slate-100/90 text-slate-700 uppercase font-semibold tracking-wider border-b border-slate-200 select-none">
                 <tr>
-                  {isAdmin && <th className="py-3 px-4 w-16 text-center">Ordre</th>}
-                  <th className="py-3 px-4 min-w-[200px]">Nom (Clé unique)</th>
-                  <th className="py-3 px-4 min-w-[180px]">Type de donnée</th>
-                  <th className="py-3 px-4 w-28 text-center">Obligatoire</th>
-                  <th className="py-3 px-4 w-36 text-center">Affiché dans le tableau</th>
-                  <th className="py-3 px-4 min-w-[280px]">Description</th>
-                  <th className="py-3 px-4 w-28 text-right">Actions</th>
+                  {isAdmin && <th className="py-3 px-4 w-16 text-center">{t('settings.custom_params.col_order')}</th>}
+                  <th className="py-3 px-4 min-w-[200px]">{t('settings.custom_params.col_name')}</th>
+                  <th className="py-3 px-4 min-w-[180px]">{t('settings.custom_params.col_type')}</th>
+                  <th className="py-3 px-4 w-28 text-center">{t('settings.custom_params.col_required')}</th>
+                  <th className="py-3 px-4 w-36 text-center">{t('settings.custom_params.col_show_in_table')}</th>
+                  <th className="py-3 px-4 min-w-[280px]">{t('settings.custom_params.col_desc')}</th>
+                  <th className="py-3 px-4 w-28 text-right">{t('settings.custom_params.col_actions')}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -377,7 +383,7 @@ export const CustomParamsTable: React.FC<CustomParamsTableProps> = ({
                           <span className="truncate block cursor-help">{p.description}</span>
                         </Tooltip>
                       ) : (
-                        <span className="text-slate-400 italic text-[11px]">Aucune description</span>
+                        <span className="text-slate-400 italic text-[11px]">{t('settings.skills.no_description')}</span>
                       )}
                     </td>
 
@@ -392,7 +398,7 @@ export const CustomParamsTable: React.FC<CustomParamsTableProps> = ({
                               ? 'text-slate-500 hover:text-indigo-600 hover:bg-indigo-50'
                               : 'text-slate-500 hover:text-indigo-600 hover:bg-slate-100'
                           }`}
-                          title={isAdmin ? "Modifier ce paramètre" : "Consulter ce paramètre (Lecture seule)"}
+                          title={isAdmin ? t('settings.common.edit') : t('settings.common.consult')}
                         >
                           {isAdmin ? <Pencil className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
                         </button>
@@ -401,7 +407,7 @@ export const CustomParamsTable: React.FC<CustomParamsTableProps> = ({
                             type="button"
                             onClick={() => setDeleteCandidate(p)}
                             className="p-1.5 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors cursor-pointer"
-                            title="Supprimer ce paramètre"
+                            title={t('settings.common.delete')}
                           >
                             <Trash2 className="w-3.5 h-3.5" />
                           </button>
@@ -442,17 +448,13 @@ export const CustomParamsTable: React.FC<CustomParamsTableProps> = ({
               </div>
               <div>
                 <h3 className="text-base font-bold text-slate-900">
-                  Supprimer le paramètre ?
+                  {t('settings.custom_params.delete_title')}
                 </h3>
-                <p className="text-xs text-slate-500">
-                  Cette action est irréversible
-                </p>
               </div>
             </div>
 
             <p className="text-xs text-slate-600 leading-relaxed mb-6">
-              Êtes-vous sûr de vouloir supprimer définitivement le paramètre personnalisé{' '}
-              <strong className="text-slate-900 font-semibold">« {deleteCandidate.name} »</strong> ?
+              {t('settings.custom_params.delete_desc', { name: deleteCandidate.name })}
             </p>
 
             <div className="flex items-center justify-end gap-3">
@@ -461,7 +463,7 @@ export const CustomParamsTable: React.FC<CustomParamsTableProps> = ({
                 onClick={() => setDeleteCandidate(null)}
                 className="px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
               >
-                Annuler
+                {t('settings.common.cancel')}
               </button>
               <button
                 type="button"
@@ -469,7 +471,7 @@ export const CustomParamsTable: React.FC<CustomParamsTableProps> = ({
                 onClick={handleDelete}
                 className="px-4 py-2 text-xs font-semibold bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors shadow-xs cursor-pointer"
               >
-                {isDeleting ? 'Suppression...' : 'Supprimer définitivement'}
+                {isDeleting ? t('settings.common.loading') : t('settings.common.delete')}
               </button>
             </div>
           </div>

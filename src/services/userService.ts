@@ -107,6 +107,7 @@ export function subscribeToUsers(
           role: userRoles[0] || (isSuper ? 'super user' : 'chef de projet'),
           isSuperAdmin: isSuper,
           isActive,
+          preferredLanguage: data.preferredLanguage || undefined,
           activationToken: data.activationToken || undefined,
           activationTokenExpiresAt: data.activationTokenExpiresAt || undefined,
           mustResetPassword: isSuper ? false : data.mustResetPassword === true || !data.passwordHash,
@@ -425,6 +426,7 @@ export async function updateUser(
     }
     if (data.email !== undefined) payload.email = data.email.trim().toLowerCase();
     if (data.isActive !== undefined) payload.isActive = data.isActive;
+    if (data.preferredLanguage !== undefined) payload.preferredLanguage = data.preferredLanguage;
 
     await updateDoc(docRef, payload);
   } catch (error) {

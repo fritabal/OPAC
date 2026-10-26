@@ -17,27 +17,28 @@ export interface Resource {
 
 export type ResourceFormData = Omit<Resource, 'id' | 'createdAt' | 'updatedAt'>;
 
+import { formatPeriodLocale } from '../utils/dateUtils';
+
 /**
  * Génère la liste ordonnée des 12 mois glissants au format YYYY-MM
  * à partir du mois courant inclus.
  * @param baseDate Date de référence (par défaut aujourd'hui)
+ * @param lang Langue de localisation (fr, en, it, de - par défaut 'fr')
  */
-export function getRolling12Months(baseDate: Date = new Date()): { key: string; label: string; year: number; month: number }[] {
+export function getRolling12Months(
+  baseDate: Date = new Date(),
+  lang: string = 'fr'
+): { key: string; label: string; year: number; month: number }[] {
   const result: { key: string; label: string; year: number; month: number }[] = [];
   const currentYear = baseDate.getFullYear();
   const currentMonth = baseDate.getMonth(); // 0 à 11
-
-  const monthNames = [
-    'Janv.', 'Févr.', 'Mars', 'Avr.', 'Mai', 'Juin',
-    'Juil.', 'Août', 'Sept.', 'Oct.', 'Nov.', 'Déc.'
-  ];
 
   for (let i = 0; i < 12; i++) {
     const d = new Date(currentYear, currentMonth + i, 1);
     const year = d.getFullYear();
     const month = d.getMonth() + 1; // 1 à 12
     const key = `${year}-${String(month).padStart(2, '0')}`;
-    const label = `${monthNames[d.getMonth()]} ${year}`;
+    const label = formatPeriodLocale(key, lang, { format: 'short' });
     result.push({ key, label, year, month });
   }
 

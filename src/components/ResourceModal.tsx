@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { X, AlertCircle, Users, User, Brain, FileText, Check, HelpCircle } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
+import { X, AlertCircle, Users, Check } from 'lucide-react';
 import { Resource, ResourceFormData } from '../types/resource';
 import { KeySkill } from '../types/skill';
 import { AppUser } from '../types/user';
@@ -29,6 +30,7 @@ export const ResourceModal: React.FC<ResourceModalProps> = ({
   isReadOnly = false,
   users = [],
 }) => {
+  const { t } = useTranslation();
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [fte, setFte] = useState<string>('1.0');
@@ -72,7 +74,7 @@ export const ResourceModal: React.FC<ResourceModalProps> = ({
 
     const trimmedName = name.trim();
     if (!trimmedName) {
-      setError('Le nom de la ressource est obligatoire.');
+      setError(t('modals.resource.error_name_required'));
       return;
     }
 
@@ -83,18 +85,18 @@ export const ResourceModal: React.FC<ResourceModalProps> = ({
         r.id !== resourceToEdit?.id
     );
     if (duplicate) {
-      setError(`Une ressource nommée « ${duplicate.name} » existe déjà. Le nom doit être unique.`);
+      setError(t('modals.resource.error_name_duplicate', { name: duplicate.name }));
       return;
     }
 
     if (!skillId) {
-      setError('Veuillez sélectionner une compétence clé de rattachement.');
+      setError(t('modals.resource.error_skill_required'));
       return;
     }
 
     const parsedFte = parseFloat(fte.replace(',', '.'));
     if (isNaN(parsedFte) || parsedFte <= 0) {
-      setError("L'équivalent ETP doit être un nombre strictement positif (ex: 1.0 ou 0.8).");
+      setError(t('modals.resource.error_fte_invalid'));
       return;
     }
 
@@ -113,7 +115,7 @@ export const ResourceModal: React.FC<ResourceModalProps> = ({
       });
       onClose();
     } catch (err: any) {
-      setError(err?.message || "Erreur lors de l'enregistrement de la ressource.");
+      setError(err?.message || t('modals.resource.error_save'));
     } finally {
       setSaving(false);
     }
@@ -131,13 +133,13 @@ export const ResourceModal: React.FC<ResourceModalProps> = ({
             <div>
               <h3 className="font-semibold text-slate-900 text-base">
                 {isReadOnly
-                  ? `Détail de la ressource : ${resourceToEdit?.name || ''}`
+                  ? t('modals.resource.title_view', { name: resourceToEdit?.name || '' })
                   : resourceToEdit
-                  ? `Modifier la ressource : ${resourceToEdit.name}`
-                  : 'Nouvelle ressource'}
+                  ? t('modals.resource.title_edit', { name: resourceToEdit.name })
+                  : t('modals.resource.title_create')}
               </h3>
               <p className="text-xs text-slate-500">
-                Individu ou équipe rattaché(e) à une compétence clé.
+                {t('modals.resource.subtitle')}
               </p>
             </div>
           </div>
@@ -160,131 +162,133 @@ export const ResourceModal: React.FC<ResourceModalProps> = ({
               </div>
             )}
 
-          {/* Nom unique */}
-          <div>
-            <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
-              Nom de la ressource (clé unique) {!isReadOnly && <span className="text-red-500">*</span>}
-            </label>
-            <input
-              type="text"
-              required={!isReadOnly}
-              disabled={isReadOnly}
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Ex : Martin Dupont, Équipe Cloud Core..."
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs font-medium focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 disabled:bg-slate-50"
-            />
-            <p className="text-[11px] text-slate-400 mt-1">
-              Peut désigner un collaborateur individuel ou un collectif / équipe entière.
-            </p>
-          </div>
-
-          {/* Compétence clé de rattachement */}
-          <div>
-            <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
-              Compétence clé de rattachement {!isReadOnly && <span className="text-red-500">*</span>}
-            </label>
-            <select
-              required={!isReadOnly}
-              disabled={isReadOnly || availableSkills.length <= 1}
-              value={skillId}
-              onChange={(e) => setSkillId(e.target.value)}
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs font-medium focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 disabled:bg-slate-50 bg-white"
-            >
-              {availableSkills.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.name} ({resolveUserDisplayName(s.resourceManagerId, users, s.resourceManagerName) || 'RM'})
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Équivalent Temps Plein (ETP) */}
-          <div>
-            <div className="flex items-center justify-between mb-1">
-              <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider">
-                Équivalent Temps Plein (ETP) {!isReadOnly && <span className="text-red-500">*</span>}
+            {/* Nom unique */}
+            <div>
+              <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
+                {t('modals.resource.name_label')} {!isReadOnly && <span className="text-red-500">*</span>}
               </label>
-              <span className="text-[11px] text-slate-500 font-medium">Ex : 1.0 (100%), 0.8 (4/5e), 3.0 (équipe de 3)</span>
+              <input
+                type="text"
+                required={!isReadOnly}
+                disabled={isReadOnly}
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder={t('modals.resource.name_placeholder')}
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs font-medium focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 disabled:bg-slate-50"
+              />
+              <p className="text-[11px] text-slate-400 mt-1">
+                {t('modals.resource.name_hint')}
+              </p>
             </div>
-            <input
-              type="number"
-              step="0.05"
-              min="0.05"
-              max="100"
-              required={!isReadOnly}
-              disabled={isReadOnly}
-              value={fte}
-              onChange={(e) => setFte(e.target.value)}
-              placeholder="1.0"
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs font-medium focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 disabled:bg-slate-50"
-            />
-          </div>
 
-          {/* Description (facultative) */}
-          <div>
-            <div className="flex items-center justify-between mb-1">
-              <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider">
-                Description (facultative)
+            {/* Compétence clé de rattachement */}
+            <div>
+              <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
+                {t('modals.resource.skill_label')} {!isReadOnly && <span className="text-red-500">*</span>}
               </label>
-              <span className={`text-[11px] font-mono ${description.length > 500 ? 'text-red-600 font-bold' : 'text-slate-400'}`}>
-                {description.length} / 500 car.
-              </span>
+              <select
+                required={!isReadOnly}
+                disabled={isReadOnly || availableSkills.length <= 1}
+                value={skillId}
+                onChange={(e) => setSkillId(e.target.value)}
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs font-medium focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 disabled:bg-slate-50 bg-white"
+              >
+                {availableSkills.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.name} ({resolveUserDisplayName(s.resourceManagerId, users, s.resourceManagerName) || 'RM'})
+                  </option>
+                ))}
+              </select>
             </div>
-            <textarea
-              rows={2}
-              maxLength={500}
-              disabled={isReadOnly}
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="Saisissez une description..."
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 disabled:bg-slate-50 resize-y"
-            />
-          </div>
-        </div>
 
-        {/* Actions (bandeau inférieur fixe) */}
-        <div className="shrink-0 px-6 py-4 border-t border-slate-200 bg-slate-50/80 flex items-center justify-between gap-3">
-          <div className="flex-1 min-w-0">
-            {!isReadOnly && missingRequiredCount > 0 && (
-              <div className="flex items-center gap-1.5 text-xs font-semibold text-red-600 animate-in fade-in">
-                <AlertCircle className="w-4 h-4 text-red-600 shrink-0" />
-                <span>
-                  {missingRequiredCount === 1
-                    ? '1 attribut obligatoire non renseigné'
-                    : `${missingRequiredCount} attributs obligatoires non renseignés`}
+            {/* Équivalent Temps Plein (ETP) */}
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider">
+                  {t('modals.resource.fte_label')} {!isReadOnly && <span className="text-red-500">*</span>}
+                </label>
+                <span className="text-[11px] text-slate-500 font-medium">
+                  {t('modals.resource.fte_example')}
                 </span>
               </div>
-            )}
+              <input
+                type="number"
+                step="0.05"
+                min="0.05"
+                max="100"
+                required={!isReadOnly}
+                disabled={isReadOnly}
+                value={fte}
+                onChange={(e) => setFte(e.target.value)}
+                placeholder="1.0"
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs font-medium focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 disabled:bg-slate-50"
+              />
+            </div>
+
+            {/* Description (facultative) */}
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider">
+                  {t('modals.resource.description_label')}
+                </label>
+                <span className={`text-[11px] font-mono ${description.length > 500 ? 'text-red-600 font-bold' : 'text-slate-400'}`}>
+                  {t('modals.resource.chars_counter', { count: description.length })}
+                </span>
+              </div>
+              <textarea
+                rows={2}
+                maxLength={500}
+                disabled={isReadOnly}
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder={t('modals.resource.description_placeholder')}
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 disabled:bg-slate-50 resize-y"
+              />
+            </div>
           </div>
-          <div className="flex items-center gap-3 shrink-0">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 border border-slate-300 rounded-lg text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer"
-            >
-              {isReadOnly ? 'Fermer' : 'Annuler'}
-            </button>
-            {!isReadOnly && (
+
+          {/* Actions (bandeau inférieur fixe) */}
+          <div className="shrink-0 px-6 py-4 border-t border-slate-200 bg-slate-50/80 flex items-center justify-between gap-3">
+            <div className="flex-1 min-w-0">
+              {!isReadOnly && missingRequiredCount > 0 && (
+                <div className="flex items-center gap-1.5 text-xs font-semibold text-red-600 animate-in fade-in">
+                  <AlertCircle className="w-4 h-4 text-red-600 shrink-0" />
+                  <span>
+                    {missingRequiredCount === 1
+                      ? t('modals.common.missing_required_one')
+                      : t('modals.common.missing_required_other', { count: missingRequiredCount })}
+                  </span>
+                </div>
+              )}
+            </div>
+            <div className="flex items-center gap-3 shrink-0">
               <button
-                type="submit"
-                disabled={saving || missingRequiredCount > 0}
-                className={`${PRIMARY_ACTION_MODAL_BUTTON_CLASS} disabled:opacity-50 disabled:cursor-not-allowed`}
+                type="button"
+                onClick={onClose}
+                className="px-4 py-2 border border-slate-300 rounded-lg text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer"
               >
-                {saving ? (
-                  <span>Enregistrement...</span>
-                ) : (
-                  <>
-                    <Check className="w-4 h-4" />
-                    <span>{resourceToEdit ? 'Enregistrer les modifications' : 'Créer la ressource'}</span>
-                  </>
-                )}
+                {isReadOnly ? t('modals.common.close') : t('modals.common.cancel')}
               </button>
-            )}
+              {!isReadOnly && (
+                <button
+                  type="submit"
+                  disabled={saving || missingRequiredCount > 0}
+                  className={`${PRIMARY_ACTION_MODAL_BUTTON_CLASS} disabled:opacity-50 disabled:cursor-not-allowed`}
+                >
+                  {saving ? (
+                    <span>{t('modals.common.saving')}</span>
+                  ) : (
+                    <>
+                      <Check className="w-4 h-4" />
+                      <span>{resourceToEdit ? t('modals.resource.btn_save') : t('modals.resource.btn_create')}</span>
+                    </>
+                  )}
+                </button>
+              )}
+            </div>
           </div>
-        </div>
-      </form>
+        </form>
+      </div>
     </div>
-  </div>
-);
+  );
 };

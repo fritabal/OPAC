@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   ArrowUp,
   ArrowDown,
@@ -46,6 +47,7 @@ export const BudgetLinesTable: React.FC<BudgetLinesTableProps> = ({
   onSeedExample,
   seeding = false,
 }) => {
+  const { t } = useTranslation();
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedLine, setSelectedLine] = useState<BudgetLine | null>(null);
   const [isReadOnlyModal, setIsReadOnlyModal] = useState(false);
@@ -197,12 +199,12 @@ export const BudgetLinesTable: React.FC<BudgetLinesTableProps> = ({
         <div>
           <h2 className="text-xl font-bold text-teal-600 flex items-center gap-2.5">
             <Coins className="w-5 h-5 text-teal-600 shrink-0" />
-            <span>Lignes budgétaires</span>
+            <span>{t('settings.budgets.title')}</span>
           </h2>
           <p className="text-xs text-slate-600 mt-1 max-w-2xl">
             {isAdmin
-              ? 'Définissez les enveloppes budgétaires en K€, attribuez les responsables et activez ou désactivez les lignes disponibles pour les projets.'
-              : "Consultez les lignes budgétaires définies par l'administrateur."}
+              ? t('settings.budgets.subtitle_admin')
+              : t('settings.budgets.subtitle_consult')}
           </p>
         </div>
 
@@ -214,7 +216,7 @@ export const BudgetLinesTable: React.FC<BudgetLinesTableProps> = ({
               className="inline-flex items-center gap-2 px-3 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 text-xs font-semibold rounded-lg transition-colors shadow-2xs cursor-pointer"
             >
               <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
-              <span>{seeding ? 'Chargement en cours...' : 'Charger les lignes budgétaires par défaut (3 lignes)'}</span>
+              <span>{seeding ? t('settings.budgets.loading_defaults') : t('settings.budgets.load_defaults')}</span>
             </button>
           )}
 
@@ -224,7 +226,7 @@ export const BudgetLinesTable: React.FC<BudgetLinesTableProps> = ({
               className="inline-flex items-center gap-2 px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-lg shadow-xs transition-colors cursor-pointer"
             >
               <Plus className="w-4 h-4" />
-              <span>Ajouter une ligne budgétaire</span>
+              <span>{t('settings.budgets.add_button')}</span>
             </button>
           )}
         </div>
@@ -235,7 +237,7 @@ export const BudgetLinesTable: React.FC<BudgetLinesTableProps> = ({
         <div className="p-3.5 bg-amber-50 border border-amber-200 rounded-xl flex items-center gap-3 text-amber-800 text-xs">
           <Lock className="w-4 h-4 text-amber-600 shrink-0" />
           <span>
-            <strong>Mode consultation :</strong> En tant que Chef de projet ou Resource Manager, vous visualisez la liste des lignes budgétaires définies par l'administrateur, mais la gestion et la modification sont réservées au profil Administrateur.
+            <strong>{t('settings.common.consultation_mode')}</strong> {t('settings.budgets.consult_notice')}
           </span>
         </div>
       )}
@@ -256,24 +258,24 @@ export const BudgetLinesTable: React.FC<BudgetLinesTableProps> = ({
                 {/* Ordre */}
                 {isAdmin && (
                   <th scope="col" className="py-3 px-3 w-14 text-center">
-                    Ordre
+                    {t('settings.budgets.col_order')}
                   </th>
                 )}
                 {/* Boîte à cocher Actif */}
                 <th scope="col" className="py-3 px-3 w-16 text-center">
-                  <Tooltip content="Ligne budgétaire active pour les projets" className="w-full inline-block">
+                  <Tooltip content={t('settings.budgets.col_active_tooltip')} className="w-full inline-block">
                     <div className="flex items-center justify-center gap-1 cursor-help">
                       <CheckSquare className="w-3.5 h-3.5 text-slate-500" />
-                      <span>Actif</span>
+                      <span>{t('settings.budgets.col_active')}</span>
                     </div>
                   </Tooltip>
                 </th>
                 {/* Couleur */}
                 <th scope="col" className="py-3 px-3 w-20 text-center">
-                  <Tooltip content="Couleur distinctive (palette de 32 teintes uniques)" className="w-full inline-block">
+                  <Tooltip content={t('settings.budgets.col_color_tooltip')} className="w-full inline-block">
                     <div className="flex items-center justify-center gap-1 cursor-help">
                       <Palette className="w-3.5 h-3.5 text-slate-500" />
-                      <span>Couleur</span>
+                      <span>{t('settings.budgets.col_color')}</span>
                     </div>
                   </Tooltip>
                 </th>
@@ -281,26 +283,26 @@ export const BudgetLinesTable: React.FC<BudgetLinesTableProps> = ({
                 <th scope="col" className="py-3 px-4 min-w-[220px]">
                   <div className="flex items-center gap-1.5">
                     <Tag className="w-3.5 h-3.5 text-slate-500" />
-                    <span>Nom de la ligne budgétaire</span>
+                    <span>{t('settings.budgets.col_name')}</span>
                   </div>
                 </th>
                 {/* Budget en K€ */}
                 <th scope="col" className="py-3 px-4 w-36 text-right">
                   <div className="flex items-center justify-end gap-1.5">
                     <DollarSign className="w-3.5 h-3.5 text-slate-500" />
-                    <span>Budget (K€)</span>
+                    <span>{t('settings.budgets.col_budget')}</span>
                   </div>
                 </th>
                 {/* Responsable */}
                 <th scope="col" className="py-3 px-4 min-w-[180px]">
                   <div className="flex items-center gap-1.5">
                     <User className="w-3.5 h-3.5 text-slate-500" />
-                    <span>Responsable</span>
+                    <span>{t('settings.budgets.col_manager')}</span>
                   </div>
                 </th>
                 {/* Actions */}
                 <th scope="col" className="py-3 px-4 w-24 text-right sticky right-0 bg-slate-100">
-                  Actions
+                  {t('settings.budgets.col_actions')}
                 </th>
               </tr>
             </thead>
@@ -309,7 +311,7 @@ export const BudgetLinesTable: React.FC<BudgetLinesTableProps> = ({
               {loading ? (
                 <tr>
                   <td colSpan={isAdmin ? 7 : 5} className="py-12 text-center text-slate-400">
-                    Chargement des lignes budgétaires...
+                    {t('settings.common.loading')}
                   </td>
                 </tr>
               ) : budgetLines.length === 0 ? (
@@ -317,11 +319,11 @@ export const BudgetLinesTable: React.FC<BudgetLinesTableProps> = ({
                   <td colSpan={isAdmin ? 7 : 5} className="py-12 text-center text-slate-500">
                     <div className="flex flex-col items-center justify-center gap-2">
                       <Coins className="w-8 h-8 text-slate-300" />
-                      <p className="font-medium text-slate-700">Aucune ligne budgétaire définie</p>
+                      <p className="font-medium text-slate-700">{t('settings.budgets.empty')}</p>
                       {isAdmin ? (
                         <>
                           <p className="text-xs text-slate-400 max-w-sm">
-                            Cliquez sur "Ajouter une ligne budgétaire" pour créer votre première enveloppe ou préchargez le référentiel standard.
+                            {t('settings.budgets.empty_hint')}
                           </p>
                           <div className="flex items-center justify-center gap-2 mt-2">
                             {onSeedExample && (
@@ -331,7 +333,7 @@ export const BudgetLinesTable: React.FC<BudgetLinesTableProps> = ({
                                 className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 rounded-md font-semibold text-xs transition-colors cursor-pointer border border-indigo-200 shadow-2xs"
                               >
                                 <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
-                                <span>{seeding ? 'Chargement...' : 'Charger les lignes budgétaires par défaut.'}</span>
+                                <span>{seeding ? t('settings.budgets.loading_defaults') : t('settings.budgets.load_defaults')}</span>
                               </button>
                             )}
                             <button
@@ -339,13 +341,13 @@ export const BudgetLinesTable: React.FC<BudgetLinesTableProps> = ({
                               className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 text-white hover:bg-indigo-700 rounded-md font-semibold text-xs transition-colors cursor-pointer shadow-xs"
                             >
                               <Plus className="w-3.5 h-3.5" />
-                              <span>Ajouter une ligne budgétaire</span>
+                              <span>{t('settings.budgets.add_button')}</span>
                             </button>
                           </div>
                         </>
                       ) : (
                         <p className="text-xs text-slate-400">
-                          L'administrateur n'a pas encore saisi de lignes budgétaires.
+                          {t('settings.budgets.subtitle_consult')}
                         </p>
                       )}
                     </div>
@@ -514,10 +516,10 @@ export const BudgetLinesTable: React.FC<BudgetLinesTableProps> = ({
                   >
                     <div className="inline-flex items-center justify-end gap-1.5">
                       <span className="text-slate-500 font-normal">
-                        Budget total = {formatAmount(totalAllBudgetKe)} K€ dont
+                        {t('settings.budgets.total_budget_label', { total: formatAmount(totalAllBudgetKe) })}
                       </span>
                       <span className="inline-flex items-center px-2.5 py-0.5 bg-indigo-50 text-indigo-800 rounded border border-indigo-200 font-bold">
-                        {formatAmount(totalActiveBudgetKe)} K€ actifs
+                        {t('settings.budgets.active_budget_label', { active: formatAmount(totalActiveBudgetKe) })}
                       </span>
                     </div>
                   </td>
@@ -657,12 +659,10 @@ export const BudgetLinesTable: React.FC<BudgetLinesTableProps> = ({
         <div className="fixed inset-0 z-50 bg-slate-900/50 flex items-center justify-center p-4">
           <div className="bg-white rounded-xl shadow-xl border border-slate-200 max-w-md w-full p-6 animate-in fade-in zoom-in-95">
             <h3 className="text-base font-bold text-slate-900 mb-2">
-              Confirmer la suppression
+              {t('settings.budgets.delete_title')}
             </h3>
             <p className="text-sm text-slate-600 mb-6">
-              Êtes-vous sûr de vouloir supprimer la ligne budgétaire{' '}
-              <strong className="text-slate-900 font-semibold">« {deleteCandidate.name} »</strong> ({deleteCandidate.budgetKe} K€) ?
-              Cette action est irréversible.
+              {t('settings.budgets.delete_desc', { name: deleteCandidate.name })}
             </p>
             <div className="flex items-center justify-end gap-3">
               <button
@@ -670,7 +670,7 @@ export const BudgetLinesTable: React.FC<BudgetLinesTableProps> = ({
                 onClick={() => setDeleteCandidate(null)}
                 className="px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
               >
-                Annuler
+                {t('settings.common.cancel')}
               </button>
               <button
                 type="button"
@@ -678,7 +678,7 @@ export const BudgetLinesTable: React.FC<BudgetLinesTableProps> = ({
                 onClick={handleDeleteConfirm}
                 className="px-4 py-2 text-sm font-medium bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors shadow-xs cursor-pointer"
               >
-                {processing ? 'Suppression...' : 'Supprimer'}
+                {processing ? t('settings.common.loading') : t('settings.common.delete')}
               </button>
             </div>
           </div>

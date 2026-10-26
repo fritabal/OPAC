@@ -1,3 +1,5 @@
+import i18n from '../i18n';
+
 export type UserRole =
   | 'super user'
   | 'administrateur'
@@ -11,6 +13,7 @@ export interface AppUser {
   displayName: string;
   roles: UserRole[]; // Rôles cumulés
   role?: UserRole; // Rétro-compatibilité
+  preferredLanguage?: string; // Langue préférée de l'utilisateur (fr, en, it)
   createdAt?: string;
   updatedAt?: string;
   isSuperAdmin?: boolean;
@@ -50,4 +53,50 @@ export const ROLE_DESCRIPTIONS: Record<UserRole, string> = {
     'Accès compétences : compétences clés de son périmètre, indisponibilités des ressources.',
   'value management officer':
     'Pilotage de la valeur : arbitrage des critères de valeur, priorisation stratégique et suivi du ROI des projets.',
+};
+
+/**
+ * Retourne le libellé internationalisé du persona/rôle selon la règle métier :
+ * - Chef de projet : OUI, traduit dans toutes les langues (ex: Project Manager, Projektleiter...)
+ * - Administrateur : OUI, traduit (ex: Administrator, Amministratore...)
+ * - Resource Manager : NON, ne pas traduire
+ * - Value Management Officer : NON, ne pas traduire
+ * - Super User : NON, ne pas traduire
+ */
+export const getRoleLabel = (role: UserRole, t?: (key: string, options?: any) => string): string => {
+  switch (role) {
+    case 'chef de projet':
+      return t ? t('navigation.roles.project_manager') : i18n.t('navigation.roles.project_manager');
+    case 'administrateur':
+      return t ? t('navigation.roles.administrateur') : i18n.t('navigation.roles.administrateur');
+    case 'resource manager':
+      return 'Resource Manager';
+    case 'value management officer':
+      return 'Value Management Officer';
+    case 'super user':
+      return 'Super User';
+    default:
+      return ROLE_LABELS[role] || role;
+  }
+};
+
+/**
+ * Retourne la description internationalisée du persona pour l'onglet Utilisateurs.
+ */
+export const getRoleDescription = (role: UserRole, t?: (key: string, options?: any) => string): string => {
+  const translate = t || i18n.t;
+  switch (role) {
+    case 'super user':
+      return translate('users.roles_descriptions.super_user');
+    case 'administrateur':
+      return translate('users.roles_descriptions.administrateur');
+    case 'chef de projet':
+      return translate('users.roles_descriptions.chef_de_projet');
+    case 'resource manager':
+      return translate('users.roles_descriptions.resource_manager');
+    case 'value management officer':
+      return translate('users.roles_descriptions.value_management_officer');
+    default:
+      return ROLE_DESCRIPTIONS[role] || '';
+  }
 };

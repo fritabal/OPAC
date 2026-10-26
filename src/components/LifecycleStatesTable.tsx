@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   GitFork,
   Plus,
@@ -7,6 +8,7 @@ import {
   ArrowUp,
   ArrowDown,
   UserCheck,
+  ListOrdered,
   SlidersHorizontal,
   Sparkles,
   AlertCircle,
@@ -26,6 +28,7 @@ import {
   seedDefaultProjectLifecycle,
 } from '../services/lifecycleService';
 import { LifecycleStateModal } from './LifecycleStateModal';
+import { Tooltip } from './Tooltip';
 
 interface LifecycleStatesTableProps {
   states: ProjectState[];
@@ -38,6 +41,7 @@ export const LifecycleStatesTable: React.FC<LifecycleStatesTableProps> = ({
   loading,
   isAdmin,
 }) => {
+  const { t } = useTranslation();
   const [modalOpen, setModalOpen] = useState(false);
   const [editingState, setEditingState] = useState<ProjectState | null>(null);
   const [isReadOnlyModal, setIsReadOnlyModal] = useState(false);
@@ -141,10 +145,10 @@ export const LifecycleStatesTable: React.FC<LifecycleStatesTableProps> = ({
         <div>
           <h2 className="text-xl font-bold text-blue-950 flex items-center gap-2.5">
             <GitFork className="w-5 h-5 text-blue-950 shrink-0" />
-            <span>Cycle de vie des projets</span>
+            <span>{t('settings.lifecycle.title')}</span>
           </h2>
           <p className="text-xs text-slate-600 mt-1 max-w-2xl">
-            Définissez la séquence des états par lesquels transitent les projets. Ordonnez-les selon la séquence nominale, même s'il est possible de passer de n'importe quel état à n'importe quel autre.
+            {t('settings.lifecycle.subtitle')}
           </p>
         </div>
 
@@ -156,7 +160,7 @@ export const LifecycleStatesTable: React.FC<LifecycleStatesTableProps> = ({
               className="inline-flex items-center gap-2 px-3 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 text-xs font-semibold rounded-lg transition-colors shadow-2xs cursor-pointer"
             >
               <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
-              <span>{seeding ? 'Chargement...' : 'Charger cycle de vie standard (7 états)'}</span>
+              <span>{seeding ? t('settings.lifecycle.loading_defaults') : t('settings.lifecycle.load_defaults')}</span>
             </button>
           )}
 
@@ -166,7 +170,7 @@ export const LifecycleStatesTable: React.FC<LifecycleStatesTableProps> = ({
               className="inline-flex items-center gap-2 px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-lg shadow-xs transition-colors cursor-pointer"
             >
               <Plus className="w-4 h-4" />
-              <span>Ajouter un état</span>
+              <span>{t('settings.lifecycle.add_button')}</span>
             </button>
           )}
         </div>
@@ -177,12 +181,10 @@ export const LifecycleStatesTable: React.FC<LifecycleStatesTableProps> = ({
         <div className="p-3.5 bg-amber-50 border border-amber-200 rounded-xl flex items-center gap-3 text-amber-800 text-xs">
           <Lock className="w-4 h-4 text-amber-600 shrink-0" />
           <span>
-            <strong>Mode consultation :</strong> En tant que Chef de projet ou Resource Manager, vous visualisez la liste ordonnée des états du cycle de vie et leurs règles, mais la configuration est réservée au profil Administrateur.
+            <strong>{t('settings.common.consultation_mode')}</strong> {t('settings.lifecycle.consult_notice')}
           </span>
         </div>
       )}
-
-
 
       {actionError && (
         <div className="p-3.5 bg-red-50 border border-red-200 rounded-xl text-red-700 text-xs flex items-center justify-between animate-in fade-in">
@@ -205,22 +207,32 @@ export const LifecycleStatesTable: React.FC<LifecycleStatesTableProps> = ({
           <table className="w-full text-left text-xs border-collapse">
             <thead className="bg-slate-100/90 text-slate-700 uppercase font-semibold tracking-wider border-b border-slate-200 select-none">
               <tr>
-                <th className="py-3 px-4 w-28 text-center">ORDRE</th>
-                <th className="py-3 px-4 min-w-[200px]">NOM DE L'ÉTAT</th>
-                <th className="py-3 px-4 min-w-[260px]">DESCRIPTION</th>
+                <th className="py-3 px-4 w-28 text-center">{t('settings.lifecycle.col_order')}</th>
+                <th className="py-3 px-4 min-w-[200px]">{t('settings.lifecycle.col_name')}</th>
+                <th className="py-3 px-4 min-w-[260px]">{t('settings.lifecycle.col_desc')}</th>
                 <th className="py-3 px-4 w-36 text-center">
-                  <div className="flex items-center justify-center gap-1">
-                    <UserCheck className="w-3.5 h-3.5 text-emerald-600" />
-                    <span>À STAFFER</span>
-                  </div>
+                  <Tooltip
+                    content={t('settings.lifecycle.staffed_tooltip')}
+                    className="w-full inline-block"
+                  >
+                    <div className="flex items-center justify-center gap-1 cursor-help">
+                      <UserCheck className="w-3.5 h-3.5 text-rose-900" />
+                      <span>{t('settings.lifecycle.staffed_header')}</span>
+                    </div>
+                  </Tooltip>
                 </th>
                 <th className="py-3 px-4 w-36 text-center">
-                  <div className="flex items-center justify-center gap-1">
-                    <SlidersHorizontal className="w-3.5 h-3.5 text-indigo-600" />
-                    <span>À PRIORISER</span>
-                  </div>
+                  <Tooltip
+                    content={t('settings.lifecycle.prioritized_tooltip')}
+                    className="w-full inline-block"
+                  >
+                    <div className="flex items-center justify-center gap-1 cursor-help">
+                      <ListOrdered className="w-3.5 h-3.5 text-blue-600" />
+                      <span>{t('settings.lifecycle.prioritized_header')}</span>
+                    </div>
+                  </Tooltip>
                 </th>
-                <th className="py-3 px-4 w-28 text-right">ACTIONS</th>
+                <th className="py-3 px-4 w-28 text-right">{t('settings.lifecycle.col_actions')}</th>
               </tr>
             </thead>
 
@@ -228,7 +240,7 @@ export const LifecycleStatesTable: React.FC<LifecycleStatesTableProps> = ({
               {loading ? (
                 <tr>
                   <td colSpan={6} className="py-12 text-center text-slate-400">
-                    Chargement des états du cycle de vie...
+                    {t('settings.common.loading')}
                   </td>
                 </tr>
               ) : states.length === 0 ? (
@@ -238,9 +250,9 @@ export const LifecycleStatesTable: React.FC<LifecycleStatesTableProps> = ({
                       <div className="p-3 bg-indigo-50 text-indigo-600 rounded-full">
                         <GitFork className="w-6 h-6" />
                       </div>
-                      <p className="font-bold text-sm text-slate-700">Aucun état de cycle de vie défini</p>
+                      <p className="font-bold text-sm text-slate-700">{t('settings.lifecycle.empty')}</p>
                       <p className="text-xs text-slate-500 max-w-md">
-                        Le cycle de vie permet de rythmer les étapes d’un projet (Idée, Cadrage, À staffer, En cours, Livré...).
+                        {t('settings.lifecycle.empty_hint')}
                       </p>
                       {isAdmin && (
                         <div className="flex items-center gap-2 mt-3">
@@ -250,14 +262,14 @@ export const LifecycleStatesTable: React.FC<LifecycleStatesTableProps> = ({
                             className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded-lg text-xs font-semibold cursor-pointer shadow-2xs transition-colors"
                           >
                             <Sparkles className="w-4 h-4 text-indigo-600" />
-                            <span>{seeding ? 'Chargement...' : 'Charger cycle de vie standard (7 états)'}</span>
+                            <span>{seeding ? t('settings.lifecycle.loading_defaults') : t('settings.lifecycle.load_defaults')}</span>
                           </button>
                           <button
                             onClick={handleOpenAdd}
                             className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-semibold shadow-xs cursor-pointer transition-colors"
                           >
                             <Plus className="w-4 h-4" />
-                            <span>Créer un premier état</span>
+                            <span>{t('settings.lifecycle.add_button')}</span>
                           </button>
                         </div>
                       )}
@@ -324,7 +336,7 @@ export const LifecycleStatesTable: React.FC<LifecycleStatesTableProps> = ({
                           checked={st.needsStaffing}
                           onChange={() => handleToggleStaffing(st)}
                           disabled={!isAdmin}
-                          className={`w-4 h-4 text-emerald-600 rounded border-slate-300 focus:ring-emerald-500 ${
+                          className={`w-4 h-4 text-rose-900 rounded border-slate-300 focus:ring-rose-800 ${
                             isAdmin ? 'cursor-pointer' : 'cursor-default opacity-80'
                           }`}
                           title={
@@ -346,7 +358,7 @@ export const LifecycleStatesTable: React.FC<LifecycleStatesTableProps> = ({
                           checked={st.needsPrioritization}
                           onChange={() => handleTogglePrioritization(st)}
                           disabled={!isAdmin}
-                          className={`w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500 ${
+                          className={`w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500 ${
                             isAdmin ? 'cursor-pointer' : 'cursor-default opacity-80'
                           }`}
                           title={
@@ -415,14 +427,12 @@ export const LifecycleStatesTable: React.FC<LifecycleStatesTableProps> = ({
                 <Trash2 className="w-5 h-5 text-red-600" />
               </div>
               <div>
-                <h3 className="text-sm font-bold text-slate-900">Supprimer cet état ?</h3>
-                <p className="text-xs text-slate-500">Action irréversible</p>
+                <h3 className="text-sm font-bold text-slate-900">{t('settings.lifecycle.delete_title')}</h3>
               </div>
             </div>
 
             <p className="text-xs text-slate-600 mb-4 leading-relaxed">
-              Êtes-vous sûr de vouloir supprimer l'état{' '}
-              <strong className="text-slate-900">« {deleteCandidate.name} »</strong> du cycle de vie ?
+              {t('settings.lifecycle.delete_desc', { name: deleteCandidate.name })}
             </p>
 
             <div className="flex items-center justify-end gap-2">
@@ -431,14 +441,14 @@ export const LifecycleStatesTable: React.FC<LifecycleStatesTableProps> = ({
                 onClick={() => setDeleteCandidate(null)}
                 className="px-3.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
               >
-                Annuler
+                {t('settings.common.cancel')}
               </button>
               <button
                 type="button"
                 onClick={handleConfirmDelete}
                 className="px-3.5 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs font-semibold shadow-xs transition-colors cursor-pointer"
               >
-                Confirmer la suppression
+                {t('settings.common.delete')}
               </button>
             </div>
           </div>

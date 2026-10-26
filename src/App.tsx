@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import {
   LogIn,
@@ -33,7 +34,7 @@ import { Resource } from './types/resource';
 import { ProjectState } from './types/lifecycle';
 import { CustomProjectParam } from './types/customParam';
 import { Project } from './types/project';
-import { UserRole, ROLE_LABELS } from './types/user';
+import { UserRole, ROLE_LABELS, getRoleLabel } from './types/user';
 import { BonusConfig } from './types/bonus';
 import { subscribeToCriteria, addCriterion } from './services/criteriaService';
 import { subscribeToBudgetLines, addBudgetLine } from './services/budgetService';
@@ -86,6 +87,7 @@ type ActiveTab =
   | 'users';
 
 function Dashboard() {
+  const { t } = useTranslation();
   const {
     firebaseUser,
     activeUser,
@@ -483,35 +485,35 @@ function Dashboard() {
         return (
           <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-900 border border-amber-300 shadow-2xs">
             <Crown className="w-3.5 h-3.5 text-amber-600" />
-            <span>Super User</span>
+            <span>{getRoleLabel('super user', t)}</span>
           </span>
         );
       case 'administrateur':
         return (
           <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-purple-100 text-purple-900 border border-purple-300">
             <Shield className="w-3.5 h-3.5 text-purple-600" />
-            <span>Administrateur</span>
+            <span>{getRoleLabel('administrateur', t)}</span>
           </span>
         );
       case 'chef de projet':
         return (
           <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-100 text-blue-900 border border-blue-300">
             <Briefcase className="w-3.5 h-3.5 text-blue-600" />
-            <span>Chef de projet</span>
+            <span>{getRoleLabel('chef de projet', t)}</span>
           </span>
         );
       case 'resource manager':
         return (
           <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-rose-100 text-rose-900 border border-rose-300">
             <UserCog className="w-3.5 h-3.5 text-rose-600" />
-            <span>Resource Manager</span>
+            <span>{getRoleLabel('resource manager', t)}</span>
           </span>
         );
       case 'value management officer':
         return (
           <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-900 border border-emerald-300">
             <Euro className="w-3.5 h-3.5 text-emerald-600" />
-            <span>Value Management Officer</span>
+            <span>{getRoleLabel('value management officer', t)}</span>
           </span>
         );
     }
@@ -582,7 +584,7 @@ function Dashboard() {
                   <span className="ml-1 text-amber-100">
                     Vous testez l'application avec le rôle endossé :{' '}
                     <strong className="bg-white/20 px-2 py-0.5 rounded font-bold uppercase tracking-wider text-white">
-                      {ROLE_LABELS[assumedRole]}
+                      {getRoleLabel(assumedRole, t)}
                     </strong>
                   </span>
                 ) : (
@@ -596,7 +598,7 @@ function Dashboard() {
             <div className="flex items-center gap-1.5 flex-wrap">
               <span className="text-[11px] font-medium text-amber-100 mr-1 flex items-center gap-1">
                 <ArrowRightLeft className="w-3 h-3" />
-                Endosser :
+                {t('navigation.header.assume_role')}
               </span>
 
               <button
@@ -607,7 +609,7 @@ function Dashboard() {
                     : 'bg-white/15 hover:bg-white/25 text-white'
                 }`}
               >
-                Administrateur
+                {t('navigation.roles.administrateur')}
               </button>
 
               <button
@@ -618,7 +620,7 @@ function Dashboard() {
                     : 'bg-white/15 hover:bg-white/25 text-white'
                 }`}
               >
-                Chef de projet
+                {t('navigation.roles.project_manager')}
               </button>
 
               <button
@@ -629,7 +631,7 @@ function Dashboard() {
                     : 'bg-white/15 hover:bg-white/25 text-white'
                 }`}
               >
-                Resource Manager
+                {t('navigation.roles.resource_manager')}
               </button>
 
               <button
@@ -640,17 +642,17 @@ function Dashboard() {
                     : 'bg-white/15 hover:bg-white/25 text-white'
                 }`}
               >
-                Value Management Officer
+                {t('navigation.roles.value_management_officer')}
               </button>
 
               {assumedRole && (
                 <button
                   onClick={() => assumeRole(null)}
                   className="ml-2 px-2 py-1 rounded text-[11px] font-bold bg-amber-900/60 hover:bg-amber-900 text-amber-100 hover:text-white transition-all inline-flex items-center gap-1 cursor-pointer"
-                  title="Revenir à tous les droits de Super User"
+                  title={t('navigation.header.reset_role_title')}
                 >
                   <RotateCcw className="w-3 h-3" />
-                  <span>Réinitialiser</span>
+                  <span>{t('navigation.header.reset_role')}</span>
                 </button>
               )}
             </div>
@@ -678,7 +680,7 @@ function Dashboard() {
                 type="button"
                 onClick={() => isAdmin && logoInputRef.current?.click()}
                 disabled={!isAdmin || uploadingLogo}
-                title={isAdmin ? "Cliquer pour charger un logo depuis votre poste" : "OPAC"}
+                title={isAdmin ? t('navigation.header.change_logo_title') : "OPAC"}
                 className={`relative transition-all flex items-center justify-center ${
                   isAdmin
                     ? 'cursor-pointer hover:opacity-85 group'
@@ -708,7 +710,7 @@ function Dashboard() {
                 <button
                   type="button"
                   onClick={handleResetLogo}
-                  title="Rétablir le logo par défaut"
+                  title={t('navigation.header.reset_logo_title')}
                   className="absolute -top-1 -right-2 w-4 h-4 rounded-full bg-rose-600 hover:bg-rose-700 text-white flex items-center justify-center text-[10px] opacity-0 group-hover:opacity-100 transition-opacity shadow-xs cursor-pointer"
                 >
                   ✕
@@ -721,7 +723,7 @@ function Dashboard() {
                 OPAC  
               </h1>
               <p className="text-[14px] text-slate-600 leading-snug">
-                Outil de Priorisation de portefeuille et d'Alerte Capacitaire
+                {t('navigation.header.opac_subtitle')}
               </p>
             </div>
           </div>
@@ -740,7 +742,7 @@ function Dashboard() {
                 }`}
               >
                 <Briefcase className="w-4 h-4" />
-                <span>Projets</span>
+                <span>{t('navigation.tabs.projects')}</span>
               </button>
 
               {/* Onglet Haut Niveau 2 : Indisponibilités des Ressources (en rouge foncé, visible RM / Admin / Super User) */}
@@ -754,7 +756,7 @@ function Dashboard() {
                   }`}
                 >
                   <Calendar className={`w-4 h-4 ${activeTab === 'resources' ? 'text-white' : 'text-rose-900'}`} />
-                  <span>Ressources</span>
+                  <span>{t('navigation.tabs.unavailabilities')}</span>
                 </button>
               )}
 
@@ -768,7 +770,7 @@ function Dashboard() {
                 }`}
               >
                 <SlidersHorizontal className="w-4 h-4" />
-                <span>Paramètres</span>
+                <span>{t('navigation.tabs.settings')}</span>
               </button>
 
               {/* Onglet Haut Niveau 3 : Utilisateurs (visible et accessible qu'au seul persona Administrateur) */}
@@ -782,7 +784,7 @@ function Dashboard() {
                   }`}
                 >
                   <Users className="w-4 h-4" />
-                  <span>Utilisateurs</span>
+                  <span>{t('navigation.tabs.users')}</span>
                 </button>
               )}
             </div>
@@ -830,7 +832,7 @@ function Dashboard() {
                     isImpersonating
                       ? `Connecté en tant que ${activeUser.displayName} (${activeUser.email})`
                       : assumedRole
-                      ? `Mon profil (${activeUser.displayName} - rôle endossé : ${ROLE_LABELS[assumedRole] || assumedRole})`
+                      ? `Mon profil (${activeUser.displayName} - rôle endossé : ${getRoleLabel(assumedRole, t) || assumedRole})`
                       : `Mon profil utilisateur (${activeUser.displayName})`
                   }
                   className="w-10 h-10 rounded-full bg-pink-500 hover:bg-pink-600 border-2 border-pink-400 flex items-center justify-center text-white font-bold text-xs tracking-wider transition-all shadow-xs cursor-pointer group hover:scale-105"
@@ -863,7 +865,7 @@ function Dashboard() {
                 }`}
               >
                 <ListOrdered className="w-3.5 h-3.5" />
-                <span>Priorités</span>
+                <span>{t('navigation.tabs.priorities')}</span>
               </button>
 
               {/* 2. Capacitaire (en indigo) */}
@@ -879,7 +881,7 @@ function Dashboard() {
                 }`}
               >
                 <Gauge className="w-3.5 h-3.5" />
-                <span>Capacitaire</span>
+                <span>{t('navigation.tabs.capacity')}</span>
               </button>
 
               {/* 3. Rapports (en ardoise / slate) */}
@@ -895,7 +897,7 @@ function Dashboard() {
                 }`}
               >
                 <BarChart3 className="w-3.5 h-3.5" />
-                <span>Rapports</span>
+                <span>{t('navigation.tabs.reports')}</span>
               </button>
             </div>
           </div>
@@ -922,7 +924,7 @@ function Dashboard() {
                 }`}
               >
                 <Sliders className="w-3.5 h-3.5" />
-                <span>Critères</span>
+                <span>{t('navigation.settings_subtabs.criteria')}</span>
                 <span
                   className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold ${
                     activeTab === 'criteria' ? 'bg-emerald-700 text-white' : 'bg-emerald-200/80 text-emerald-900'
@@ -945,7 +947,7 @@ function Dashboard() {
                 }`}
               >
                 <Coins className="w-3.5 h-3.5" />
-                <span>Lignes budgétaires</span>
+                <span>{t('navigation.settings_subtabs.budget_lines')}</span>
                 <span
                   className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold ${
                     activeTab === 'budgets' ? 'bg-teal-700 text-white' : 'bg-teal-200/80 text-teal-900'
@@ -968,7 +970,7 @@ function Dashboard() {
                 }`}
               >
                 <GitFork className="w-3.5 h-3.5" />
-                <span>Cycle de vie</span>
+                <span>{t('navigation.settings_subtabs.lifecycle')}</span>
                 <span
                   className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold ${
                     activeTab === 'lifecycle' ? 'bg-slate-800 text-white' : 'bg-slate-300 text-slate-900'
@@ -992,7 +994,7 @@ function Dashboard() {
                 }`}
               >
                 <SlidersHorizontal className="w-3.5 h-3.5" />
-                <span>Paramètres projets</span>
+                <span>{t('navigation.settings_subtabs.custom_params')}</span>
                 <span
                   className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold ${
                     activeTab === 'custom_params' ? 'bg-sky-600 text-white' : 'bg-sky-200/80 text-sky-900'
@@ -1016,7 +1018,7 @@ function Dashboard() {
                 }`}
               >
                 <Brain className="w-3.5 h-3.5" />
-                <span>Compétences clés</span>
+                <span>{t('navigation.settings_subtabs.skills')}</span>
                 <span
                   className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold ${
                     activeTab === 'skills' ? 'bg-rose-700 text-white' : 'bg-rose-200/80 text-rose-900'
@@ -1138,10 +1140,10 @@ function Dashboard() {
               </div>
               <div>
                 <h3 className="text-sm font-bold text-slate-900">
-                  Démarrage d'un référentiel LPM à partir de zéro
+                  {t('settings.quick_seed.title')}
                 </h3>
                 <p className="text-xs text-slate-600 mt-0.5 max-w-3xl">
-                  Vous pouvez initialiser en un clic l'intégralité du référentiel standard complet : <strong>6 critères de priorisation</strong>, <strong>3 lignes budgétaires</strong>, <strong>8 compétences clés</strong>, <strong>6 paramètres personnalisés</strong> et <strong>7 états de cycle de vie</strong>, ou précharger chaque paramètre onglet par onglet.
+                  {t('settings.quick_seed.desc')}
                 </p>
               </div>
             </div>
@@ -1151,7 +1153,7 @@ function Dashboard() {
               className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-lg shadow-xs transition-colors shrink-0 cursor-pointer"
             >
               <Sparkles className="w-4 h-4" />
-              <span>{seedingAll ? 'Initialisation en cours...' : 'Initialiser tout le référentiel LPM standard'}</span>
+              <span>{seedingAll ? t('settings.quick_seed.loading') : t('settings.quick_seed.button')}</span>
             </button>
           </div>
         )}
@@ -1233,21 +1235,21 @@ function Dashboard() {
                   <Lock className="w-6 h-6" />
                 </div>
                 <h3 className="text-base font-bold text-slate-900 mb-1">
-                  Accès restreint à l'Administrateur &amp; Super User
+                  {t('settings.access_restricted.title')}
                 </h3>
                 <p className="text-xs text-slate-600 mb-4">
-                  Le rôle actuellement endossé est <strong>{ROLE_LABELS[effectiveRole]}</strong>. Ce persona n'a pas les droits d'administration des utilisateurs.
+                  {t('settings.access_restricted.desc', { role: getRoleLabel(effectiveRole, t) || effectiveRole })}
                 </p>
                 {isSuperUser && assumedRole && (
                   <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-800 mb-4">
                     <span>
-                      En tant que <strong>Super User</strong>, vous testez les restrictions réelles de ce rôle. Vous pouvez revenir à la vue Super User à tout moment :
+                      {t('settings.access_restricted.return_superuser')}
                     </span>
                     <button
                       onClick={() => assumeRole(null)}
                       className="mt-2 block w-full py-1.5 px-3 bg-amber-600 hover:bg-amber-700 text-white rounded font-semibold transition-colors cursor-pointer"
                     >
-                      Revenir à la vue complète Super User
+                      {t('settings.access_restricted.return_button')}
                     </button>
                   </div>
                 )}

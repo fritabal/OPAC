@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ChevronDown } from 'lucide-react';
 import { BudgetLine } from '../types/budget';
 
@@ -15,6 +16,7 @@ export const BudgetLineFilter: React.FC<BudgetLineFilterProps> = ({
   onChange,
   className = '',
 }) => {
+  const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -86,17 +88,17 @@ export const BudgetLineFilter: React.FC<BudgetLineFilterProps> = ({
   // Libellé synthétique affiché sur le bouton
   const buttonLabel = useMemo(() => {
     if (allSelected || (selectedBudgetLineIds.length === 0 && allBudgetLineIds.length === 0)) {
-      return `Toutes les lignes budgétaires (${allBudgetLineIds.length})`;
+      return t('filters.all_budget_lines_count', { count: allBudgetLineIds.length });
     }
     if (selectedBudgetLineIds.length === 0) {
-      return 'Aucune ligne budgétaire';
+      return t('filters.no_budget_lines');
     }
     if (selectedBudgetLineIds.length === 1) {
       const single = sortedBudgetLines.find((b) => b.id === selectedBudgetLineIds[0]);
-      return single ? single.name : '1 ligne budgétaire';
+      return single ? single.name : t('filters.budget_line_selected_one');
     }
-    return `${selectedBudgetLineIds.length} lignes budgétaires`;
-  }, [allSelected, selectedBudgetLineIds, allBudgetLineIds, sortedBudgetLines]);
+    return t('filters.budget_line_selected_other', { count: selectedBudgetLineIds.length });
+  }, [allSelected, selectedBudgetLineIds, allBudgetLineIds, sortedBudgetLines, t]);
 
   const isFilterActive = !allSelected;
 
@@ -112,7 +114,7 @@ export const BudgetLineFilter: React.FC<BudgetLineFilterProps> = ({
             ? 'border-indigo-300 bg-indigo-50/20 text-slate-800'
             : 'border-slate-300 hover:border-slate-400 text-slate-700'
         }`}
-        title={buttonLabel}
+        title={t('filters.filter_prefix', { label: buttonLabel })}
       >
         <span className="truncate font-normal">{buttonLabel}</span>
         <ChevronDown
@@ -146,7 +148,7 @@ export const BudgetLineFilter: React.FC<BudgetLineFilterProps> = ({
                 }}
                 className="w-4 h-4 rounded border-slate-400 text-slate-600 focus:ring-slate-400 focus:ring-offset-0 cursor-pointer accent-slate-600 shrink-0"
               />
-              <span className="truncate">Toutes les lignes budgétaires</span>
+              <span className="truncate">{t('filters.all_budget_lines')}</span>
             </div>
             <span className="text-[11px] text-slate-400 font-normal shrink-0">
               ({sortedBudgetLines.length})
@@ -183,7 +185,7 @@ export const BudgetLineFilter: React.FC<BudgetLineFilterProps> = ({
             })}
             {sortedBudgetLines.length === 0 && (
               <div className="text-center py-2 text-xs text-slate-400 italic">
-                Aucune ligne budgétaire définie
+                {t('filters.no_budget_lines')}
               </div>
             )}
           </div>

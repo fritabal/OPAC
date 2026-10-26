@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Briefcase,
   Plus,
@@ -113,6 +114,7 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
   sortDirection: sortDirectionProp,
   setSortDirection: setSortDirectionProp,
 }) => {
+  const { t } = useTranslation();
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [isReadOnlyModal, setIsReadOnlyModal] = useState(false);
@@ -174,7 +176,7 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
           ? `projets_opac_selection_${dateTag}.csv`
           : `projets_opac_${dateTag}.csv`;
       downloadFile(csvContent, filename);
-      setActionSuccess(`${targetProjects.length} projet(s) exporté(s) avec succès au format CSV (|).`);
+      setActionSuccess(`${targetProjects.length} ${targetProjects.length > 1 ? 'projets exportés' : 'projet exporté'} avec succès au format CSV (|).`);
       setTimeout(() => setActionSuccess(null), 4000);
     } catch (err) {
       console.error('Erreur export projets CSV:', err);
@@ -1071,14 +1073,10 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
         <div>
           <h2 className="text-xl font-bold text-blue-600 flex items-center gap-2.5">
             <Briefcase className="w-5 h-5 text-blue-600 shrink-0" />
-            <span>Portefeuille Projets</span>
+            <span>{t('projects.title')}</span>
           </h2>
           <p className="text-xs text-slate-600 mt-0.5 max-w-2xl">
-            {isValueManagementOfficer || isSuperUser
-              ? 'Créez, qualifiez, modifiez et supprimez des projets du portefeuille.'
-              : isActingAsResourceManager
-              ? 'Consultez les projets du portefeuille.'
-              : 'Consultez les projets et mettez à jour ceux dont vous êtes Chef de projet ou Adjoint.'}
+            {t('projects.subtitle')}
           </p>
         </div>
 
@@ -1089,8 +1087,8 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
               <button
                 type="button"
                 onClick={() => setActionsMenuOpen((prev) => !prev)}
-                title="Menu Portefeuille (Export, Import, Suppression)"
-                aria-label="Menu Portefeuille"
+                title={t('projects.import_export.burger_tooltip')}
+                aria-label={t('projects.import_export.burger_title')}
                 className="p-1 text-slate-600 hover:text-slate-900 transition-colors cursor-pointer flex items-center justify-center rounded-lg hover:bg-slate-200/60"
               >
                 <Menu className="w-6 h-6" />
@@ -1102,10 +1100,10 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
                   <div className="px-3 py-2 border-b border-slate-100 mb-1">
                     <div className="text-[11px] font-bold text-blue-800 uppercase tracking-wider flex items-center gap-1.5">
                       <Briefcase className="w-3.5 h-3.5 text-blue-600" />
-                      <span>Portefeuille Projets</span>
+                      <span>{t('projects.import_export.burger_title')}</span>
                     </div>
                     <p className="text-[11px] text-slate-500 mt-0.5">
-                      Import, export et gestion des projets
+                      {t('projects.import_export.burger_subtitle')}
                     </p>
                   </div>
 
@@ -1125,10 +1123,10 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
                       </div>
                       <div>
                         <div className="text-xs font-bold text-slate-900 group-hover:text-indigo-600 transition-colors">
-                          Exporter des projets
+                          {t('projects.import_export.export_title')}
                         </div>
                         <div className="text-[11px] text-slate-500 mt-0.5 leading-tight">
-                          Exporte tous les projets ou seulement ceux qui sont sélectionnés au format CSV (|)
+                          {t('projects.import_export.export_desc')}
                         </div>
                       </div>
                     </button>
@@ -1148,10 +1146,10 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
                       </div>
                       <div>
                         <div className="text-xs font-bold text-slate-900 group-hover:text-amber-700 transition-colors">
-                          Importer des projets
+                          {t('projects.import_export.import_title')}
                         </div>
                         <div className="text-[11px] text-slate-500 mt-0.5 leading-tight">
-                          Charge ou met à jour des projets depuis un fichier .csv (|) avec journal d'audit
+                          {t('projects.import_export.import_desc')}
                         </div>
                       </div>
                     </button>
@@ -1172,10 +1170,10 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
                         </div>
                         <div>
                           <div className="text-xs font-bold text-rose-700 group-hover:text-rose-800 transition-colors">
-                            Supprimer des projets
+                            {t('projects.import_export.delete_title')}
                           </div>
                           <div className="text-[11px] text-slate-500 mt-0.5 leading-tight">
-                            Supprime définitivement tous les projets ou seulement ceux sélectionnés
+                            {t('projects.import_export.delete_desc')}
                           </div>
                         </div>
                       </button>
@@ -1192,7 +1190,7 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
               className="inline-flex items-center gap-2 px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-lg shadow-xs transition-colors cursor-pointer shrink-0 h-8"
             >
               <Plus className="w-4 h-4" />
-              <span>Nouveau projet</span>
+              <span>{t('projects.new_project')}</span>
             </button>
           )}
         </div>
@@ -1217,7 +1215,7 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
               type="text"
               value={searchQuery}
               onChange={(e) => handleSearchChange(e.target.value)}
-              placeholder="Rechercher par nom, #ID, chef de projet..."
+              placeholder={t('projects.search_placeholder')}
               className="w-full pl-9 pr-3 py-2 border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-indigo-500"
             />
           </div>
@@ -1253,34 +1251,56 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
               }`}
             >
               <User className="w-3.5 h-3.5" />
-              <span>Mes projets</span>
+              <span>{t('projects.only_my_projects')}</span>
             </button>
           </div>
 
           {/* Bouton bascule Sélection manuelle */}
           <div className="lg:col-span-2 flex items-center">
-            <button
-              type="button"
-              onClick={handleToggleManualSelection}
-              className={`w-full py-2 px-2.5 rounded-lg text-xs font-semibold border transition-all cursor-pointer flex items-center justify-center gap-1.5 whitespace-nowrap ${
-                manualSelectionActive
-                  ? 'bg-indigo-600 text-white border-indigo-600 shadow-2xs'
-                  : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200'
-              }`}
-              title={
-                manualSelectionActive
-                  ? `${selectedProjectIds.length} projet(s) sélectionné(s) - Cliquer pour désactiver`
-                  : 'Activer la sélection manuelle de projets'
+            <Tooltip
+              content={
+                <div className="space-y-2 text-left">
+                  <div className="font-bold text-white text-sm sm:text-base border-b border-white/20 pb-1">
+                    {manualSelectionActive
+                      ? `${t('projects.manual_selection')} — ${selectedProjectIds.length} ${
+                          selectedProjectIds.length > 1
+                            ? t('common.words.project_other')
+                            : t('common.words.project_one')
+                        }`
+                      : t('projects.manual_selection')}
+                  </div>
+                  <p className="text-white/95 font-medium leading-relaxed text-[13px] sm:text-sm">
+                    {t('projects.manual_selection_tooltip')}
+                  </p>
+                </div>
               }
+              placement="bottom"
+              maxWidthClass="max-w-sm sm:max-w-md"
+              className="w-full flex"
             >
-              <CheckSquare className="w-3.5 h-3.5 shrink-0" />
-              <span>Sélection manuelle</span>
-              {manualSelectionActive && (
-                <span className="px-1.5 py-0.2 rounded-full text-[10px] font-bold bg-white/20 text-white">
-                  {selectedProjectIds.length}
-                </span>
-              )}
-            </button>
+              <button
+                type="button"
+                onClick={handleToggleManualSelection}
+                className={`w-full py-2 px-2.5 rounded-lg text-xs font-semibold border transition-all cursor-pointer flex items-center justify-center gap-1.5 whitespace-nowrap ${
+                  manualSelectionActive
+                    ? 'bg-indigo-600 text-white border-indigo-600 shadow-2xs'
+                    : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200'
+                }`}
+                aria-label={
+                  manualSelectionActive
+                    ? `${t('projects.manual_selection')} (${selectedProjectIds.length})`
+                    : t('projects.manual_selection')
+                }
+              >
+                <CheckSquare className="w-3.5 h-3.5 shrink-0" />
+                <span>{t('projects.manual_selection')}</span>
+                {manualSelectionActive && (
+                  <span className="px-1.5 py-0.2 rounded-full text-[10px] font-bold bg-white/20 text-white">
+                    {selectedProjectIds.length}
+                  </span>
+                )}
+              </button>
+            </Tooltip>
           </div>
         </div>
 
@@ -1295,10 +1315,23 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
               }`}
             >
               {manualSelectionActive
-                ? `${selectedProjectIds.length} projet${selectedProjectIds.length > 1 ? 's' : ''} sur ${projects.length} projet${projects.length > 1 ? 's' : ''} au total`
+                ? t('projects.counts.selected', {
+                    selected: selectedProjectIds.length,
+                    selected_word: selectedProjectIds.length > 1 ? t('common.words.project_other') : t('common.words.project_one'),
+                    total: projects.length,
+                    total_word: projects.length > 1 ? t('common.words.project_other') : t('common.words.project_one'),
+                  })
                 : hasActiveFilters
-                ? `${filteredProjects.length} projet${filteredProjects.length > 1 ? 's' : ''} sur ${projects.length} projet${projects.length > 1 ? 's' : ''} au total`
-                : `${projects.length} projet${projects.length > 1 ? 's' : ''} au total`}
+                ? t('projects.counts.filtered', {
+                    filtered: filteredProjects.length,
+                    filtered_word: filteredProjects.length > 1 ? t('common.words.project_other') : t('common.words.project_one'),
+                    total: projects.length,
+                    total_word: projects.length > 1 ? t('common.words.project_other') : t('common.words.project_one'),
+                  })
+                : t('projects.counts.total', {
+                    total: projects.length,
+                    total_word: projects.length > 1 ? t('common.words.project_other') : t('common.words.project_one'),
+                  })}
             </span>
 
             {hasActiveFilters && (
@@ -1316,7 +1349,7 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
                 className="text-indigo-600 hover:text-indigo-800 hover:underline flex items-center gap-1.5 cursor-pointer text-xs font-semibold"
               >
                 <RotateCcw className="w-3.5 h-3.5" />
-                <span>Réinitialiser les filtres</span>
+                <span>{t('projects.clear_filters')}</span>
               </button>
             )}
           </div>
@@ -1334,8 +1367,8 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
                 onChange={(e) => setShowConfidentialProjects(e.target.checked)}
                 className="w-3.5 h-3.5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer shrink-0"
               />
-              <span className="text-xs" title="Afficher les projets confidentiels">
-                Afficher les projets confidentiels
+              <span className="text-xs" title={t('projects.show_confidential')}>
+                {t('projects.show_confidential')}
               </span>
             </label>
           )}
@@ -1361,12 +1394,12 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
                 </div>
                 <div>
                   <span className="text-base font-bold text-slate-900 block leading-tight">
-                    Prise en compte des bonus
+                    {t('projects.bonus_panel.title')}
                   </span>
                   {!canToggleBonus && (
                     <span className="text-[10px] text-slate-500 flex items-center gap-1 mt-0.5 font-medium">
                       <Lock className="w-3 h-3 text-slate-400 shrink-0" />
-                      <span>Modification réservée au Value Management Officer</span>
+                      <span>{t('projects.bonus_panel.locked_tooltip')}</span>
                     </span>
                   )}
                 </div>
@@ -1394,13 +1427,13 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
                         canToggleBonus ? 'cursor-pointer hover:text-teal-700' : 'cursor-default'
                       } ${bonusConfig.isBonusActive ? 'text-teal-950' : 'text-slate-800'}`}
                     >
-                      Bonus actifs
+                      {t('projects.bonus_panel.active_label')}
                     </label>
                     <Tooltip
                       content={
                         bonusConfig.isBonusActive
-                          ? 'Prend en compte les bonus projet dans le calcul du ROI'
-                          : 'Ne prend pas en compte les bonus dans le calcul du ROI'
+                          ? t('projects.bonus_panel.active_tooltip_on')
+                          : t('projects.bonus_panel.active_tooltip_off')
                       }
                       placement="top"
                       maxWidthClass="w-56"
@@ -1436,13 +1469,13 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
                         canToggleBonus ? 'cursor-pointer hover:text-indigo-700' : 'cursor-default'
                       } ${bonusConfig.checkQuotas ? 'text-indigo-950' : 'text-slate-800'}`}
                     >
-                      Vérification des quotas de bonus
+                      {t('projects.bonus_panel.quotas_label')}
                     </label>
                     <Tooltip
                       content={
                         bonusConfig.checkQuotas
-                          ? 'Contrôle les quotas et alerte en cas de dépassement selon le tri actif'
-                          : 'Ne vérifie pas les quotas de bonus'
+                          ? t('projects.bonus_panel.quotas_tooltip_on')
+                          : t('projects.bonus_panel.quotas_tooltip_off')
                       }
                       placement="top"
                       maxWidthClass="w-56"
@@ -1477,10 +1510,10 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
                         bonusedOnly ? 'text-teal-950' : 'text-slate-800 hover:text-teal-700'
                       }`}
                     >
-                      Projets bonussés uniquement
+                      {t('projects.bonus_panel.only_bonused_label')}
                     </label>
                     <Tooltip
-                      content="Filtre la liste des projets pour ne faire apparaître que les projets avec un bonus"
+                      content={t('projects.bonus_panel.only_bonused_tooltip')}
                       placement="top"
                       maxWidthClass="w-56"
                     >
@@ -1504,13 +1537,13 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
                   <AlertTriangle className="w-3.5 h-3.5 text-amber-600" />
                 </div>
                 <span className="font-bold text-amber-900 uppercase tracking-wider">
-                  ALERTE QUOTA DE BONUS :
+                  {t('projects.bonus_alert.title')}
                 </span>
                 <span className="font-medium bg-amber-200/80 text-amber-900 px-2 py-0.5 rounded-full text-[11px]">
-                  Tri actif : {sortColumn === 'roi' ? 'Priorité' : sortColumn === 'bonus' ? 'Bonus' : sortColumn === 'id' ? '#ID' : sortColumn === 'name' ? 'Nom' : sortColumn === 'state' ? 'Cycle de vie' : sortColumn === 'pm' ? 'Chef de projet' : 'Ligne budgétaire'} ({sortDirection === 'asc' ? 'croissant' : 'décroissant'})
+                  {t('projects.bonus_alert.active_sort')} {sortColumn === 'roi' ? t('projects.columns.roi') : sortColumn === 'bonus' ? t('projects.columns.bonus') : sortColumn === 'id' ? t('projects.columns.id') : sortColumn === 'name' ? t('projects.columns.name') : sortColumn === 'state' ? t('projects.columns.state') : sortColumn === 'pm' ? t('projects.columns.pm') : t('projects.columns.budget_line')} ({sortDirection === 'asc' ? 'asc' : 'desc'})
                 </span>
                 <span className="font-semibold text-amber-950">
-                  {bonusQuotaAnalysis.breachingProjectsCount} projet{bonusQuotaAnalysis.breachingProjectsCount > 1 ? 's' : ''} en dépassement sur {bonusQuotaAnalysis.totalBonusedProjects} projet{bonusQuotaAnalysis.totalBonusedProjects > 1 ? 's' : ''} bonussé{bonusQuotaAnalysis.totalBonusedProjects > 1 ? 's' : ''} ({bonusQuotaAnalysis.totalDistributedBonus} point{bonusQuotaAnalysis.totalDistributedBonus > 1 ? 's' : ''} distribué{bonusQuotaAnalysis.totalDistributedBonus > 1 ? 's' : ''})
+                  {bonusQuotaAnalysis.breachingProjectsCount} {bonusQuotaAnalysis.breachingProjectsCount > 1 ? t('common.words.project_other') : t('common.words.project_one')} / {bonusQuotaAnalysis.totalBonusedProjects} ({bonusQuotaAnalysis.totalDistributedBonus} {bonusQuotaAnalysis.totalDistributedBonus > 1 ? t('common.words.point_other') : t('common.words.point_one')})
                 </span>
               </div>
             )}
@@ -1579,7 +1612,7 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
                     className="sticky top-0 bg-slate-100 z-30 py-2.5 px-1.5 w-14 min-w-[56px] max-w-[56px] text-center cursor-pointer select-none group hover:bg-slate-200/60 transition-colors border-r border-slate-200 table-header-double-bottom"
                   >
                     <div className="flex items-center justify-center gap-1">
-                      <span>ID</span>
+                      <span>{t('projects.columns.id')}</span>
                       {renderSortIcon('id')}
                     </div>
                   </th>
@@ -1590,9 +1623,9 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
                     onClick={() => handleSort('roi')}
                     className="sticky top-0 bg-slate-100 z-30 py-2.5 px-1.5 w-24 min-w-[96px] max-w-[96px] text-center cursor-pointer select-none group hover:bg-slate-200/60 transition-colors border-r border-slate-200 table-header-double-bottom"
                   >
-                    <Tooltip content="Trier par priorité (rang selon ROI décroissant)" className="w-full inline-block">
+                    <Tooltip content={t('projects.tooltips.sort_priority')} className="w-full inline-block">
                       <div className="flex items-center justify-center gap-1 cursor-help">
-                        <span>PRIORITE</span>
+                        <span>{t('projects.columns.roi')}</span>
                         {renderSortIcon('roi')}
                       </div>
                     </Tooltip>
@@ -1605,7 +1638,7 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
                     className="sticky top-0 bg-slate-100 z-30 py-2.5 px-4 min-w-[200px] cursor-pointer select-none group hover:bg-slate-200/60 transition-colors border-r border-slate-200 table-header-double-bottom"
                   >
                     <div className="flex items-center gap-1.5">
-                      <span>Projet</span>
+                      <span>{t('projects.columns.name')}</span>
                       {renderSortIcon('name')}
                     </div>
                   </th>
@@ -1617,7 +1650,7 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
                     className="sticky top-0 bg-slate-100 z-30 py-2.5 px-4 min-w-[140px] cursor-pointer select-none group hover:bg-slate-200/60 transition-colors border-r border-slate-200 table-header-double-bottom"
                   >
                     <div className="flex items-center gap-1.5">
-                      <span>État (Cycle de vie)</span>
+                      <span>{t('projects.columns.state')}</span>
                       {renderSortIcon('state')}
                     </div>
                   </th>
@@ -1629,7 +1662,7 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
                     className="sticky top-0 bg-slate-100 z-30 py-2.5 px-4 min-w-[180px] cursor-pointer select-none group hover:bg-slate-200/60 transition-colors border-r border-slate-200 table-header-double-bottom"
                   >
                     <div className="flex items-center gap-1.5">
-                      <span>Chef de projet &amp; Adjoint</span>
+                      <span>{t('projects.columns.pm')}</span>
                       {renderSortIcon('pm')}
                     </div>
                   </th>
@@ -1641,7 +1674,7 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
                     className="sticky top-0 bg-slate-100 z-30 py-2.5 px-4 min-w-[150px] cursor-pointer select-none group hover:bg-slate-200/60 transition-colors border-r border-slate-200 table-header-double-bottom"
                   >
                     <div className="flex items-center gap-1.5">
-                      <span>Ligne budgétaire</span>
+                      <span>{t('projects.columns.budget_line')}</span>
                       {renderSortIcon('budgetLine')}
                     </div>
                   </th>
@@ -1653,7 +1686,7 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
                     className="sticky top-0 bg-slate-100 z-30 py-2.5 px-3 min-w-[85px] text-center cursor-pointer select-none group hover:bg-slate-200/60 transition-colors border-r border-slate-200 table-header-double-bottom"
                   >
                     <div className="flex items-center justify-center gap-1.5">
-                      <span>Bonus</span>
+                      <span>{t('projects.columns.bonus')}</span>
                       {renderSortIcon('bonus')}
                     </div>
                   </th>
@@ -1721,7 +1754,7 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
 
                   {/* Actions */}
                   <th scope="col" className="sticky top-0 bg-slate-100 z-30 py-2.5 px-4 w-24 text-right table-header-double-bottom">
-                    Actions
+                    {t('projects.columns.actions')}
                   </th>
                 </tr>
               </thead>
@@ -1779,7 +1812,7 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
                             <div className="inline-flex items-center justify-center gap-1">
                               <span
                                 className="font-mono font-bold text-xs px-1.5 py-0.5 rounded-md bg-indigo-50 text-indigo-700 border border-indigo-200 shadow-2xs min-w-[20px] text-center"
-                                title={`Priorité #${projectRoiRanks.get(p.id)} (État à prioriser)`}
+                                title={t('projects.tooltips.priority_badge', { rank: projectRoiRanks.get(p.id) })}
                               >
                                 {projectRoiRanks.get(p.id)}
                               </span>
@@ -1793,7 +1826,7 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
                           ) : (
                             <div
                               className="inline-flex items-center justify-center"
-                              title="État non à prioriser : pas de numéro de priorité"
+                              title={t('projects.tooltips.not_prioritized_state')}
                             >
                               <span className="font-mono text-xs text-slate-500 font-medium">
                                 ({formatRoi(projectRoi)})
@@ -1810,10 +1843,10 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
                         {isConfidentialHidden ? (
                           <span
                             className="inline-flex items-center gap-1.5 text-xs font-bold bg-rose-100 text-red-600 border border-red-300 px-2.5 py-1 rounded-md shadow-2xs select-none"
-                            title="Projet confidentiel (accès restreint)"
+                            title={t('projects.tooltips.confidential_badge')}
                           >
                             <Lock className="w-3.5 h-3.5 text-red-600 shrink-0" />
-                            <span>CONFIDENTIEL</span>
+                            <span>{t('common.confidential').toUpperCase()}</span>
                           </span>
                         ) : (
                           <div>
@@ -1822,7 +1855,7 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
                               {p.isConfidential && (
                                 <span
                                   className="inline-flex items-center justify-center p-1 rounded-md bg-rose-50 border border-red-300 text-red-600 shadow-2xs shrink-0"
-                                  title="Projet confidentiel"
+                                  title={t('projects.tooltips.confidential_badge')}
                                 >
                                   <Lock className="w-3.5 h-3.5 text-red-600" />
                                 </span>
@@ -1832,17 +1865,17 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
                                 content={
                                   <div>
                                     <div className="text-[10px] font-semibold text-slate-200 uppercase tracking-wider mb-1 flex items-center justify-between gap-4">
-                                      <span>Description du projet</span>
+                                      <span>{t('projects.tooltips.description_title')}</span>
                                       {p.isConfidential && (
                                         <span className="text-rose-200 flex items-center gap-1 font-medium normal-case">
                                           <Lock className="w-2.5 h-2.5" />
-                                          Confidentiel
+                                          {t('common.confidential')}
                                         </span>
                                       )}
                                     </div>
                                     <div className="text-white text-xs">
                                       {p.description?.trim() || (
-                                        <span className="italic text-slate-300">Aucune description renseignée</span>
+                                        <span className="italic text-slate-300">{t('projects.tooltips.no_description')}</span>
                                       )}
                                     </div>
                                   </div>
@@ -1872,7 +1905,7 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
                               value={p.stateId}
                               onChange={(e) => handleDirectStateChange(p, e.target.value)}
                               disabled={updatingStateProjectId === p.id}
-                              title="Modifier directement l'état du cycle de vie"
+                              title={t('projects.tooltips.state_change')}
                               className="appearance-none inline-flex items-center pl-7 pr-7 py-1 rounded-full text-xs font-semibold bg-indigo-50 hover:bg-indigo-100 text-indigo-900 border border-indigo-200 hover:border-indigo-300 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 cursor-pointer transition-colors shadow-2xs disabled:opacity-60 disabled:cursor-wait"
                             >
                               {projectStates.map((st) => (
@@ -1886,7 +1919,7 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
                         ) : (
                           <span
                             className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-indigo-50 text-indigo-900 border border-indigo-200"
-                            title="État du cycle de vie (modification non autorisée)"
+                            title={t('projects.tooltips.state_readonly')}
                           >
                             <Tag className="w-3 h-3 text-indigo-600" />
                             <span>{getStateName(p.stateId)}</span>
@@ -1921,11 +1954,19 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
                             <Lock className="w-2.5 h-2.5 text-red-600 shrink-0" />
                             <span>CONFIDENTIEL</span>
                           </span>
-                        ) : (
-                          <span className="truncate block max-w-[160px]" title={getBudgetLineName(p.budgetLineId)}>
-                            {getBudgetLineName(p.budgetLineId)}
-                          </span>
-                        )}
+                        ) : (() => {
+                          const bl = budgetLines.find((b) => b.id === p.budgetLineId);
+                          return (
+                            <Tooltip content={bl ? `${bl.name} (${bl.budgetKe} K€)` : 'Ligne budgétaire non renseignée'}>
+                              <span
+                                className="truncate block max-w-[160px] text-xs font-semibold cursor-help"
+                                style={bl?.color ? { color: bl.color } : undefined}
+                              >
+                                {bl ? bl.name : <span className="text-slate-400 italic font-normal">Non renseignée</span>}
+                              </span>
+                            </Tooltip>
+                          );
+                        })()}
                       </td>
 
                       {/* Colonne 6 : Bonus */}
@@ -2159,7 +2200,7 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
           setLastImportResult(result);
           setImportResultModalOpen(true);
           setActionSuccess(
-            `Import terminé : ${result.successCount} projet(s) importé(s) (${result.warningCount} avertissement(s), ${result.errorCount} échec(s)).`
+            `Import terminé : ${result.successCount} ${result.successCount > 1 ? 'projets importés' : 'projet importé'} (${result.warningCount} ${result.warningCount > 1 ? 'avertissements' : 'avertissement'}, ${result.errorCount} ${result.errorCount > 1 ? 'échecs' : 'échec'}).`
           );
           setTimeout(() => setActionSuccess(null), 6000);
         }}
@@ -2189,7 +2230,7 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
         selectedProjects={projectsSelectedForDeletion}
         onSuccess={(count) => {
           setSelectedProjectIds([]);
-          setActionSuccess(`${count} projet(s) supprimé(s) avec succès.`);
+          setActionSuccess(`${count} ${count > 1 ? 'projets supprimés' : 'projet supprimé'} avec succès.`);
           setTimeout(() => setActionSuccess(null), 5000);
         }}
       />

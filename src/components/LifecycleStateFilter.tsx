@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ChevronDown } from 'lucide-react';
 import { ProjectState } from '../types/lifecycle';
 
@@ -17,6 +18,7 @@ export const LifecycleStateFilter: React.FC<LifecycleStateFilterProps> = ({
   className = '',
   quickFilterType = 'prioritization',
 }) => {
+  const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -96,20 +98,20 @@ export const LifecycleStateFilter: React.FC<LifecycleStateFilterProps> = ({
   // Libellé synthétique affiché sur le bouton
   const buttonLabel = useMemo(() => {
     if (allSelected || (selectedStateIds.length === 0 && allStateIds.length === 0)) {
-      return `Tous les états (${allStateIds.length})`;
+      return t('filters.all_states_count', { count: allStateIds.length });
     }
     if (isOnlyQuickFilterSelected) {
-      return isPrioritizationMode ? 'États à prioriser uniquement' : 'États à staffer uniquement';
+      return isPrioritizationMode ? t('filters.only_prioritized_short') : t('filters.only_staffed_short');
     }
     if (selectedStateIds.length === 0) {
-      return 'Aucun état sélectionné';
+      return t('filters.no_states_selected');
     }
     if (selectedStateIds.length === 1) {
       const single = sortedStates.find((s) => s.id === selectedStateIds[0]);
-      return single ? single.name : '1 état sélectionné';
+      return single ? single.name : t('filters.state_selected_one');
     }
-    return `${selectedStateIds.length} états sélectionnés`;
-  }, [allSelected, isOnlyQuickFilterSelected, isPrioritizationMode, selectedStateIds, allStateIds, sortedStates]);
+    return t('filters.state_selected_other', { count: selectedStateIds.length });
+  }, [allSelected, isOnlyQuickFilterSelected, isPrioritizationMode, selectedStateIds, allStateIds, sortedStates, t]);
 
   const isFilterActive = !allSelected;
 
@@ -125,7 +127,7 @@ export const LifecycleStateFilter: React.FC<LifecycleStateFilterProps> = ({
             ? 'border-indigo-300 bg-indigo-50/20 text-slate-800'
             : 'border-slate-300 hover:border-slate-400 text-slate-700'
         }`}
-        title={buttonLabel}
+        title={t('filters.filter_prefix', { label: buttonLabel })}
       >
         <span className="truncate font-normal">{buttonLabel}</span>
         <ChevronDown
@@ -159,7 +161,7 @@ export const LifecycleStateFilter: React.FC<LifecycleStateFilterProps> = ({
                 }}
                 className="w-4 h-4 rounded border-slate-400 text-slate-600 focus:ring-slate-400 focus:ring-offset-0 cursor-pointer accent-slate-600 shrink-0"
               />
-              <span className="truncate">Tous les états</span>
+              <span className="truncate">{t('filters.all_states')}</span>
             </div>
             <span className="text-[11px] text-slate-400 font-normal shrink-0">({sortedStates.length})</span>
           </label>
@@ -174,7 +176,7 @@ export const LifecycleStateFilter: React.FC<LifecycleStateFilterProps> = ({
                 : 'text-slate-700 hover:bg-slate-50'
             }`}
           >
-            <span>{isPrioritizationMode ? 'Les états à prioriser uniquement' : 'Les états à staffer uniquement'}</span>
+            <span>{isPrioritizationMode ? t('filters.only_prioritized') : t('filters.only_staffed')}</span>
             <span className="text-[11px] text-slate-400 font-normal">({quickFilterStateIds.length})</span>
           </button>
 
@@ -206,7 +208,7 @@ export const LifecycleStateFilter: React.FC<LifecycleStateFilterProps> = ({
             })}
             {sortedStates.length === 0 && (
               <div className="text-center py-2 text-xs text-slate-400 italic">
-                Aucun état défini
+                {t('filters.no_states_defined')}
               </div>
             )}
           </div>

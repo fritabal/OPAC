@@ -122,11 +122,11 @@ export const DeleteAllProjectsModal: React.FC<DeleteAllProjectsModalProps> = ({
                 />
                 <div>
                   <div className="text-xs font-bold text-slate-900">
-                    Seulement ceux qui étaient sélectionnés ({selectedProjects.length} projet{selectedProjects.length > 1 ? 's' : ''})
+                    Seulement ceux qui étaient sélectionnés ({selectedProjects.length} {selectedProjects.length > 1 ? 'projets' : 'projet'})
                   </div>
                   <div className="text-[11px] text-slate-500 mt-0.5">
                     {selectedProjects.length > 0
-                      ? `Supprime uniquement les ${selectedProjects.length} projet(s) sélectionnés au lancement de l'option.`
+                      ? `Supprime uniquement les ${selectedProjects.length} ${selectedProjects.length > 1 ? 'projets sélectionnés' : 'projet sélectionné'} au lancement de l'option.`
                       : 'Aucun projet sélectionné au préalable.'}
                   </div>
                 </div>
@@ -151,7 +151,7 @@ export const DeleteAllProjectsModal: React.FC<DeleteAllProjectsModalProps> = ({
                 />
                 <div>
                   <div className="text-xs font-bold text-slate-900">
-                    Tous les projets ({projects.length} projet{projects.length > 1 ? 's' : ''})
+                    Tous les projets ({projects.length} {projects.length > 1 ? 'projets' : 'projet'})
                   </div>
                   <div className="text-[11px] text-slate-500 mt-0.5">
                     Supprime l'intégralité des projets actuellement enregistrés dans le portefeuille.
@@ -165,7 +165,7 @@ export const DeleteAllProjectsModal: React.FC<DeleteAllProjectsModalProps> = ({
           {count > 0 && (
             <div className="space-y-1.5 bg-slate-50 p-3 rounded-xl border border-slate-200">
               <span className="text-[11px] font-bold text-slate-700">
-                Projet(s) qui seront supprimés ({count}) :
+                {count > 1 ? 'Projets qui seront supprimés' : 'Projet qui sera supprimé'} ({count}) :
               </span>
               <div className="max-h-28 overflow-y-auto space-y-1 text-xs text-slate-700 [scrollbar-width:thin]">
                 {targetProjects.slice(0, 10).map((p) => (
@@ -178,7 +178,7 @@ export const DeleteAllProjectsModal: React.FC<DeleteAllProjectsModalProps> = ({
                 ))}
                 {count > 10 && (
                   <div className="text-[11px] text-slate-400 italic">
-                    ... et {count - 10} autre(s) projet(s)
+                    ... et {count - 10} {count - 10 > 1 ? 'autres projets' : 'autre projet'}
                   </div>
                 )}
               </div>
@@ -194,7 +194,7 @@ export const DeleteAllProjectsModal: React.FC<DeleteAllProjectsModalProps> = ({
           {/* Saisie de confirmation */}
           <div className="space-y-1.5">
             <label className="block text-xs font-semibold text-slate-700">
-              Pour confirmer la suppression de ces <strong className="text-rose-700">{count} projet(s)</strong>, saisissez{' '}
+              Pour confirmer la suppression de {count > 1 ? 'ces' : 'ce'} <strong className="text-rose-700">{count} {count > 1 ? 'projets' : 'projet'}</strong>, saisissez{' '}
               <span className="font-mono font-bold text-rose-700">SUPPRIMER</span> :
             </label>
             <input

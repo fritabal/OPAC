@@ -111,11 +111,11 @@ export const ExportProjectsModal: React.FC<ExportProjectsModalProps> = ({
                 />
                 <div>
                   <div className="text-xs font-bold text-slate-900">
-                    Seulement ceux qui sont sélectionnés ({selectedProjects.length} projet{selectedProjects.length > 1 ? 's' : ''})
+                    Seulement ceux qui sont sélectionnés ({selectedProjects.length} {selectedProjects.length > 1 ? 'projets' : 'projet'})
                   </div>
                   <div className="text-[11px] text-slate-500 mt-0.5">
                     {selectedProjects.length > 0
-                      ? `Exporte uniquement les ${selectedProjects.length} projet(s) sélectionnés ou pré-filtrés.`
+                      ? `Exporte uniquement les ${selectedProjects.length} ${selectedProjects.length > 1 ? 'projets sélectionnés' : 'projet sélectionné'} ou pré-filtrés.`
                       : 'Aucun projet sélectionné ou pré-filtré au préalable.'}
                   </div>
                 </div>
@@ -140,7 +140,7 @@ export const ExportProjectsModal: React.FC<ExportProjectsModalProps> = ({
                 />
                 <div>
                   <div className="text-xs font-bold text-slate-900">
-                    Tous les projets ({projects.length} projet{projects.length > 1 ? 's' : ''})
+                    Tous les projets ({projects.length} {projects.length > 1 ? 'projets' : 'projet'})
                   </div>
                   <div className="text-[11px] text-slate-500 mt-0.5">
                     Exporte l'intégralité des projets actuellement enregistrés dans le portefeuille.
@@ -154,7 +154,7 @@ export const ExportProjectsModal: React.FC<ExportProjectsModalProps> = ({
           {count > 0 && (
             <div className="space-y-1.5 bg-slate-50 p-3 rounded-xl border border-slate-200">
               <span className="text-[11px] font-bold text-slate-700">
-                Projet(s) qui seront exportés ({count}) :
+                {count > 1 ? 'Projets qui seront exportés' : 'Projet qui sera exporté'} ({count}) :
               </span>
               <div className="max-h-28 overflow-y-auto space-y-1 text-xs text-slate-700 [scrollbar-width:thin]">
                 {targetProjects.slice(0, 10).map((p) => (
@@ -167,7 +167,7 @@ export const ExportProjectsModal: React.FC<ExportProjectsModalProps> = ({
                 ))}
                 {count > 10 && (
                   <div className="text-[11px] text-slate-400 italic">
-                    ... et {count - 10} autre(s) projet(s)
+                    ... et {count - 10} {count - 10 > 1 ? 'autres projets' : 'autre projet'}
                   </div>
                 )}
               </div>

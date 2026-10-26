@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   ArrowUp,
   ArrowDown,
@@ -51,6 +52,7 @@ export const SkillsTable: React.FC<SkillsTableProps> = ({
   onSeedExample,
   seeding = false,
 }) => {
+  const { t } = useTranslation();
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedSkill, setSelectedSkill] = useState<KeySkill | null>(null);
   const [isReadOnlyModal, setIsReadOnlyModal] = useState(false);
@@ -143,12 +145,12 @@ export const SkillsTable: React.FC<SkillsTableProps> = ({
         <div>
           <h2 className="text-xl font-bold text-rose-600 flex items-center gap-2.5">
             <Brain className="w-5 h-5 text-rose-600 shrink-0" />
-            <span>Compétences clés</span>
+            <span>{t('settings.skills.title')}</span>
           </h2>
           <p className="text-xs text-slate-600 mt-1 max-w-2xl">
             {canManage
-              ? 'Identifiez les compétences critiques susceptibles de bloquer les projets, désignez le Resource Manager et gérez le plafonnement de capacité par ligne budgétaire.'
-              : 'Consultez le référentiel des compétences clés défini par l’administrateur.'}
+              ? t('settings.skills.subtitle_manager')
+              : t('settings.skills.subtitle_consult')}
           </p>
         </div>
 
@@ -160,7 +162,7 @@ export const SkillsTable: React.FC<SkillsTableProps> = ({
               className="inline-flex items-center gap-2 px-3 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 text-xs font-semibold rounded-lg transition-colors shadow-2xs cursor-pointer"
             >
               <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
-              <span>{seeding ? 'Chargement en cours...' : 'Charger les compétences clés par défaut (8 compétences)'}</span>
+              <span>{seeding ? t('settings.skills.loading_defaults') : t('settings.skills.load_defaults')}</span>
             </button>
           )}
 
@@ -170,7 +172,7 @@ export const SkillsTable: React.FC<SkillsTableProps> = ({
               className="inline-flex items-center gap-2 px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-lg shadow-xs transition-colors cursor-pointer"
             >
               <Plus className="w-4 h-4" />
-              <span>Ajouter une compétence clé</span>
+              <span>{t('settings.skills.add_button')}</span>
             </button>
           )}
         </div>
@@ -181,7 +183,7 @@ export const SkillsTable: React.FC<SkillsTableProps> = ({
         <div className="p-3.5 bg-amber-50 border border-amber-200 rounded-xl flex items-center gap-3 text-amber-800 text-xs">
           <Lock className="w-4 h-4 text-amber-600 shrink-0" />
           <span>
-            <strong>Mode consultation :</strong> En tant que Chef de projet ou Resource Manager, vous visualisez la liste des compétences clés, leurs Resource Managers et leur statut de plafonnement par ligne budgétaire. La gestion est réservée au profil Administrateur.
+            <strong>{t('settings.common.consultation_mode')}</strong> {t('settings.skills.consult_notice')}
           </span>
         </div>
       )}
@@ -202,28 +204,28 @@ export const SkillsTable: React.FC<SkillsTableProps> = ({
                 {/* Ordre */}
                 {canManage && (
                   <th scope="col" className="py-3 px-3 w-14 text-center border-r border-slate-200">
-                    Ordre
+                    {t('settings.skills.col_order')}
                   </th>
                 )}
                 {/* Nom unique */}
                 <th scope="col" className="py-3 px-4 min-w-[200px] border-r border-slate-200">
                   <div className="flex items-center gap-1.5">
                     <Tag className="w-3.5 h-3.5 text-slate-500" />
-                    <span>Compétence clé</span>
+                    <span>{t('settings.skills.col_name')}</span>
                   </div>
                 </th>
                 {/* Resource Manager */}
                 <th scope="col" className="py-3 px-4 min-w-[180px] border-r border-slate-200">
                   <div className="flex items-center gap-1.5">
                     <User className="w-3.5 h-3.5 text-slate-500" />
-                    <span>Resource Manager</span>
+                    <span>{t('settings.skills.col_manager')}</span>
                   </div>
                 </th>
                 {/* Description */}
                 <th scope="col" className="py-3 px-4 min-w-[240px] border-r border-slate-200">
                   <div className="flex items-center gap-1.5">
                     <FileText className="w-3.5 h-3.5 text-slate-500" />
-                    <span>Description</span>
+                    <span>{t('settings.skills.col_desc')}</span>
                   </div>
                 </th>
                 {/* Alerte dépassement */}
@@ -231,7 +233,7 @@ export const SkillsTable: React.FC<SkillsTableProps> = ({
                   <Tooltip content="Alerter en cas de dépassement des demandes dans l'onglet Capacitaire" className="w-full inline-block">
                     <div className="flex items-center justify-center gap-1.5 cursor-help">
                       <Bell className="w-3.5 h-3.5 text-slate-500" />
-                      <span>Alerte dépassement</span>
+                      <span>{t('settings.skills.col_alert')}</span>
                     </div>
                   </Tooltip>
                 </th>
@@ -239,12 +241,12 @@ export const SkillsTable: React.FC<SkillsTableProps> = ({
                 <th scope="col" className="py-3 px-4 w-44 text-center border-r border-slate-200">
                   <div className="flex items-center justify-center gap-1.5">
                     <Layers className="w-3.5 h-3.5 text-slate-500" />
-                    <span>Répartition</span>
+                    <span>{t('settings.skills.col_distribution')}</span>
                   </div>
                 </th>
                 {/* Actions */}
                 <th scope="col" className="py-3 px-4 w-24 text-right sticky right-0 bg-slate-100">
-                  Actions
+                  {t('settings.skills.col_actions')}
                 </th>
               </tr>
             </thead>
@@ -253,7 +255,7 @@ export const SkillsTable: React.FC<SkillsTableProps> = ({
               {loading ? (
                 <tr>
                   <td colSpan={canManage ? 7 : 6} className="py-12 text-center text-slate-400">
-                    Chargement des compétences clés...
+                    {t('settings.common.loading')}
                   </td>
                 </tr>
               ) : skills.length === 0 ? (
@@ -261,11 +263,11 @@ export const SkillsTable: React.FC<SkillsTableProps> = ({
                   <td colSpan={canManage ? 7 : 6} className="py-12 text-center text-slate-500">
                     <div className="flex flex-col items-center justify-center gap-2">
                       <Brain className="w-8 h-8 text-slate-300" />
-                      <p className="font-medium text-slate-700">Aucune compétence clé définie</p>
+                      <p className="font-medium text-slate-700">{t('settings.skills.empty')}</p>
                       {canManage ? (
                         <>
                           <p className="text-xs text-slate-400 max-w-sm">
-                            Cliquez sur "Déclarer une compétence" ou préchargez le référentiel standard de compétences clés.
+                            {t('settings.skills.empty_hint')}
                           </p>
                           <div className="flex items-center justify-center gap-2 mt-2">
                             {onSeedExample && (
@@ -275,7 +277,7 @@ export const SkillsTable: React.FC<SkillsTableProps> = ({
                                 className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 rounded-md font-semibold text-xs transition-colors cursor-pointer border border-indigo-200 shadow-2xs"
                               >
                                 <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
-                                <span>{seeding ? 'Chargement...' : 'Charger les compétences clés par défaut (8 compétences)'}</span>
+                                <span>{seeding ? t('settings.skills.loading_defaults') : t('settings.skills.load_defaults')}</span>
                               </button>
                             )}
                             <button
@@ -283,13 +285,13 @@ export const SkillsTable: React.FC<SkillsTableProps> = ({
                               className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 text-white hover:bg-indigo-700 rounded-md font-semibold text-xs transition-colors cursor-pointer shadow-xs"
                             >
                               <Plus className="w-3.5 h-3.5" />
-                              <span>Déclarer une compétence</span>
+                              <span>{t('settings.skills.add_button')}</span>
                             </button>
                           </div>
                         </>
                       ) : (
                         <p className="text-xs text-slate-400">
-                          Le Resource Manager n'a pas encore saisi de compétences clés.
+                          {t('settings.skills.subtitle_consult')}
                         </p>
                       )}
                     </div>
@@ -347,7 +349,7 @@ export const SkillsTable: React.FC<SkillsTableProps> = ({
                         {skill.description ? (
                           <span title={skill.description}>{skill.description}</span>
                         ) : (
-                          <span className="text-slate-300 italic">Aucune description</span>
+                          <span className="text-slate-300 italic">{t('settings.skills.no_description')}</span>
                         )}
                       </td>
 
@@ -363,9 +365,9 @@ export const SkillsTable: React.FC<SkillsTableProps> = ({
                             title={
                               canManage
                                 ? skill.alertOnDemandOverrun
-                                  ? "Alerte activée : cliquer pour désactiver l'alerte dépassement dans le capacitaire"
-                                  : "Alerte désactivée : cliquer pour activer l'alerte dépassement dans le capacitaire"
-                                : "Seul un administrateur peut modifier cette option"
+                                  ? t('settings.skills.alert_active')
+                                  : t('settings.skills.alert_inactive')
+                                : t('settings.skills.consult_notice')
                             }
                           />
                         </div>
@@ -379,14 +381,14 @@ export const SkillsTable: React.FC<SkillsTableProps> = ({
                             title="Capacité plafonnée par ligne budgétaire. Cliquez sur modifier pour consulter le mini-tableau et le camembert."
                           >
                             <PieChart className="w-3 h-3 text-indigo-500" />
-                            <span>Capée par ligne</span>
+                            <span>{t('settings.skills.cap_active')}</span>
                           </span>
                         ) : (
                           <span
                             className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-slate-100 text-slate-600 border border-slate-200"
                             title="Non capée par ligne budgétaire : toute la capacité peut être allouée sur une même ligne."
                           >
-                            <span>Non capée par ligne</span>
+                            <span>{t('settings.skills.cap_inactive')}</span>
                           </span>
                         )}
                       </td>
@@ -402,7 +404,7 @@ export const SkillsTable: React.FC<SkillsTableProps> = ({
                                 ? 'text-slate-400 hover:text-indigo-600 hover:bg-indigo-50'
                                 : 'text-slate-500 hover:text-indigo-600 hover:bg-slate-100'
                             }`}
-                            title={canManage ? 'Modifier / Consulter la fiche' : 'Consulter la fiche (Lecture seule)'}
+                            title={canManage ? t('settings.common.edit') : t('settings.common.consult')}
                           >
                             {canManage ? <Pencil className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
                           </button>
@@ -411,7 +413,7 @@ export const SkillsTable: React.FC<SkillsTableProps> = ({
                               type="button"
                               onClick={() => setDeleteCandidate(skill)}
                               className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors cursor-pointer"
-                              title="Supprimer"
+                              title={t('settings.common.delete')}
                             >
                               <Trash2 className="w-3.5 h-3.5" />
                             </button>
@@ -446,12 +448,10 @@ export const SkillsTable: React.FC<SkillsTableProps> = ({
         <div className="fixed inset-0 z-50 bg-slate-900/50 flex items-center justify-center p-4">
           <div className="bg-white rounded-xl shadow-xl border border-slate-200 max-w-md w-full p-6 animate-in fade-in zoom-in-95">
             <h3 className="text-base font-bold text-slate-900 mb-2">
-              Confirmer la suppression
+              {t('settings.skills.delete_title')}
             </h3>
             <p className="text-sm text-slate-600 mb-6">
-              Êtes-vous sûr de vouloir supprimer la compétence clé{' '}
-              <strong className="text-slate-900 font-semibold">« {deleteCandidate.name} »</strong> ?
-              Cette action est irréversible.
+              {t('settings.skills.delete_desc', { name: deleteCandidate.name })}
             </p>
             <div className="flex items-center justify-end gap-3">
               <button
@@ -459,7 +459,7 @@ export const SkillsTable: React.FC<SkillsTableProps> = ({
                 onClick={() => setDeleteCandidate(null)}
                 className="px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
               >
-                Annuler
+                {t('settings.common.cancel')}
               </button>
               <button
                 type="button"
@@ -467,7 +467,7 @@ export const SkillsTable: React.FC<SkillsTableProps> = ({
                 onClick={handleDeleteConfirm}
                 className="px-4 py-2 text-sm font-medium bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors shadow-xs cursor-pointer"
               >
-                {processing ? 'Suppression...' : 'Supprimer'}
+                {processing ? t('settings.common.loading') : t('settings.common.delete')}
               </button>
             </div>
           </div>

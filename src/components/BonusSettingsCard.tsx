@@ -6,6 +6,7 @@ import {
   Sparkles,
   Save,
 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { BonusConfig, DEFAULT_BONUS_CONFIG } from '../types/bonus';
 import { saveBonusConfig } from '../services/bonusService';
 
@@ -22,6 +23,7 @@ export const BonusSettingsCard: React.FC<BonusSettingsCardProps> = ({
   currentUserEmail = '',
   roleLabel = 'Value Management Officer ou Administrateur',
 }) => {
+  const { t } = useTranslation();
   // État local du formulaire
   const [isBonusActive, setIsBonusActive] = useState<boolean>(bonusConfig.isBonusActive);
   const [checkQuotas, setCheckQuotas] = useState<boolean>(bonusConfig.checkQuotas);
@@ -118,17 +120,17 @@ export const BonusSettingsCard: React.FC<BonusSettingsCardProps> = ({
           <div>
             <div className="flex items-center gap-2">
               <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
-                Gestion des bonus
+                {t('settings.bonus.title')}
               </h3>
               {!canManage && (
                 <span className="inline-flex items-center gap-1 text-[11px] font-medium text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200">
                   <Lock className="w-3 h-3 text-slate-400" />
-                  <span>Lecture seule ({roleLabel})</span>
+                  <span>{t('settings.common.consult')} ({roleLabel})</span>
                 </span>
               )}
             </div>
             <p className="text-xs text-slate-500 mt-0.5">
-              Règles et plafonds d'attribution des points de bonus dans la priorisation et le calcul du ROI
+              {t('settings.bonus.subtitle')}
             </p>
           </div>
         </div>
@@ -142,7 +144,7 @@ export const BonusSettingsCard: React.FC<BonusSettingsCardProps> = ({
               className="px-3.5 py-1.5 text-xs font-semibold bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white rounded-lg transition-colors shadow-2xs flex items-center gap-1.5 cursor-pointer"
             >
               <Save className="w-3.5 h-3.5" />
-              <span>{saving ? 'Enregistrement...' : 'Enregistrer'}</span>
+              <span>{saving ? t('settings.common.saving') : t('settings.common.save')}</span>
             </button>
           </div>
         )}
@@ -179,16 +181,16 @@ export const BonusSettingsCard: React.FC<BonusSettingsCardProps> = ({
                 htmlFor="checkbox-bonus-active"
                 className="text-sm font-bold text-slate-900 block cursor-pointer"
               >
-                Bonus actifs
+                {t('settings.bonus.active_switch')}
               </label>
               <p className="text-xs text-slate-600 mt-0.5 leading-relaxed">
                 {isBonusActive ? (
                   <span className="text-teal-900 font-medium">
-                    Prend en compte les bonus projet dans le calcul du ROI de la priorisation
+                    {t('settings.bonus.active_desc')}
                   </span>
                 ) : (
                   <span className="text-slate-500">
-                    Ne prend pas en compte les bonus projet dans le calcul du ROI et la priorisation
+                    {t('settings.bonus.active_desc')}
                   </span>
                 )}
               </p>
@@ -225,16 +227,16 @@ export const BonusSettingsCard: React.FC<BonusSettingsCardProps> = ({
                   htmlFor="checkbox-bonus-quotas"
                   className="text-sm font-bold text-slate-900 block cursor-pointer"
                 >
-                  Vérification des quotas de bonus
+                  {t('settings.bonus.quotas_switch')}
                 </label>
                 <p className="text-xs text-slate-600 mt-0.5 leading-relaxed">
                   {checkQuotas ? (
                     <span className="text-indigo-900 font-medium">
-                      Vérifie les quotas de bonus ci-dessous et alerte dès le premier projet en dépassement
+                      {t('settings.bonus.quotas_desc')}
                     </span>
                   ) : (
                     <span className="text-slate-500">
-                      Ne vérifie pas les quotas de bonus ci-dessous
+                      {t('settings.bonus.quotas_desc')}
                     </span>
                   )}
                 </p>
@@ -246,7 +248,7 @@ export const BonusSettingsCard: React.FC<BonusSettingsCardProps> = ({
             {/* 1. Nombre maximum de projets bonussés */}
             <div className="space-y-1.5">
               <label className="block text-xs font-semibold text-slate-700 leading-tight">
-                Nombre maximum de projets bonussés
+                {t('settings.bonus.max_projects_label')}
               </label>
               <div className="relative">
                 <input
@@ -266,14 +268,14 @@ export const BonusSettingsCard: React.FC<BonusSettingsCardProps> = ({
                 />
               </div>
               <p className="text-[11px] text-slate-400">
-                Plafond du nombre de projets pouvant recevoir un bonus
+                {t('settings.bonus.max_projects_desc')}
               </p>
             </div>
 
             {/* 2. Nombre de points de bonus maximum par projet */}
             <div className="space-y-1.5">
               <label className="block text-xs font-semibold text-slate-700 leading-tight">
-                Nombre de points de bonus maximum par projet
+                {t('settings.bonus.max_points_per_project_label')}
               </label>
               <div className="relative">
                 <input
@@ -293,14 +295,14 @@ export const BonusSettingsCard: React.FC<BonusSettingsCardProps> = ({
                 />
               </div>
               <p className="text-[11px] text-slate-400">
-                Points maximum attribuables à un projet individuel
+                {t('settings.bonus.max_points_per_project_desc')}
               </p>
             </div>
 
             {/* 3. Nombre total de points de bonus à distribuer sur l'ensemble des projets */}
             <div className="space-y-1.5">
               <label className="block text-xs font-semibold text-slate-700 leading-tight">
-                Nombre total de points de bonus à distribuer sur l'ensemble des projets
+                {t('settings.bonus.max_total_points_label')}
               </label>
               <div className="relative">
                 <input
@@ -320,7 +322,7 @@ export const BonusSettingsCard: React.FC<BonusSettingsCardProps> = ({
                 />
               </div>
               <p className="text-[11px] text-slate-400">
-                Enveloppe globale totale de points de bonus allouables
+                {t('settings.bonus.max_total_points_desc')}
               </p>
             </div>
           </div>

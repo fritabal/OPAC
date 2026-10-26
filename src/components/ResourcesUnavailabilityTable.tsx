@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Users,
   Plus,
@@ -55,6 +56,7 @@ export const ResourcesUnavailabilityTable: React.FC<ResourcesUnavailabilityTable
   effectiveRole,
   allUsers,
 }) => {
+  const { t, i18n } = useTranslation();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedSkillFilter, setSelectedSkillFilter] = useState<string>('all');
   const [myResourcesOnly, setMyResourcesOnly] = useState(false);
@@ -78,10 +80,10 @@ export const ResourcesUnavailabilityTable: React.FC<ResourcesUnavailabilityTable
     };
   }, []);
 
-  // 12 mois glissants (à partir et incluant le mois courant)
+  // 12 mois glissants internationalisés (à partir et incluant le mois courant)
   const rollingMonths = useMemo(() => {
-    return getRolling12Months(new Date());
-  }, []);
+    return getRolling12Months(new Date(), i18n.language);
+  }, [i18n.language]);
 
   // Détermination des compétences clés relevant de la responsabilité directe de l'utilisateur actif
   const myManagedSkills = useMemo(() => {
@@ -318,10 +320,10 @@ export const ResourcesUnavailabilityTable: React.FC<ResourcesUnavailabilityTable
         <div>
           <h2 className="text-xl font-bold text-rose-900 flex items-center gap-2.5">
             <Calendar className="w-5 h-5 text-rose-900 shrink-0" />
-            <span>Indisponibilité des ressources</span>
+            <span>{t('unavailabilities.title')}</span>
           </h2>
           <p className="text-xs text-slate-600 mt-1 max-w-3xl leading-relaxed">
-            Saisie tabulaire directe des indisponibiiités (en jours/mois) hors projets (i.e. absences, formations, réunions...) sur 12 mois glissants : au 1er de chaque mois, les mois se décalent automatiquement d'une colonne vers la gauche (le mois en cours se retruve en première colonne).
+            {t('unavailabilities.subtitle')}
           </p>
         </div>
 
@@ -332,7 +334,7 @@ export const ResourcesUnavailabilityTable: React.FC<ResourcesUnavailabilityTable
             className={PRIMARY_ACTION_HEADER_BUTTON_CLASS}
           >
             <Plus className="w-4 h-4" />
-            <span>Nouvelle ressource</span>
+            <span>{t('unavailabilities.new_resource')}</span>
           </button>
         )}
       </div>
@@ -348,7 +350,7 @@ export const ResourcesUnavailabilityTable: React.FC<ResourcesUnavailabilityTable
             onClick={() => setActionSuccess(null)}
             className="text-emerald-700 font-bold hover:underline cursor-pointer"
           >
-            Fermer
+            {t('settings.common.cancel')}
           </button>
         </div>
       )}
@@ -363,7 +365,7 @@ export const ResourcesUnavailabilityTable: React.FC<ResourcesUnavailabilityTable
             onClick={() => setActionError(null)}
             className="text-rose-700 font-bold hover:underline cursor-pointer"
           >
-            Fermer
+            {t('settings.common.cancel')}
           </button>
         </div>
       )}
@@ -378,7 +380,7 @@ export const ResourcesUnavailabilityTable: React.FC<ResourcesUnavailabilityTable
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Rechercher par nom de ressource, compétence..."
+              placeholder={t('unavailabilities.search_placeholder')}
               className="w-full pl-9 pr-3 py-2 border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-rose-800 bg-white"
             />
           </div>
@@ -391,7 +393,7 @@ export const ResourcesUnavailabilityTable: React.FC<ResourcesUnavailabilityTable
               className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs bg-white focus:ring-2 focus:ring-rose-800"
             >
               <option value="all">
-                Toutes les compétences clés ({skills.length})
+                {t('unavailabilities.all_skills_filter')} ({skills.length})
               </option>
               {skills.map((s) => (
                 <option key={s.id} value={s.id}>
@@ -413,7 +415,7 @@ export const ResourcesUnavailabilityTable: React.FC<ResourcesUnavailabilityTable
               }`}
             >
               <User className="w-3.5 h-3.5" />
-              <span>Mes ressources ({myManagedSkills.length} comp.)</span>
+              <span>{t('unavailabilities.my_resources_only')} ({myManagedSkills.length} comp.)</span>
             </button>
           </div>
         </div>
@@ -433,7 +435,7 @@ export const ResourcesUnavailabilityTable: React.FC<ResourcesUnavailabilityTable
                 >
                   <Tooltip content="Cliquer pour trier par ressource" className="w-full inline-block">
                     <div className="flex items-center justify-between gap-1.5">
-                      <span>Ressource</span>
+                      <span>{t('unavailabilities.col_resource')}</span>
                       {renderSortIcon('name')}
                     </div>
                   </Tooltip>
@@ -445,7 +447,7 @@ export const ResourcesUnavailabilityTable: React.FC<ResourcesUnavailabilityTable
                 >
                   <Tooltip content="Cliquer pour trier par compétence clé" className="w-full inline-block">
                     <div className="flex items-center justify-between gap-1.5">
-                      <span>Compétence clé</span>
+                      <span>{t('unavailabilities.col_skill')}</span>
                       {renderSortIcon('skillName')}
                     </div>
                   </Tooltip>
@@ -455,7 +457,7 @@ export const ResourcesUnavailabilityTable: React.FC<ResourcesUnavailabilityTable
                   className="px-2 py-3 font-bold text-center min-w-[65px] border-r border-slate-200"
                 >
                   <Tooltip content="Équivalent Temps Plein (ETP)" className="w-full inline-block">
-                    <span className="cursor-help">ETP</span>
+                    <span className="cursor-help">{t('unavailabilities.col_fte')}</span>
                   </Tooltip>
                 </th>
 
@@ -483,7 +485,7 @@ export const ResourcesUnavailabilityTable: React.FC<ResourcesUnavailabilityTable
                   scope="col"
                   className="px-3 py-3 font-bold text-center min-w-[80px]"
                 >
-                  Actions
+                  {t('unavailabilities.col_actions')}
                 </th>
               </tr>
             </thead>
@@ -495,7 +497,7 @@ export const ResourcesUnavailabilityTable: React.FC<ResourcesUnavailabilityTable
                     colSpan={16}
                     className="px-6 py-12 text-center text-slate-400 italic"
                   >
-                    Chargement des ressources et du calendrier...
+                    {t('settings.common.loading')}
                   </td>
                 </tr>
               ) : filteredResources.length === 0 ? (
@@ -507,12 +509,12 @@ export const ResourcesUnavailabilityTable: React.FC<ResourcesUnavailabilityTable
                     <div className="max-w-md mx-auto space-y-2">
                       <Users className="w-10 h-10 text-slate-300 mx-auto" />
                       <p className="font-semibold text-slate-700">
-                        Aucune ressource trouvée
+                        {t('unavailabilities.empty_title')}
                       </p>
                       <p className="text-xs text-slate-500">
                         {myResourcesOnly
                           ? "Aucune ressource ne correspond à vos compétences clés ou au filtre actif."
-                          : 'Cliquez sur « Nouvelle ressource » pour ajouter un collaborateur ou une équipe rattachée à une compétence clé.'}
+                          : t('unavailabilities.empty_desc')}
                       </p>
                     </div>
                   </td>
@@ -655,20 +657,13 @@ export const ResourcesUnavailabilityTable: React.FC<ResourcesUnavailabilityTable
               </div>
               <div>
                 <h3 className="text-base font-bold text-slate-900">
-                  Supprimer la ressource ?
+                  {t('unavailabilities.delete_title')}
                 </h3>
-                <p className="text-xs text-slate-500">
-                  Cette action est définitive
-                </p>
               </div>
             </div>
 
             <p className="text-xs text-slate-600 leading-relaxed mb-6">
-              Êtes-vous sûr de vouloir supprimer la ressource{' '}
-              <strong className="text-slate-900 font-semibold">
-                « {deleteCandidate.name} »
-              </strong>{' '}
-              ({deleteCandidate.skillName}) ainsi que l'ensemble de ses données d'indisponibilité sur les 12 mois ?
+              {t('unavailabilities.delete_desc', { name: deleteCandidate.name })}
             </p>
 
             <div className="flex items-center justify-end gap-3">
@@ -677,7 +672,7 @@ export const ResourcesUnavailabilityTable: React.FC<ResourcesUnavailabilityTable
                 onClick={() => setDeleteCandidate(null)}
                 className="px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
               >
-                Annuler
+                {t('settings.common.cancel')}
               </button>
               <button
                 type="button"
@@ -685,7 +680,7 @@ export const ResourcesUnavailabilityTable: React.FC<ResourcesUnavailabilityTable
                 onClick={handleDeleteResource}
                 className="px-4 py-2 text-xs font-semibold bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors shadow-xs cursor-pointer disabled:opacity-50"
               >
-                {isDeleting ? 'Suppression...' : 'Supprimer définitivement'}
+                {isDeleting ? t('settings.common.loading') : t('settings.common.delete')}
               </button>
             </div>
           </div>

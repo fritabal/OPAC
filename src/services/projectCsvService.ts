@@ -7,6 +7,7 @@ import { KeySkill } from '../types/skill';
 import { AppUser } from '../types/user';
 import { BonusConfig } from '../types/bonus';
 import { calculateProjectRoi } from '../utils/roiCalculator';
+import { normalizePeriodKey } from '../utils/dateUtils';
 import { createProject, updateProject, deleteProject } from './projectService';
 
 export interface ReferenceData {
@@ -686,8 +687,9 @@ export async function importProjectsFromCsv(
     let capacityUpdatedMonth: string | null = null;
     if (colIdxMonth !== -1 && row[colIdxMonth]) {
       const rawM = row[colIdxMonth].trim();
-      if (/^\d{4}-\d{2}$/.test(rawM)) {
-        capacityUpdatedMonth = rawM;
+      const normalized = normalizePeriodKey(rawM);
+      if (normalized) {
+        capacityUpdatedMonth = normalized;
       }
     }
 

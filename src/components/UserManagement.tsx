@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Users,
   UserPlus,
@@ -32,7 +33,7 @@ import {
   Mail,
   ExternalLink,
 } from 'lucide-react';
-import { AppUser, AppUserFormData, UserRole, ROLE_LABELS, ROLE_DESCRIPTIONS } from '../types/user';
+import { AppUser, AppUserFormData, UserRole, ROLE_LABELS, ROLE_DESCRIPTIONS, getRoleLabel, getRoleDescription } from '../types/user';
 import {
   addAuthorizedUser,
   updateUserRoles,
@@ -93,6 +94,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({
   isSuperUser = false,
   onImpersonateUser,
 }) => {
+  const { t, i18n } = useTranslation();
   const [modalOpen, setModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<AppUser | null>(null);
   const [deleteCandidate, setDeleteCandidate] = useState<AppUser | null>(null);
@@ -256,22 +258,23 @@ export const UserManagement: React.FC<UserManagementProps> = ({
       } else if (sortField === 'email') {
         comparison = a.email.localeCompare(b.email, 'fr', { sensitivity: 'base' });
       } else if (sortField === 'roles') {
-        const aRoles = getUserRoles(a).map((r) => ROLE_LABELS[r]).join(', ');
-        const bRoles = getUserRoles(b).map((r) => ROLE_LABELS[r]).join(', ');
+        const aRoles = getUserRoles(a).map((r) => getRoleLabel(r, t)).join(', ');
+        const bRoles = getUserRoles(b).map((r) => getRoleLabel(r, t)).join(', ');
         comparison = aRoles.localeCompare(bRoles, 'fr', { sensitivity: 'base' });
       } else if (sortField === 'status') {
-        const getStatusOrder = (u: AppUser) => {
-          if (u.email.toLowerCase() === SUPER_ADMIN_EMAIL.toLowerCase()) return '0_concepteur';
-          if (u.isActive === false) return '3_inactif';
-          if (u.mustResetPassword || !u.passwordHash) return '2_nouveau_mot_de_passe';
-          return '1_actif';
+        const getStatusLabel = (u: AppUser) => {
+          const isSuperAdminAccount = u.email.toLowerCase() === SUPER_ADMIN_EMAIL.toLowerCase();
+          if (isSuperAdminAccount) return t('users.status_values.password_set', 'Mot de passe défini');
+          if (!u.passwordHash) return t('users.status_values.awaiting_password', 'En attente de mot de passe');
+          if (u.mustResetPassword) return t('users.status_values.reset_required', 'Nouveau mot de passe requis');
+          return t('users.status_values.password_set', 'Mot de passe défini');
         };
-        comparison = getStatusOrder(a).localeCompare(getStatusOrder(b));
+        comparison = getStatusLabel(a).localeCompare(getStatusLabel(b), i18n.language, { sensitivity: 'base' });
       }
 
       return sortDirection === 'asc' ? comparison : -comparison;
     });
-  }, [users, selectedRoleFilters, appliedNameSearch, sortField, sortDirection]);
+  }, [users, selectedRoleFilters, appliedNameSearch, sortField, sortDirection, t, i18n.language]);
 
   const handleOpenAdd = () => {
     setEditingUser(null);
@@ -300,11 +303,11 @@ export const UserManagement: React.FC<UserManagementProps> = ({
   const handleToggleModalRole = (role: UserRole) => {
     if (selectedRoles.includes(role)) {
       if (selectedRoles.length === 1) {
-        setFormError('Un utilisateur doit posséder au moins un rôle attribué.');
+        setFormError(t('users.errors.one_role_minimum'));
         return;
       }
       if (role === 'super user' && isRootSuperAdmin) {
-        setFormError("Le compte concepteur principal (stephane.labati@goood.com) conserve obligatoirement les droits de Super User.");
+        setFormError(t('users.errors.root_super_user_required'));
         return;
       }
       setSelectedRoles(selectedRoles.filter((r) => r !== role));
@@ -318,17 +321,17 @@ export const UserManagement: React.FC<UserManagementProps> = ({
     e.preventDefault();
     const cleanEmail = email.trim().toLowerCase();
     if (!cleanEmail) {
-      setFormError("L'adresse email est requise.");
+      setFormError(t('users.errors.email_required'));
       return;
     }
 
     if (selectedRoles.length === 0) {
-      setFormError('Veuillez sélectionner au moins un rôle pour cet utilisateur.');
+      setFormError(t('users.errors.role_required'));
       return;
     }
 
     if (isRootSuperAdmin && !selectedRoles.includes('super user')) {
-      setFormError("Le compte concepteur principal (stephane.labati@goood.com) conserve obligatoirement les droits de Super User.");
+      setFormError(t('users.errors.root_super_user_required'));
       return;
     }
 
@@ -361,7 +364,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({
         let emailError: string | undefined;
 
         if (sendEmailOnCreation && cleanEmail !== SUPER_ADMIN_EMAIL.toLowerCase()) {
-          const rolesList = selectedRoles.map((r) => ROLE_LABELS[r]).join(', ');
+          const rolesList = selectedRoles.map((r) => getRoleLabel(r, t)).join(', ');
           const sendRes = await sendUserActivationNotification({
             toEmail: cleanEmail,
             displayName: displayName.trim() || cleanEmail.split('@')[0],
@@ -437,7 +440,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({
       const activationUrl = `${currentOrigin}?action=activate&email=${encodeURIComponent(resendCandidate.email)}&token=${activationToken}`;
 
       const uRoles = getUserRoles(resendCandidate);
-      const rolesList = uRoles.map((r) => ROLE_LABELS[r]).join(', ');
+      const rolesList = uRoles.map((r) => getRoleLabel(r, t)).join(', ');
 
       const sendRes = await sendUserActivationNotification({
         toEmail: resendCandidate.email,
@@ -498,7 +501,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({
       const nextRoles = currentRoles.filter((r) => r !== roleToToggle);
       try {
         await updateUserRoles(user.id, nextRoles);
-        setActionSuccess(`Rôle « ${ROLE_LABELS[roleToToggle]} » retiré pour ${user.displayName}.`);
+        setActionSuccess(`Rôle « ${getRoleLabel(roleToToggle, t)} » retiré pour ${user.displayName}.`);
       } catch (err: any) {
         alert('Erreur : ' + err?.message);
       }
@@ -506,7 +509,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({
       const nextRoles = [...currentRoles, roleToToggle];
       try {
         await updateUserRoles(user.id, nextRoles);
-        setActionSuccess(`Rôle « ${ROLE_LABELS[roleToToggle]} » ajouté pour ${user.displayName}.`);
+        setActionSuccess(`Rôle « ${getRoleLabel(roleToToggle, t)} » ajouté pour ${user.displayName}.`);
       } catch (err: any) {
         alert('Erreur : ' + err?.message);
       }
@@ -660,7 +663,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({
             className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-900 border border-amber-300 shadow-2xs whitespace-nowrap"
           >
             {getRoleIcon('super user', 'w-3.5 h-3.5 text-amber-600')}
-            <span>Super User</span>
+            <span>{getRoleLabel('super user', t)}</span>
           </span>
         );
       case 'administrateur':
@@ -670,7 +673,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({
             className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-purple-100 text-purple-900 border border-purple-300 whitespace-nowrap"
           >
             {getRoleIcon('administrateur', 'w-3.5 h-3.5 text-purple-600')}
-            <span>Administrateur</span>
+            <span>{getRoleLabel('administrateur', t)}</span>
           </span>
         );
       case 'chef de projet':
@@ -680,7 +683,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({
             className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-100 text-blue-900 border border-blue-300 whitespace-nowrap"
           >
             {getRoleIcon('chef de projet', 'w-3.5 h-3.5 text-blue-600')}
-            <span>Chef de projet</span>
+            <span>{getRoleLabel('chef de projet', t)}</span>
           </span>
         );
       case 'resource manager':
@@ -690,7 +693,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({
             className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-rose-100 text-rose-900 border border-rose-300 whitespace-nowrap"
           >
             {getRoleIcon('resource manager', 'w-3.5 h-3.5 text-rose-600')}
-            <span>Resource Manager</span>
+            <span>{getRoleLabel('resource manager', t)}</span>
           </span>
         );
       case 'value management officer':
@@ -700,7 +703,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({
             className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-900 border border-emerald-300 whitespace-nowrap"
           >
             {getRoleIcon('value management officer', 'w-3.5 h-3.5 text-emerald-600')}
-            <span>Value Management Officer</span>
+            <span>{getRoleLabel('value management officer', t)}</span>
           </span>
         );
     }
@@ -715,10 +718,10 @@ export const UserManagement: React.FC<UserManagementProps> = ({
           <div>
             <h2 className="text-xl font-bold text-pink-600 flex items-center gap-2.5">
               <Users className="w-5 h-5 text-pink-600 shrink-0" />
-              <span>Gestion des utilisateurs</span>
+              <span>{t('users.title')}</span>
             </h2>
             <p className="text-xs text-slate-500 mt-0.5">
-              Activez ou désactivez les comptes, assignez les rôles directement et filtrez la liste en cliquant sur les encarts ci-dessous.
+              {t('users.subtitle')}
             </p>
           </div>
 
@@ -742,10 +745,10 @@ export const UserManagement: React.FC<UserManagementProps> = ({
               <Mail className={`w-3.5 h-3.5 ${gmailReady ? 'text-emerald-600' : 'text-slate-500'}`} />
               <span>
                 {authorizingGmail
-                  ? 'Connexion...'
+                  ? t('users.gmail_connecting')
                   : gmailReady
-                  ? 'Gmail connecté'
-                  : 'Connecter Gmail'}
+                  ? t('users.gmail_connected')
+                  : t('users.gmail_connect')}
               </span>
             </button>
 
@@ -756,7 +759,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({
                 className="inline-flex items-center gap-1.5 px-3 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 text-xs font-semibold rounded-lg transition-colors shadow-2xs cursor-pointer"
               >
                 <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
-                <span>{seeding ? 'Création...' : 'Créer comptes tests (avec compte inactif)'}</span>
+                <span>{seeding ? t('common.actions.loading') : t('users.create_test_accounts')}</span>
               </button>
             )}
 
@@ -765,7 +768,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({
               className="inline-flex items-center gap-2 px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-lg shadow-xs transition-colors cursor-pointer"
             >
               <UserPlus className="w-4 h-4" />
-              <span>Autoriser un utilisateur</span>
+              <span>{t('users.authorize_user')}</span>
             </button>
           </div>
         </div>
@@ -775,7 +778,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({
           <div className="flex items-center justify-between text-xs text-slate-500 px-0.5">
             <span className="font-semibold flex items-center gap-1.5 text-slate-700">
               <Filter className="w-3.5 h-3.5 text-indigo-600" />
-              <span>Filtrer les utilisateurs par rôle (cliquez sur un ou plusieurs encarts) :</span>
+              <span>{t('users.filter_by_role')}</span>
             </span>
             {selectedRoleFilters.length > 0 && (
               <button
@@ -784,7 +787,10 @@ export const UserManagement: React.FC<UserManagementProps> = ({
                 className="inline-flex items-center gap-1 text-[11px] font-semibold text-indigo-600 hover:text-indigo-800 cursor-pointer hover:underline"
               >
                 <RotateCcw className="w-3 h-3" />
-                <span>Effacer le filtre ({selectedRoleFilters.length} sélectionné{selectedRoleFilters.length > 1 ? 's' : ''})</span>
+                <span>{t('users.clear_filter', {
+                  count: selectedRoleFilters.length,
+                  word: selectedRoleFilters.length > 1 ? t('common.words.selected_other') : t('common.words.selected_one'),
+                })}</span>
               </button>
             )}
           </div>
@@ -857,8 +863,8 @@ export const UserManagement: React.FC<UserManagementProps> = ({
                   className={`p-3.5 rounded-xl border text-left flex flex-col justify-between transition-all cursor-pointer relative group h-full ${getCardClasses()}`}
                   title={
                     isSelected
-                      ? `Filtre actif : cliquer pour retirer le filtre ${ROLE_LABELS[r]}`
-                      : `Cliquer pour filtrer les utilisateurs ayant le rôle ${ROLE_LABELS[r]}`
+                      ? `Filtre actif : cliquer pour retirer le filtre ${getRoleLabel(r, t)}`
+                      : `Cliquer pour filtrer les utilisateurs ayant le rôle ${getRoleLabel(r, t)}`
                   }
                 >
                   <div className="w-full">
@@ -867,14 +873,14 @@ export const UserManagement: React.FC<UserManagementProps> = ({
                       {getRoleBadge(r)}
                     </div>
                     <p className={`text-xs leading-relaxed ${getDescriptionClasses()}`}>
-                      {ROLE_DESCRIPTIONS[r]}
+                      {getRoleDescription(r, t)}
                     </p>
                   </div>
 
                   {/* Boîte avec le nombre de titulaires déplacée en bas de la boîte */}
                   <div className="pt-2.5 mt-2.5 border-t border-slate-200/50 flex items-center justify-between w-full">
                     <span className={getCountClasses()}>
-                      {count} titulaire{count > 1 ? 's' : ''}
+                      {count} {count > 1 ? t('common.words.titulaire_other') : t('common.words.titulaire_one')}
                     </span>
                   </div>
                 </button>
@@ -889,7 +895,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({
           >
             <div className="flex items-center gap-2 shrink-0">
               <span className="text-xs font-semibold text-slate-700 whitespace-nowrap">
-                Rechercher un utilisateur par son nom
+                {t('users.search_by_name')}
               </span>
             </div>
 
@@ -905,7 +911,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({
                       setAppliedNameSearch('');
                     }
                   }}
-                  placeholder="Entrez tout ou partie du nom..."
+                  placeholder={t('users.search_placeholder')}
                   className="w-full px-3 py-1.5 text-xs bg-slate-50 border border-slate-300 rounded-lg text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all pr-7"
                 />
                 {nameSearchInput && (
@@ -947,7 +953,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({
                     onClick={() => handleSort('name')}
                     className="group inline-flex items-center gap-1.5 font-semibold uppercase tracking-wider text-slate-700 hover:text-indigo-600 cursor-pointer"
                   >
-                    <span>NOM</span>
+                    <span>{t('users.columns.name')}</span>
                     {getSortIcon('name')}
                   </button>
                 </th>
@@ -959,20 +965,20 @@ export const UserManagement: React.FC<UserManagementProps> = ({
                     onClick={() => handleSort('email')}
                     className="group inline-flex items-center gap-1.5 font-semibold uppercase tracking-wider text-slate-700 hover:text-indigo-600 cursor-pointer"
                   >
-                    <span>EMAIL</span>
+                    <span>{t('users.columns.email')}</span>
                     {getSortIcon('email')}
                   </button>
                 </th>
 
                 {/* Colonne 3 : Rôles associés (avec bascule directe et tri sur les rôles) */}
                 <th className="py-3 px-4 min-w-[200px]">
-                  <Tooltip content="Sélectionnez les rôles en cliquant sur les pictogrammes">
+                  <Tooltip content={t('users.roles_tooltip')}>
                     <button
                       type="button"
                       onClick={() => handleSort('roles')}
                       className="group inline-flex items-center gap-1.5 font-semibold uppercase tracking-wider text-slate-700 hover:text-indigo-600 cursor-pointer"
                     >
-                      <span>RÔLES ASSOCIÉS</span>
+                      <span>{t('users.columns.roles')}</span>
                       {getSortIcon('roles')}
                     </button>
                   </Tooltip>
@@ -980,13 +986,13 @@ export const UserManagement: React.FC<UserManagementProps> = ({
 
                 {/* Colonne 4 : ACTIF avec Tri (placée juste avant STATUT) */}
                 <th className="py-3 px-4 w-24 text-center">
-                  <Tooltip content="Un utilisateur non actif ne peut pas se connecter">
+                  <Tooltip content={t('users.active_tooltip')}>
                     <button
                       type="button"
                       onClick={() => handleSort('active')}
                       className="group inline-flex items-center justify-center gap-1.5 font-semibold uppercase tracking-wider text-slate-700 hover:text-indigo-600 cursor-pointer"
                     >
-                      <span>ACTIF</span>
+                      <span>{t('users.columns.active')}</span>
                       {getSortIcon('active')}
                     </button>
                   </Tooltip>
@@ -999,13 +1005,13 @@ export const UserManagement: React.FC<UserManagementProps> = ({
                     onClick={() => handleSort('status')}
                     className="group inline-flex items-center gap-1.5 font-semibold uppercase tracking-wider text-slate-700 hover:text-indigo-600 cursor-pointer"
                   >
-                    <span>STATUT</span>
+                    <span>{t('users.columns.status')}</span>
                     {getSortIcon('status')}
                   </button>
                 </th>
 
                 {/* Colonne 6 : Actions */}
-                <th className="py-3 px-4 w-28 text-right uppercase tracking-wider font-semibold">ACTIONS</th>
+                <th className="py-3 px-4 w-28 text-right uppercase tracking-wider font-semibold">{t('users.columns.actions')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200 bg-white">
@@ -1022,7 +1028,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({
                           ? `Aucun utilisateur ne contient « ${appliedNameSearch} » dans son nom avec les rôles sélectionnés.`
                           : appliedNameSearch
                           ? `Aucun utilisateur ne contient « ${appliedNameSearch} » dans son nom.`
-                          : `Aucun utilisateur ne possède l'un des rôles sélectionnés (${selectedRoleFilters.map((r) => ROLE_LABELS[r]).join(', ')}).`}
+                          : `Aucun utilisateur ne possède l'un des rôles sélectionnés (${selectedRoleFilters.map((r) => getRoleLabel(r, t)).join(', ')}).`}
                       </p>
                       <div className="flex items-center gap-2 mt-2">
                         {appliedNameSearch && (
@@ -1102,10 +1108,10 @@ export const UserManagement: React.FC<UserManagementProps> = ({
                                   : hasRole
                                   ? r === 'super user'
                                     ? `Rôle Super User actif. Cliquer pour retirer les droits Super User à ${u.displayName}.`
-                                    : `Rôle ${ROLE_LABELS[r]} actif. Cliquer pour le retirer.`
-                                  : `Cliquer pour attribuer le rôle ${ROLE_LABELS[r]}`
+                                    : `Rôle ${getRoleLabel(r, t)} actif. Cliquer pour le retirer.`
+                                  : `Cliquer pour attribuer le rôle ${getRoleLabel(r, t)}`
                               }
-                              aria-label={`${ROLE_LABELS[r]} : ${hasRole ? 'Actif' : 'Inactif'}`}
+                              aria-label={`${getRoleLabel(r, t)} : ${hasRole ? 'Actif' : 'Inactif'}`}
                               className={`w-7 h-7 rounded-md flex items-center justify-center transition-all border ${
                                 isProtectedRootRole
                                   ? 'cursor-not-allowed opacity-90'
@@ -1158,19 +1164,19 @@ export const UserManagement: React.FC<UserManagementProps> = ({
                     <td className="py-3 px-4 whitespace-nowrap">
                       {isSuperAdminAccount ? (
                         <span className="text-xs text-slate-700 font-medium">
-                          Mot de passe défini
+                          {t('users.status_values.password_set', 'Mot de passe défini')}
                         </span>
                       ) : !u.passwordHash ? (
                         <span className="text-xs text-slate-500 font-medium">
-                          En attente de mot de passe
+                          {t('users.status_values.awaiting_password', 'En attente de mot de passe')}
                         </span>
                       ) : u.mustResetPassword ? (
                         <span className="text-xs text-amber-700 font-medium">
-                          Nouveau mot de passe requis
+                          {t('users.status_values.reset_required', 'Nouveau mot de passe requis')}
                         </span>
                       ) : (
                         <span className="text-xs text-slate-700 font-medium">
-                          Mot de passe défini
+                          {t('users.status_values.password_set', 'Mot de passe défini')}
                         </span>
                       )}
                     </td>
@@ -1240,43 +1246,6 @@ export const UserManagement: React.FC<UserManagementProps> = ({
               })}
             </tbody>
           </table>
-        </div>
-
-        <div className="p-3 bg-slate-50 border-t border-slate-200 text-slate-500 text-xs flex justify-between items-center flex-wrap gap-2">
-          <span>
-            {selectedRoleFilters.length > 0 || appliedNameSearch ? (
-              <>
-                Affichage filtré : <strong className="text-indigo-700">{sortedUsers.length}</strong> utilisateur{sortedUsers.length > 1 ? 's' : ''} sur <strong>{users.length}</strong> au total
-              </>
-            ) : (
-              <>
-                Total des comptes : <strong>{users.length}</strong> (dont{' '}
-                <strong className="text-emerald-700">
-                  {users.filter((u) => u.isActive !== false).length} actif(s)
-                </strong>{' '}
-                et{' '}
-                <strong className="text-amber-700">
-                  {users.filter((u) => u.isActive === false).length} non actif(s)
-                </strong>
-                )
-              </>
-            )}
-          </span>
-          <span className="text-slate-400">
-            {(selectedRoleFilters.length > 0 || appliedNameSearch) && (
-              <button
-                type="button"
-                onClick={() => {
-                  clearRoleFilters();
-                  handleClearSearch();
-                }}
-                className="text-indigo-600 hover:text-indigo-800 font-semibold underline cursor-pointer mr-2"
-              >
-                Réinitialiser les filtres
-              </button>
-            )}
-            Cliquez sur un en-tête pour trier. Cochez/décochez les rôles ou l'état actif/inactif directement dans le tableau.
-          </span>
         </div>
       </div>
 
@@ -1545,12 +1514,12 @@ export const UserManagement: React.FC<UserManagementProps> = ({
                 </div>
                 <div>
                   <h3 className="font-semibold text-slate-900 text-base">
-                    {editingUser ? 'Fiche détaillée de l’utilisateur' : 'Autoriser un nouvel utilisateur'}
+                    {editingUser ? t('users.modal.title_edit') : t('users.modal.title_add')}
                   </h3>
                   <p className="text-xs text-slate-500">
                     {editingUser
-                      ? 'Consultez ou modifiez les habilitations, rôles et accès de cet utilisateur.'
-                      : 'Invitez un collaborateur et définissez ses rôles et droits d’accès.'}
+                      ? t('users.modal.subtitle_edit')
+                      : t('users.modal.subtitle_add')}
                   </p>
                 </div>
               </div>
@@ -1598,12 +1567,12 @@ export const UserManagement: React.FC<UserManagementProps> = ({
                   />
                   <div>
                     <p className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
-                      <span>Compte actif (autoriser l'accès)</span>
+                      <span>{t('users.modal.active_account_label')}</span>
                     </p>
                     <p className="text-[11px] text-slate-500 mt-0.5 leading-tight">
                       {modalIsActive
-                        ? 'L’utilisateur peut se connecter à la plateforme.'
-                        : 'L’accès est suspendu sans perte des rôles ni des informations associées.'}
+                        ? t('users.modal.active_account_desc_on')
+                        : t('users.modal.active_account_desc_off')}
                     </p>
                   </div>
                 </div>
@@ -1619,7 +1588,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({
 
               <div>
                 <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
-                  Adresse Email <span className="text-red-500">*</span>
+                  {t('users.modal.email_label')} <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="email"
@@ -1632,21 +1601,21 @@ export const UserManagement: React.FC<UserManagementProps> = ({
                 />
                 {!editingUser && (
                   <p className="text-[11px] text-slate-500 mt-1">
-                    Un email sera envoyé avec un lien pour activer son compte et définir son mot de passe.
+                    {t('users.modal.email_invite_helper')}
                   </p>
                 )}
               </div>
 
               <div>
                 <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
-                  Nom Complet <span className="text-red-500">*</span>
+                  {t('users.modal.name_label')} <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
                   required
                   value={displayName}
                   onChange={(e) => setDisplayName(e.target.value)}
-                  placeholder="Ex : Alice Durand"
+                  placeholder={t('users.modal.name_placeholder')}
                   className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 />
               </div>
@@ -1654,13 +1623,15 @@ export const UserManagement: React.FC<UserManagementProps> = ({
               {/* Sélection multiple de rôles avec couleurs dédiées si sélectionnés, gris sinon */}
               <div>
                 <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center justify-between">
-                  <span>Rôles &amp; Profils attribués (Cumulables) <span className="text-red-500">*</span></span>
+                  <span>{t('users.modal.roles_label')} <span className="text-red-500">*</span></span>
                   <span className="text-[11px] text-indigo-600 font-semibold normal-case">
-                    {selectedRoles.length} rôle{selectedRoles.length > 1 ? 's' : ''} sélectionné{selectedRoles.length > 1 ? 's' : ''}
+                    {selectedRoles.length > 1
+                      ? t('users.modal.roles_selected_other', { count: selectedRoles.length })
+                      : t('users.modal.roles_selected_one')}
                   </span>
                 </label>
                 <p className="text-[11px] text-slate-500 mb-2.5">
-                  Cochez un ou plusieurs rôles pour cet utilisateur (par exemple : Resource Manager ET Chef de projet).
+                  {t('users.modal.roles_helper')}
                 </p>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
@@ -1720,12 +1691,15 @@ export const UserManagement: React.FC<UserManagementProps> = ({
 
                     const isProtectedRootRole = isRootSuperAdmin && roleKey === 'super user' && isChecked;
 
+                    const localizedRoleName = getRoleLabel(roleKey, t);
+                    const localizedRoleDesc = getRoleDescription(roleKey, t);
+
                     return (
                       <div
                         key={roleKey}
                         onClick={() => {
                           if (isProtectedRootRole) {
-                            setFormError("Le compte concepteur principal (stephane.labati@goood.com) conserve obligatoirement les droits de Super User.");
+                            setFormError(t('users.modal.root_protected_error'));
                             return;
                           }
                           handleToggleModalRole(roleKey);
@@ -1735,7 +1709,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({
                         } ${getCardStyle()}`}
                         title={
                           isProtectedRootRole
-                            ? "Le compte concepteur principal conserve obligatoirement les droits de Super User."
+                            ? t('users.modal.root_protected_error')
                             : undefined
                         }
                       >
@@ -1749,15 +1723,15 @@ export const UserManagement: React.FC<UserManagementProps> = ({
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-1.5 mb-1 flex-wrap">
                             {getRoleIcon(roleKey, `w-4 h-4 shrink-0 ${getRoleIconColor()}`)}
-                            <span className="text-xs font-bold">{ROLE_LABELS[roleKey]}</span>
+                            <span className="text-xs font-bold">{localizedRoleName}</span>
                             {isProtectedRootRole && (
                               <span className="text-[10px] text-amber-800 bg-amber-100/90 font-medium px-1.5 py-0.2 rounded border border-amber-300">
-                                Compte principal (non retirable)
+                                {t('users.modal.root_protected_badge')}
                               </span>
                             )}
                           </div>
                           <p className={`text-[10px] leading-tight ${isChecked ? 'text-slate-600' : 'text-slate-400'}`}>
-                            {ROLE_DESCRIPTIONS[roleKey]}
+                            {localizedRoleDesc}
                           </p>
                         </div>
                       </div>
@@ -1779,10 +1753,10 @@ export const UserManagement: React.FC<UserManagementProps> = ({
                     <div>
                       <span className="text-xs font-bold text-indigo-950 flex items-center gap-1.5">
                         <Mail className="w-3.5 h-3.5 text-indigo-600" />
-                        <span>Envoyer un email d'invitation avec le lien d'activation depuis mon compte Google</span>
+                        <span>{t('users.modal.gmail_invite_checkbox')}</span>
                       </span>
                       <p className="text-[11px] text-indigo-700/80 mt-0.5 leading-relaxed">
-                        L'email sera expédié depuis <strong>{SUPER_ADMIN_EMAIL}</strong> via l'API Gmail avec les instructions d'activation et de définition du mot de passe.
+                        {t('users.modal.gmail_invite_helper', { email: SUPER_ADMIN_EMAIL })}
                       </p>
                     </div>
                   </label>
@@ -1799,8 +1773,8 @@ export const UserManagement: React.FC<UserManagementProps> = ({
                       <AlertCircle className="w-4 h-4 text-red-600 shrink-0" />
                       <span>
                         {userModalMissingRequiredCount === 1
-                          ? '1 attribut obligatoire non renseigné'
-                          : `${userModalMissingRequiredCount} attributs obligatoires non renseignés`}
+                          ? t('common.words.required_attr_one')
+                          : t('common.words.required_attr_other', { count: userModalMissingRequiredCount })}
                       </span>
                     </div>
                   )}
@@ -1811,14 +1785,14 @@ export const UserManagement: React.FC<UserManagementProps> = ({
                     onClick={() => setModalOpen(false)}
                     className="px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
                   >
-                    Annuler
+                    {t('common.actions.cancel')}
                   </button>
                   <button
                     type="submit"
                     disabled={saving || userModalMissingRequiredCount > 0}
                     className="px-4 py-2 text-sm font-medium bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors shadow-xs disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
                   >
-                    {saving ? 'Enregistrement...' : editingUser ? 'Mettre à jour' : 'Autoriser le compte'}
+                    {saving ? t('users.modal.saving') : editingUser ? t('users.modal.submit_edit') : t('users.modal.submit_add')}
                   </button>
                 </div>
               </div>
@@ -1832,12 +1806,13 @@ export const UserManagement: React.FC<UserManagementProps> = ({
         <div className="fixed inset-0 z-50 bg-slate-900/50 flex items-center justify-center p-4">
           <div className="bg-white rounded-xl shadow-xl border border-slate-200 max-w-md w-full p-6 animate-in fade-in zoom-in-95">
             <h3 className="text-base font-bold text-slate-900 mb-2">
-              Confirmer la révocation du compte
+              {t('users.modal.delete_confirm_title')}
             </h3>
             <p className="text-xs text-slate-600 mb-6">
-              Êtes-vous sûr de vouloir révoquer l’accès de{' '}
-              <strong className="text-slate-900">{deleteCandidate.displayName}</strong> ({deleteCandidate.email}) ?
-              L’utilisateur ne pourra plus accéder à l’application.
+              {t('users.modal.delete_confirm_desc', {
+                name: deleteCandidate.displayName,
+                email: deleteCandidate.email,
+              })}
             </p>
             <div className="flex items-center justify-end gap-3">
               <button
@@ -1845,7 +1820,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({
                 onClick={() => setDeleteCandidate(null)}
                 className="px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
               >
-                Annuler
+                {t('common.actions.cancel')}
               </button>
               <button
                 type="button"
@@ -1853,7 +1828,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({
                 onClick={handleDelete}
                 className="px-4 py-2 text-xs font-semibold bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors shadow-xs cursor-pointer"
               >
-                {saving ? 'Révocation...' : 'Révoquer l’accès'}
+                {saving ? t('users.modal.saving') : t('common.actions.delete')}
               </button>
             </div>
           </div>

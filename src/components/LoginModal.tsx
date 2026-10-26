@@ -16,7 +16,7 @@ import {
   Crown,
 } from 'lucide-react';
 import { validatePassword, hashPassword } from '../utils/passwordSecurity';
-import { AppUser, ROLE_LABELS } from '../types/user';
+import { AppUser, ROLE_LABELS, getRoleLabel } from '../types/user';
 import {
   requestPasswordResetLink,
   resendAccountActivationEmail,
@@ -454,7 +454,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                         </option>
                         {allUsers.map((u) => {
                           const rolesList = (u.roles && u.roles.length > 0 ? u.roles : [u.role || 'chef de projet'])
-                            .map((r) => ROLE_LABELS[r])
+                            .map((r) => getRoleLabel(r))
                             .join(' & ');
                           return (
                             <option key={u.id} value={u.id}>

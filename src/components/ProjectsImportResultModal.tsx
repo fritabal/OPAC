@@ -83,20 +83,20 @@ export const ProjectsImportResultModal: React.FC<ProjectsImportResultModalProps>
             )}
             <div className="flex-1">
               <h4 className="text-xs font-bold">
-                Traitement terminé ({result.totalRows} ligne(s) analysée(s))
+                Traitement terminé ({result.totalRows} {result.totalRows > 1 ? 'lignes analysées' : 'ligne analysée'})
               </h4>
               <div className="mt-1.5 flex flex-wrap gap-x-4 gap-y-1 text-xs">
                 <span className="font-semibold text-emerald-700">
-                  ✓ {result.successCount} projet(s) importé(s) avec succès
+                  ✓ {result.successCount} {result.successCount > 1 ? 'projets importés' : 'projet importé'} avec succès
                 </span>
                 {hasWarnings && (
                   <span className="font-semibold text-amber-700">
-                    ⚠ {result.warningCount} avec avertissement(s)
+                    ⚠ {result.warningCount} avec {result.warningCount > 1 ? 'avertissements' : 'avertissement'}
                   </span>
                 )}
                 {hasErrors && (
                   <span className="font-semibold text-red-700">
-                    ✕ {result.errorCount} échec(s)
+                    ✕ {result.errorCount} {result.errorCount > 1 ? 'échecs' : 'échec'}
                   </span>
                 )}
               </div>

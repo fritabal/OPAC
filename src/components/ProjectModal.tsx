@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   X,
   Briefcase,
@@ -89,6 +90,7 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
   bonusConfig,
   onSuccess,
 }) => {
+  const { t } = useTranslation();
   // Encart a) "Description"
   const [name, setName] = useState('');
   const [stateId, setStateId] = useState('');
@@ -245,38 +247,38 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
 
     const trimmedName = name.trim();
     if (!trimmedName) {
-      setError('Le nom court du projet est obligatoire.');
+      setError(t('modals.project.error_name_required'));
       return;
     }
     if (trimmedName.length > 30) {
-      setError('Le nom court ne peut pas dépasser 30 caractères.');
+      setError(t('modals.project.error_name_required'));
       return;
     }
 
     if (!stateId) {
-      setError('Veuillez sélectionner un état dans le cycle de vie.');
+      setError(t('modals.project.error_state_required'));
       return;
     }
 
     if (description.length > 500) {
-      setError('La description ne peut pas dépasser 500 caractères.');
+      setError(t('modals.project.description_label'));
       return;
     }
 
     if (!projectManagerEmail) {
-      setError('Le chef de projet est obligatoire.');
+      setError(t('modals.project.error_pm_required'));
       return;
     }
 
     if (!budgetLineId) {
-      setError('La ligne budgétaire est obligatoire.');
+      setError(t('modals.project.error_budget_line_required'));
       return;
     }
 
     // Vérifier que tous les critères sont valorisés
     for (const crit of criteria) {
       if (criteriaValues[crit.id] === undefined) {
-        setError(`Veuillez valoriser le critère « ${crit.name} ». Tous les critères sont obligatoires.`);
+        setError(t('modals.project.criteria_scoring_hint'));
         return;
       }
     }
@@ -302,7 +304,7 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
         }
 
         if (!isFilled) {
-          setError(`Le paramètre personnalisé « ${param.name} » est obligatoire. Veuillez le renseigner.`);
+          setError(t('modals.project.error_custom_param_required', { name: param.name }));
           return;
         }
       }
@@ -354,7 +356,7 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
       }
       onClose();
     } catch (err: any) {
-      setError(err?.message || 'Erreur lors de l’enregistrement du projet.');
+      setError(err?.message || t('modals.project.error_save'));
     } finally {
       setSaving(false);
     }
@@ -373,29 +375,29 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
               <div className="flex items-center gap-2">
                 <h3 className="font-bold text-slate-900 text-base">
                   {isReadOnly
-                    ? `Projet : ${projectToEdit?.name || ''}`
+                    ? t('modals.project.title_view', { number: projectToEdit?.projectNumber, name: projectToEdit?.name || '' })
                     : projectToEdit
-                    ? 'Modifier le projet : ' + projectToEdit.name
-                    : 'Nouveau projet'}
+                    ? t('modals.project.title_edit', { number: projectToEdit.projectNumber, name: projectToEdit.name })
+                    : t('modals.project.title_create')}
                 </h3>
                 {isReadOnly && (
                   <span className="text-[10px] bg-slate-200 text-slate-700 px-2 py-0.5 rounded font-semibold uppercase tracking-wider">
-                    Lecture seule
+                    {t('modals.common.read_only')}
                   </span>
                 )}
                 {isConfidential && (
                   <span className="text-[10px] bg-red-100 text-red-700 border border-red-200 px-2 py-0.5 rounded font-bold uppercase tracking-wider flex items-center gap-1 shadow-2xs">
                     <Lock className="w-2.5 h-2.5 text-red-600" />
-                    Confidentiel
+                    {t('modals.project.confidential_badge')}
                   </span>
                 )}
               </div>
               <p className="text-xs text-slate-500">
                 {isReadOnly
-                  ? 'Fiche descriptive, cotation et attributs du projet (Mode lecture seule).'
+                  ? t('modals.project.subtitle_view')
                   : projectToEdit
-                  ? 'Modifiez la fiche descriptive, la ligne budgétaire et la cotation du projet.'
-                  : 'Définissez les propriétés, la ligne budgétaire et la cotation initiale du projet.'}
+                  ? t('modals.project.subtitle_edit')
+                  : t('modals.project.subtitle_create')}
               </p>
             </div>
           </div>
@@ -424,19 +426,19 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
             <div className="flex items-center justify-between border-b border-slate-200/80 pb-2.5">
               <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
                 <FilePenLine className="w-4 h-4 text-purple-600 shrink-0" />
-                <span>Description</span>
+                <span>{t('modals.project.section_description')}</span>
               </h4>
-              <span className="text-[11px] text-slate-500">Identité &amp; cycle de vie</span>
+              <span className="text-[11px] text-slate-500">{t('modals.project.section_description_sub')}</span>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
               {/* Identifiant unique (non modifiable) */}
               <div className="md:col-span-2">
                 <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
-                  Identifiant
+                  {t('modals.project.id_label')}
                 </label>
                 <div className="px-3 py-2 bg-slate-200/80 border border-slate-300 rounded-lg text-sm font-mono font-bold text-slate-800 flex items-center justify-between select-none">
-                  <span>{projectToEdit ? `#${projectToEdit.projectNumber}` : '(auto.)'}</span>
+                  <span>{projectToEdit ? `#${projectToEdit.projectNumber}` : t('modals.project.auto_generated')}</span>
                 </div>
               </div>
 
@@ -444,7 +446,7 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
               <div className="md:col-span-6">
                 <div className="flex items-center justify-between mb-1">
                   <label className="text-xs font-semibold text-slate-700 uppercase tracking-wider">
-                    Nom court du projet <span className="text-red-500">*</span>
+                    {t('modals.project.name_label')} <span className="text-red-500">*</span>
                   </label>
                   <span className={`text-[10px] font-mono ${name.length > 30 ? 'text-red-600 font-bold' : 'text-slate-400'}`}>
                     {name.length}/30
@@ -457,7 +459,7 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
                   maxLength={30}
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  placeholder="Ex : Refonte Portail Client"
+                  placeholder={t('modals.project.name_placeholder')}
                   className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm font-medium focus:ring-2 focus:ring-indigo-500 disabled:bg-slate-100"
                 />
               </div>
@@ -465,7 +467,7 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
               {/* État (cycle de vie) */}
               <div className="md:col-span-4">
                 <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
-                  État<span className="text-red-500">*</span>
+                  {t('modals.project.state_label')}<span className="text-red-500">*</span>
                 </label>
                 <select
                   required
@@ -486,7 +488,7 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
               <div className="md:col-span-12">
                 <div className="flex items-center justify-between mb-1">
                   <label className="text-xs font-semibold text-slate-700 uppercase tracking-wider">
-                    Description (facultative)
+                    {t('modals.project.description_label')}
                   </label>
                   <span className={`text-[10px] font-mono ${description.length > 500 ? 'text-red-600 font-bold' : 'text-slate-400'}`}>
                     {description.length} / 500 car.
@@ -498,7 +500,7 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
                   maxLength={500}
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
-                  placeholder="Saisissez une description..."
+                  placeholder={t('modals.project.description_placeholder')}
                   className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm text-slate-900 placeholder-slate-400 leading-relaxed focus:ring-2 focus:ring-indigo-500 disabled:bg-slate-100 resize-y"
                 />
               </div>
@@ -512,9 +514,9 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
             <div className="flex items-center justify-between border-b border-slate-200/80 pb-2.5">
               <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
                 <SteeringWheelIcon className="w-4 h-4 text-purple-600 shrink-0" />
-                <span>Pilotage</span>
+                <span>{t('modals.project.section_governance')}</span>
               </h4>
-              <span className="text-[11px] text-slate-500">Acteurs &amp; responsabilités</span>
+              <span className="text-[11px] text-slate-500">{t('modals.project.section_governance_sub')}</span>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -522,10 +524,10 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
               <div className="space-y-3">
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
-                    Créé par
+                    {t('modals.project.created_by_label')}
                   </label>
                   <div className="px-3 py-2 bg-slate-200/80 border border-slate-300 rounded-lg text-xs font-mono text-slate-700 truncate select-none" title={createdByEmail}>
-                    {createdByEmail || '(Enregistré à la validation)'}
+                    {createdByEmail || '(auto.)'}
                   </div>
                 </div>
 
@@ -551,7 +553,7 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
                           isConfidential ? 'text-red-600' : 'text-slate-700'
                         }`}
                       >
-                        CONFIDENTIEL
+                        {t('modals.project.confidential_badge')}
                       </label>
                       <p
                         className={`text-[11px] mt-0.5 leading-snug ${
@@ -559,8 +561,8 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
                         }`}
                       >
                         {isConfidential
-                          ? 'Projet visible que du chef de projet, son adjoint et le VMO'
-                          : 'Projet visible de tous'}
+                          ? t('modals.project.confidential_on')
+                          : t('modals.project.confidential_off')}
                       </p>
                     </div>
                   </div>
@@ -570,7 +572,7 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
               {/* Chef de projet (obligatoire, modifiable) avec recherche par séquence de lettres et pré-filtre chef de projet */}
               <div>
                 <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
-                  Chef de projet <span className="text-red-500">*</span>
+                  {t('modals.project.pm_label')} <span className="text-red-500">*</span>
                 </label>
                 <UserAutocompleteSelect
                   value={projectManagerEmail}
@@ -580,10 +582,10 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
                   requiredRole="chef de projet"
                   required={true}
                   disabled={isReadOnly}
-                  placeholder="Rechercher un chef de projet..."
+                  placeholder={`${t('modals.project.pm_label')}...`}
                 />
                 <p className="text-[10px] text-slate-500 mt-1">
-                  Seul autorisé à modifier le projet.
+                  {t('modals.project.pm_hint')}
                 </p>
               </div>
 
@@ -591,7 +593,7 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
               <div>
                 <div className="flex items-center justify-between mb-1">
                   <label className="text-xs font-semibold text-slate-700 uppercase tracking-wider">
-                    Adjoint au chef de projet
+                    {t('modals.project.deputy_label')}
                   </label>
                 </div>
                 <UserAutocompleteSelect
@@ -604,10 +606,10 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
                   disabled={isReadOnly}
                   excludeValue={projectManagerEmail}
                   allowClear={true}
-                  placeholder="Aucun adjoint (saisir pour chercher)..."
+                  placeholder={`${t('modals.project.deputy_label')}...`}
                 />
                 <p className="text-[10px] text-slate-500 mt-1">
-                  Facultatif : hérite des mêmes droits que le chef de projet en son absence.
+                  {t('modals.project.deputy_hint')}
                 </p>
               </div>
             </div>
@@ -620,16 +622,16 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
             <div className="flex items-center justify-between border-b border-slate-200/80 pb-2.5">
               <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
                 <Scale className="w-4 h-4 text-purple-600 shrink-0" />
-                <span>Priorisation</span>
+                <span>{t('modals.project.section_prioritization')}</span>
               </h4>
-              <span className="text-[11px] text-slate-500">Budget, critères &amp; scoring</span>
+              <span className="text-[11px] text-slate-500">{t('modals.project.section_prioritization_sub')}</span>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
               {/* Ligne budgétaire */}
               <div className="md:col-span-6">
                 <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
-                  Ligne budgétaire associée <span className="text-red-500">*</span>
+                  {t('modals.project.budget_line_label')} <span className="text-red-500">*</span>
                 </label>
                 <select
                   required
@@ -638,7 +640,7 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
                   onChange={(e) => setBudgetLineId(e.target.value)}
                   className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs bg-white focus:ring-2 focus:ring-indigo-500 disabled:bg-slate-100 truncate"
                 >
-                  <option value="">Sélectionner une ligne budgétaire...</option>
+                  <option value="">{t('modals.project.select_budget_line')}</option>
                   {budgetLines.map((b) => (
                     <option key={b.id} value={b.id}>
                       {b.name} ({b.budgetKe} K€) {!b.isActive ? '- [Inactive]' : ''}
@@ -650,7 +652,7 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
               {/* Budget global estimatif (K€) */}
               <div className="md:col-span-6">
                 <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
-                  Budget global estimatif (K€)
+                  {t('modals.project.estimated_budget_label')}
                 </label>
                 <div className="relative">
                   <input
@@ -660,7 +662,7 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
                     disabled={isReadOnly}
                     value={estimatedBudget}
                     onChange={(e) => setEstimatedBudget(e.target.value === '' ? '' : Number(e.target.value))}
-                    placeholder="Ex : 120"
+                    placeholder={t('modals.project.estimated_budget_placeholder')}
                     className="w-full pl-3 pr-8 py-2 border border-slate-300 rounded-lg text-sm font-mono focus:ring-2 focus:ring-indigo-500 disabled:bg-slate-100"
                   />
                   <span className="absolute right-3 top-2 text-xs font-bold text-slate-400">K€</span>
@@ -670,20 +672,17 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
               {/* Grille valorisée de TOUS les critères de priorisation */}
               <div className="md:col-span-12 pt-2">
                 <div className="mb-2">
-                  <h5 className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center justify-between">
-                    <span>Critères de priorisation <span className="text-red-500">*</span></span>
-                    <span className="text-[11px] font-normal text-slate-500 lowercase">
-                      {criteria.length} critère{criteria.length > 1 ? 's' : ''} obligatoire{criteria.length > 1 ? 's' : ''}
-                    </span>
+                  <h5 className="text-xs font-bold text-slate-800 uppercase tracking-wider">
+                    <span>{t('modals.project.criteria_value_title')} <span className="text-red-500">*</span></span>
                   </h5>
                   <p className="text-[11px] text-slate-500">
-                    Sélectionnez pour chaque critère l’échelon correspondant à l’impact ou au coût du projet.
+                    {t('modals.project.criteria_scoring_hint')}
                   </p>
                 </div>
 
                 {criteria.length === 0 ? (
                   <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl text-amber-800 text-xs">
-                    Aucun critère n’a encore été défini dans l’onglet « Critères de priorisation ».
+                    {t('modals.project.criteria_empty')}
                   </div>
                 ) : (
                   <div className="space-y-3 bg-white p-3.5 rounded-xl border border-slate-200">
@@ -752,11 +751,11 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
                   <div>
                     <div className="flex items-center justify-between mb-1">
                       <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider">
-                        Bonus (Points)
+                        {t('modals.project.bonus_label')}
                       </label>
                       {bonusConfig && (
                         <span className={`text-[10px] font-semibold ${bonusConfig.isBonusActive ? 'text-teal-700' : 'text-slate-400'}`}>
-                          {bonusConfig.isBonusActive ? '✓ Actif dans le ROI' : '✕ Ignoré dans le ROI'}
+                          {bonusConfig.isBonusActive ? t('modals.project.bonus_active_label') : t('modals.project.bonus_inactive_label')}
                         </span>
                       )}
                     </div>
@@ -766,7 +765,7 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
                       disabled={isReadOnly}
                       value={bonus}
                       onChange={(e) => setBonus(e.target.value === '' ? '' : Number(e.target.value))}
-                      placeholder="Facultatif (ex : 5)"
+                      placeholder={t('modals.project.bonus_placeholder')}
                       className={`w-full px-3 py-2 border rounded-lg text-sm font-mono focus:ring-2 focus:ring-indigo-500 disabled:bg-slate-100 ${
                         bonusConfig?.checkQuotas &&
                         bonusConfig?.maxBonusPointsPerProject !== null &&
@@ -778,8 +777,8 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
                     <div className="mt-1 space-y-0.5">
                       <p className="text-[10px] text-slate-400">
                         {bonusConfig && !bonusConfig.isBonusActive
-                          ? 'Paramètre « Bonus actifs » désactivé : ce bonus ne modifie pas le ROI.'
-                          : 'Nombre entier de points de valeur additionnels.'}
+                          ? t('modals.project.bonus_inactive_label')
+                          : t('modals.project.bonus_hint')}
                       </p>
                       {bonusConfig?.checkQuotas && bonusConfig?.maxBonusPointsPerProject !== null && (
                         <p className={`text-[10px] ${
@@ -788,8 +787,8 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
                             : 'text-slate-400'
                         }`}>
                           {Number(bonus) > bonusConfig.maxBonusPointsPerProject
-                            ? `⚠️ Dépassement : le quota configuré est de ${bonusConfig.maxBonusPointsPerProject} pts max par projet`
-                            : `Plafond configuré : ${bonusConfig.maxBonusPointsPerProject} pts max par projet`}
+                            ? `⚠️ Plafond: ${bonusConfig.maxBonusPointsPerProject} pts max`
+                            : `Plafond: ${bonusConfig.maxBonusPointsPerProject} pts max`}
                         </p>
                       )}
                     </div>
@@ -799,10 +798,10 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
                   <div>
                     <div className="flex items-center justify-between mb-1">
                       <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider">
-                        ROI (Valeur / Coût)
+                        {t('modals.project.roi_title')}
                       </label>
                       <span className="text-[10px] font-medium text-indigo-600">
-                        {computedRoi !== null ? 'Calculé automatiquement' : 'En attente de valorisation'}
+                        {computedRoi !== null ? t('modals.project.roi_auto') : t('modals.project.roi_waiting')}
                       </span>
                     </div>
                     <input
@@ -817,7 +816,7 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
                       }`}
                     />
                     <p className="text-[10px] text-slate-500 mt-1">
-                      Somme pondérée des critères de valeur / Somme pondérée des critères de coût
+                      {t('modals.project.roi_formula_desc')}
                     </p>
                   </div>
                 </div>
@@ -832,14 +831,14 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
             <div className="flex items-center justify-between border-b border-slate-200/80 pb-2.5">
               <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
                 <MoreHorizontal className="w-4 h-4 text-purple-600 shrink-0" />
-                <span>Autres</span>
+                <span>{t('modals.project.section_other')}</span>
               </h4>
-              <span className="text-[11px] text-slate-500">Paramètres personnalisés</span>
+              <span className="text-[11px] text-slate-500">{t('modals.project.section_other_sub')}</span>
             </div>
 
             {customParams.length === 0 ? (
               <div className="p-4 bg-white rounded-xl border border-slate-200 text-center text-xs text-slate-500">
-                Aucun paramètre personnalisé n’a été configuré par l’administrateur pour le moment.
+                {t('modals.project.no_custom_params')}
               </div>
             ) : (
               <div className="space-y-3">
@@ -889,7 +888,7 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
                                   [param.id]: e.target.value,
                                 }))
                               }
-                              placeholder="Texte court (50 car. max)"
+                              placeholder="50 car. max"
                               className="w-full px-3 py-1.5 border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-indigo-500 disabled:bg-slate-100"
                             />
                             <span className="absolute right-2.5 top-2 text-[10px] text-slate-400 font-mono">
@@ -911,7 +910,7 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
                                   [param.id]: e.target.value,
                                 }))
                               }
-                              placeholder="Saisissez ici le texte détaillé (1000 car. max)..."
+                              placeholder={t('modals.project.long_text_modal_placeholder')}
                               className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs leading-relaxed focus:ring-2 focus:ring-indigo-500 disabled:bg-slate-100 font-sans"
                             />
                             <button
@@ -952,7 +951,7 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
                                 [param.id]: e.target.value === '' ? null : Math.round(Number(e.target.value)),
                               }))
                             }
-                            placeholder="Nombre entier (ex : 42)"
+                            placeholder="42"
                             className="w-full sm:w-48 px-3 py-1.5 border border-slate-300 rounded-lg text-xs font-mono focus:ring-2 focus:ring-indigo-500 disabled:bg-slate-100"
                           />
                         )}
@@ -969,7 +968,7 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
                                 [param.id]: e.target.value === '' ? null : Number(parseFloat(e.target.value).toFixed(2)),
                               }))
                             }
-                            placeholder="Ex : 12.50"
+                            placeholder="12.50"
                             className="w-full sm:w-48 px-3 py-1.5 border border-slate-300 rounded-lg text-xs font-mono focus:ring-2 focus:ring-indigo-500 disabled:bg-slate-100"
                           />
                         )}
@@ -1016,14 +1015,14 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
                                       ))}
                                     </div>
                                   ) : (
-                                    <span className="text-xs text-slate-400 italic">Aucune valeur sélectionnée</span>
+                                    <span className="text-xs text-slate-400 italic">{t('modals.project.no_value_selected')}</span>
                                   );
                                 }
 
                                 if (optionsList.length === 0) {
                                   return (
                                     <span className="text-xs text-slate-400 italic">
-                                      Aucune valeur prédéfinie configurée dans les paramètres.
+                                      {t('modals.project.no_custom_params')}
                                     </span>
                                   );
                                 }
@@ -1074,7 +1073,7 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
                                   {String(currentValue)}
                                 </span>
                               ) : (
-                                <span className="text-xs text-slate-400 italic">Non renseigné</span>
+                                <span className="text-xs text-slate-400 italic">{t('modals.project.not_filled')}</span>
                               )
                             ) : (
                               <select
@@ -1087,7 +1086,7 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
                                 }
                                 className="w-full sm:w-64 px-3 py-1.5 border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-indigo-500 bg-white text-slate-800 font-medium cursor-pointer"
                               >
-                                <option value="">-- Sélectionner une valeur --</option>
+                                <option value="">{t('modals.project.select_option')}</option>
                                 {(param.options || []).map((opt) => (
                                   <option key={opt} value={opt}>
                                     {opt}
@@ -1114,8 +1113,8 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
                 <AlertCircle className="w-4 h-4 text-red-600 shrink-0" />
                 <span>
                   {missingRequiredCount === 1
-                    ? '1 attribut obligatoire non renseigné'
-                    : `${missingRequiredCount} attributs obligatoires non renseignés`}
+                    ? t('modals.common.missing_required_one')
+                    : t('modals.common.missing_required_other', { count: missingRequiredCount })}
                 </span>
               </div>
             )}
@@ -1126,7 +1125,7 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
               onClick={onClose}
               className="px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
             >
-              {isReadOnly ? 'Fermer' : 'Annuler'}
+              {isReadOnly ? t('modals.common.close') : t('modals.common.cancel')}
             </button>
             {!isReadOnly && (
               <button
@@ -1135,7 +1134,7 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
                 className="px-5 py-2 text-xs font-semibold bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors shadow-xs cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
               >
                 <Check className="w-4 h-4" />
-                <span>{saving ? 'Enregistrement...' : projectToEdit ? 'Enregistrer les modifications' : 'Créer le projet'}</span>
+                <span>{saving ? t('modals.common.saving') : projectToEdit ? t('modals.project.btn_save') : t('modals.project.btn_create')}</span>
               </button>
             )}
           </div>
@@ -1155,9 +1154,9 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
                   </div>
                   <div>
                     <h5 className="font-bold text-sm text-slate-900">
-                      Saisie du paramètre « {longTextParamTarget.name} »
+                      {t('modals.project.long_text_modal_title', { name: longTextParamTarget.name })}
                     </h5>
-                    <p className="text-[11px] text-slate-500">Texte long (1000 caractères max)</p>
+                    <p className="text-[11px] text-slate-500">{t('modals.project.long_text_modal_sub')}</p>
                   </div>
                 </div>
                 <button
@@ -1189,7 +1188,7 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
                   maxLength={1000}
                   value={longTextDraft}
                   onChange={(e) => setLongTextDraft(e.target.value)}
-                  placeholder="Saisissez ici le texte détaillé de ce paramètre..."
+                  placeholder={t('modals.project.long_text_modal_placeholder')}
                   className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs leading-relaxed focus:ring-2 focus:ring-indigo-500 font-sans"
                 />
               </div>
@@ -1200,7 +1199,7 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
                   onClick={() => setLongTextParamTarget(null)}
                   className="px-3.5 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
                 >
-                  Annuler
+                  {t('modals.common.cancel')}
                 </button>
                 {!isReadOnly && (
                   <button
@@ -1208,7 +1207,7 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
                     onClick={handleSaveLongTextModal}
                     className="px-4 py-1.5 text-xs font-semibold bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors cursor-pointer shadow-xs"
                   >
-                    Valider le texte
+                    {t('modals.common.validate')}
                   </button>
                 )}
               </div>

@@ -217,7 +217,7 @@ export const ProjectsImportModal: React.FC<ProjectsImportModalProps> = ({
                   <div>
                     <p className="text-xs font-bold text-slate-900 truncate max-w-xs">{file.name}</p>
                     <p className="text-[11px] text-slate-500">
-                      {(file.size / 1024).toFixed(1)} Ko • ~{detectedLines} projet(s) détecté(s)
+                      {(file.size / 1024).toFixed(1)} Ko • ~{detectedLines} {detectedLines > 1 ? 'projets détectés' : 'projet détecté'}
                     </p>
                   </div>
                 </div>

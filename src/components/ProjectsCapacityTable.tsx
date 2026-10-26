@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Gauge,
   Search,
@@ -72,15 +73,11 @@ interface ProjectsCapacityTableProps {
   setSearchQuery?: (query: string) => void;
 }
 
-const MONTH_NAMES_FR = [
-  'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
-  'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'
-];
-
-const MONTH_NAMES_SHORT = [
-  'Janv.', 'Févr.', 'Mars', 'Avr.', 'Mai', 'Juin',
-  'Juil.', 'Août', 'Sept.', 'Oct.', 'Nov.', 'Déc.'
-];
+import {
+  formatPeriodLocale,
+  normalizePeriodKey,
+  getNextPeriodInfo,
+} from '../utils/dateUtils';
 
 export const ProjectsCapacityTable: React.FC<ProjectsCapacityTableProps> = ({
   projects,
@@ -105,6 +102,7 @@ export const ProjectsCapacityTable: React.FC<ProjectsCapacityTableProps> = ({
   searchQuery: searchQueryProp,
   setSearchQuery: setSearchQueryProp,
 }) => {
+  const { t, i18n } = useTranslation();
   const [internalSearchQuery, setInternalSearchQuery] = useState('');
   const searchQuery = searchQueryProp !== undefined ? searchQueryProp : internalSearchQuery;
   const setSearchQuery = setSearchQueryProp || setInternalSearchQuery;
@@ -240,23 +238,17 @@ export const ProjectsCapacityTable: React.FC<ProjectsCapacityTableProps> = ({
     };
   }, [openMonthDropdownId]);
 
-  // Définition dynamique du "mois prochain" (le mois à venir)
+  // Définition dynamique et internationalisée du "mois prochain" (le mois à venir)
   const { nextMonthKey, nextMonthLabel, nextMonthShort, nextMonthYear, nextMonthMonth } = useMemo(() => {
-    const now = new Date();
-    const nextDate = new Date(now.getFullYear(), now.getMonth() + 1, 1);
-    const year = nextDate.getFullYear();
-    const month = nextDate.getMonth() + 1;
-    const key = `${year}-${String(month).padStart(2, '0')}`;
-    const label = `${MONTH_NAMES_FR[nextDate.getMonth()]} ${year}`;
-    const shortLabel = `${MONTH_NAMES_SHORT[nextDate.getMonth()]} ${year}`;
+    const info = getNextPeriodInfo(new Date(), i18n.language);
     return {
-      nextMonthKey: key,
-      nextMonthLabel: label,
-      nextMonthShort: shortLabel,
-      nextMonthYear: year,
-      nextMonthMonth: month,
+      nextMonthKey: info.key,
+      nextMonthLabel: info.longLabel,
+      nextMonthShort: info.shortLabel,
+      nextMonthYear: info.year,
+      nextMonthMonth: info.month,
     };
-  }, []);
+  }, [i18n.language]);
 
   // Nombre de jours ouvrés pour le mois prochain (du lundi au vendredi hors jours fériés légaux français)
   const workingDaysNextMonth = useMemo(() => {
@@ -264,16 +256,11 @@ export const ProjectsCapacityTable: React.FC<ProjectsCapacityTableProps> = ({
   }, [nextMonthYear, nextMonthMonth]);
 
   const formatMonthKey = (key?: string | null): string => {
-    if (!key) return 'Non planifié';
-    const parts = key.split('-');
-    if (parts.length === 2) {
-      const y = parseInt(parts[0], 10);
-      const m = parseInt(parts[1], 10);
-      if (!isNaN(y) && !isNaN(m) && m >= 1 && m <= 12) {
-        return `${MONTH_NAMES_SHORT[m - 1]} ${y}`;
-      }
-    }
-    return key;
+    if (!key) return t('capacity.status.not_defined');
+    return formatPeriodLocale(key, i18n.language, {
+      format: 'short',
+      fallback: key,
+    });
   };
 
   // Droits pour modifier le nombre de jours demandé sur les compétences clés et le mois de màj :
@@ -460,12 +447,16 @@ export const ProjectsCapacityTable: React.FC<ProjectsCapacityTableProps> = ({
     return { orderedProjects, rankMap };
   }, [projects, criteria, bonusConfig, localStaffed, projectStates]);
 
-  // Récupération de la valeur locale ou distante du mois de mise à jour
+  // Récupération de la valeur locale ou distante du mois de mise à jour normalisée (language-independent "YYYY-MM")
   const getProjectMonth = (p: Project): string | null => {
+    let rawVal: string | null = null;
     if (localMonths[p.id] !== undefined) {
-      return localMonths[p.id];
+      rawVal = localMonths[p.id];
+    } else {
+      rawVal = p.capacityUpdatedMonth || null;
     }
-    return p.capacityUpdatedMonth || null;
+    if (!rawVal) return null;
+    return normalizePeriodKey(rawVal) || rawVal;
   };
 
   // Récupération de la valeur locale ou distante des jours mobilisés pour une compétence
@@ -713,18 +704,20 @@ export const ProjectsCapacityTable: React.FC<ProjectsCapacityTableProps> = ({
     localStaffed,
   ]);
 
-  // Mise à jour du mois de planification vers le mois prochain
+  // Mise à jour du mois de planification vers le mois prochain (stockage indépendant de la langue au format "YYYY-MM")
   const handleUpdateMonth = async (project: Project, targetMonth: string | null) => {
     if (!canEditProjectCapacity(project)) return;
 
+    const normalizedMonth = targetMonth ? normalizePeriodKey(targetMonth) || targetMonth : null;
+
     setLocalMonths((prev) => ({
       ...prev,
-      [project.id]: targetMonth,
+      [project.id]: normalizedMonth,
     }));
 
     try {
       const currentDays = localDays[project.id] || project.capacityDaysPerSkill || {};
-      await updateProjectCapacity(project.id, targetMonth, currentDays);
+      await updateProjectCapacity(project.id, normalizedMonth, currentDays);
     } catch (err) {
       console.error('Erreur mise à jour mois capacitaire:', err);
     }
@@ -891,18 +884,17 @@ export const ProjectsCapacityTable: React.FC<ProjectsCapacityTableProps> = ({
         <div>
           <h2 className="text-xl font-bold text-indigo-600 flex items-center gap-2.5">
             <Gauge className="w-5 h-5 text-indigo-600 shrink-0" />
-            <span>Capacitaire des projets</span>
+            <span>{t('capacity.title')}</span>
           </h2>
           <div className="text-xs text-slate-600 mt-0.5 max-w-3xl leading-relaxed space-y-0.5">
             <div className="flex items-center gap-1.5 flex-wrap">
-              <span>Planifiez les besoins en compétences clés pour la période à venir :</span>
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-semibold bg-emerald-100 text-emerald-800 border border-emerald-300 shadow-2xs">
-                <Check className="w-3 h-3 text-emerald-600 shrink-0" />
+              <span>{t('capacity.subtitle')}</span>
+              <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-semibold bg-emerald-100 text-emerald-800 border border-emerald-300 shadow-2xs">
                 <span>{nextMonthShort}</span>
               </span>
             </div>
             <div className="flex items-center gap-2 flex-wrap">
-              <span>Les projets sont classés par ordre décroissant de ROI (le n°1 est le plus prioritaire), puis apparaissent les projets non priorisés du fait de leur état. Le fait de prioriser ou non un projet dans un état donné est défini dans les paramètres 'Cycle de vie'.</span>
+              <span>{t('capacity.info')}</span>
             </div>
           </div>
         </div>
@@ -918,7 +910,7 @@ export const ProjectsCapacityTable: React.FC<ProjectsCapacityTableProps> = ({
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Rechercher par identifiant, nom, chef de projet..."
+              placeholder={t('capacity.search_placeholder')}
               className="w-full pl-9 pr-3 py-2 border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-indigo-600 bg-white"
             />
           </div>
@@ -974,7 +966,7 @@ export const ProjectsCapacityTable: React.FC<ProjectsCapacityTableProps> = ({
               }`}
             >
               <User className="w-3.5 h-3.5" />
-              <span>Mes projets</span>
+              <span>{t('projects.only_my_projects')}</span>
             </button>
           </div>
         </div>
@@ -990,8 +982,16 @@ export const ProjectsCapacityTable: React.FC<ProjectsCapacityTableProps> = ({
               }`}
             >
               {hasActiveFilters
-                ? `${displayedProjects.length} projet${displayedProjects.length > 1 ? 's' : ''} sur ${projects.length} projet${projects.length > 1 ? 's' : ''} au total`
-                : `${projects.length} projet${projects.length > 1 ? 's' : ''} au total`}
+                ? t('projects.counts.filtered', {
+                    filtered: displayedProjects.length,
+                    filtered_word: displayedProjects.length > 1 ? t('common.words.project_other') : t('common.words.project_one'),
+                    total: projects.length,
+                    total_word: projects.length > 1 ? t('common.words.project_other') : t('common.words.project_one'),
+                  })
+                : t('projects.counts.total', {
+                    total: projects.length,
+                    total_word: projects.length > 1 ? t('common.words.project_other') : t('common.words.project_one'),
+                  })}
             </span>
 
             {hasActiveFilters && (
@@ -1001,7 +1001,7 @@ export const ProjectsCapacityTable: React.FC<ProjectsCapacityTableProps> = ({
                 className="text-indigo-600 hover:text-indigo-800 hover:underline flex items-center gap-1.5 cursor-pointer text-xs font-semibold"
               >
                 <RotateCcw className="w-3.5 h-3.5" />
-                <span>Réinitialiser les filtres</span>
+                <span>{t('projects.clear_filters')}</span>
               </button>
             )}
           </div>
@@ -1020,8 +1020,8 @@ export const ProjectsCapacityTable: React.FC<ProjectsCapacityTableProps> = ({
                   onChange={(e) => setShowBudgetOverruns(e.target.checked)}
                   className="w-3.5 h-3.5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer shrink-0"
                 />
-                <span className="text-xs" title="Afficher les dépassements budgétaires">
-                  Afficher les aspects budgétaires
+                <span className="text-xs" title={t('capacity.budget_aspects')}>
+                  {t('capacity.budget_aspects')}
                 </span>
               </label>
 
@@ -1036,8 +1036,8 @@ export const ProjectsCapacityTable: React.FC<ProjectsCapacityTableProps> = ({
                   onChange={(e) => setShowConfidentialProjects(e.target.checked)}
                   className="w-3.5 h-3.5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer shrink-0"
                 />
-                <span className="text-xs" title="Afficher les projets confidentiels">
-                  Afficher les projets confidentiels
+                <span className="text-xs" title={t('capacity.confidential')}>
+                  {t('capacity.confidential')}
                 </span>
               </label>
             </div>
@@ -1056,7 +1056,7 @@ export const ProjectsCapacityTable: React.FC<ProjectsCapacityTableProps> = ({
                   scope="col"
                   className={`sticky left-0 top-0 bg-slate-100 z-50 px-1 py-2 text-center align-top w-[50px] min-w-[50px] max-w-[50px] border-r border-slate-200 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.06)] table-header-double-bottom ${TABLE_HEADER_TEXT_CLASS}`}
                 >
-                  ID
+                  {t('capacity.columns.id')}
                 </th>
 
                 {/* Colonne 2 : Priorité (figée à gauche : 50px, top : 0) */}
@@ -1064,8 +1064,8 @@ export const ProjectsCapacityTable: React.FC<ProjectsCapacityTableProps> = ({
                   scope="col"
                   className={`sticky left-[50px] top-0 bg-slate-100 z-50 px-1 py-2 text-center align-top w-[52px] min-w-[52px] max-w-[52px] border-r border-slate-200 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.06)] table-header-double-bottom ${TABLE_HEADER_TEXT_CLASS}`}
                 >
-                  <Tooltip content="Priorité du projet selon le ROI décroissant" className="w-full inline-block">
-                    <span className="cursor-help">PRIO.</span>
+                  <Tooltip content={t('capacity.tooltips.prio')} className="w-full inline-block">
+                    <span className="cursor-help">{t('capacity.columns.prio')}</span>
                   </Tooltip>
                 </th>
 
@@ -1074,7 +1074,7 @@ export const ProjectsCapacityTable: React.FC<ProjectsCapacityTableProps> = ({
                   scope="col"
                   className={`sticky left-[102px] top-0 bg-slate-100 z-50 px-3 py-2 text-left align-top w-[200px] min-w-[200px] max-w-[200px] border-r border-slate-200 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.06)] table-header-double-bottom ${TABLE_HEADER_TEXT_CLASS}`}
                 >
-                  PROJET
+                  {t('capacity.columns.project')}
                 </th>
 
                 {/* Colonne : Action (figée à gauche : 302px, top : 0) */}
@@ -1082,7 +1082,7 @@ export const ProjectsCapacityTable: React.FC<ProjectsCapacityTableProps> = ({
                   scope="col"
                   className={`sticky left-[302px] top-0 bg-slate-100 z-50 px-1 py-2 text-center align-top w-[50px] min-w-[50px] max-w-[50px] border-r border-slate-200 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.06)] table-header-double-bottom ${TABLE_HEADER_TEXT_CLASS}`}
                 >
-                  ACTION
+                  {t('capacity.columns.action')}
                 </th>
 
                 {/* Colonnes optionnelles affichées uniquement si "Afficher les dépassements budgétaires" est coché */}
@@ -1093,7 +1093,7 @@ export const ProjectsCapacityTable: React.FC<ProjectsCapacityTableProps> = ({
                       scope="col"
                       className={`sticky left-[352px] top-0 bg-slate-100 z-50 px-2 py-2 text-center align-top w-[140px] min-w-[140px] max-w-[140px] border-r border-slate-200 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.06)] table-header-double-bottom ${TABLE_HEADER_TEXT_CLASS}`}
                     >
-                      LIGNE BUDGÉTAIRE
+                      {t('capacity.columns.budget_line')}
                     </th>
 
                     {/* Colonne : Budget (figée à gauche : 492px, top : 0) */}
@@ -1102,18 +1102,22 @@ export const ProjectsCapacityTable: React.FC<ProjectsCapacityTableProps> = ({
                       className={`sticky left-[492px] top-0 bg-slate-100 z-50 px-2 py-2 text-center align-top w-[90px] min-w-[90px] max-w-[90px] border-r border-slate-200 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.06)] table-header-double-bottom ${TABLE_HEADER_TEXT_CLASS}`}
                     >
                       <div className="flex flex-col items-center justify-start leading-tight">
-                        <span>BUDGET</span>
+                        <span>{t('capacity.columns.budget')}</span>
                         {budgetOverrunData.overrunProjects.size > 0 && (
                           <div className="mt-4">
                             <Tooltip
                               variant="error"
                               placement="bottom"
-                              content={`${budgetOverrunData.overrunProjects.size} projet(s) provoqu(ent) un dépassement budgétaire`}
+                              content={
+                                budgetOverrunData.overrunProjects.size > 1
+                                  ? t('capacity.badges.overrun_tooltip_plural', { count: budgetOverrunData.overrunProjects.size })
+                                  : t('capacity.badges.overrun_tooltip_singular')
+                              }
                             >
                               <span
                                 className="inline-flex items-center justify-center text-[10px] font-bold text-amber-100 bg-amber-900 border border-amber-950 px-2 py-0.5 rounded-full shadow-2xs whitespace-nowrap normal-case tracking-normal min-w-[18px] cursor-help"
                               >
-                                {budgetOverrunData.overrunProjects.size} proj.
+                                {budgetOverrunData.overrunProjects.size} {t('capacity.badges.proj_short')}
                               </span>
                             </Tooltip>
                           </div>
@@ -1129,20 +1133,24 @@ export const ProjectsCapacityTable: React.FC<ProjectsCapacityTableProps> = ({
                   className={`sticky ${showBudgetOverruns ? 'left-[582px]' : 'left-[352px]'} top-0 bg-slate-100 z-50 px-1 py-2 text-center align-top w-[60px] min-w-[60px] max-w-[60px] border-r border-slate-200 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.06)] table-header-double-bottom ${TABLE_HEADER_TEXT_CLASS}`}
                 >
                   <div className="flex flex-col items-center justify-start leading-tight">
-                    <Tooltip content="Projets staffés : prise en compte des demandes de compétences clés dans le capacitaire">
-                      <span className="cursor-help">STAFFÉ</span>
+                    <Tooltip content={t('capacity.tooltips.staffed')}>
+                      <span className="cursor-help">{t('capacity.columns.staffed')}</span>
                     </Tooltip>
                     {bottleneckData.bottleneckProjects.size > 0 && (
                       <div className="mt-4">
                         <Tooltip
                           variant="error"
                           placement="bottom"
-                          content={`${bottleneckData.bottleneckProjects.size} projet(s) staffé(s) rencontr(ent) au moins un goulet d'étranglement`}
+                          content={
+                            bottleneckData.bottleneckProjects.size > 1
+                              ? t('capacity.badges.bottleneck_tooltip_plural', { count: bottleneckData.bottleneckProjects.size })
+                              : t('capacity.badges.bottleneck_tooltip_singular')
+                          }
                         >
                           <span
                             className="inline-flex items-center justify-center text-[10px] font-bold text-white bg-red-600 px-2 py-0.5 rounded-full shadow-2xs whitespace-nowrap normal-case tracking-normal min-w-[18px] cursor-help"
                           >
-                            {bottleneckData.bottleneckProjects.size} proj.
+                            {bottleneckData.bottleneckProjects.size} {t('capacity.badges.proj_short')}
                           </span>
                         </Tooltip>
                       </div>
@@ -1156,20 +1164,24 @@ export const ProjectsCapacityTable: React.FC<ProjectsCapacityTableProps> = ({
                   className={`sticky ${showBudgetOverruns ? 'left-[642px]' : 'left-[412px]'} top-0 bg-slate-100 z-50 px-2 py-2 text-center align-top w-[130px] min-w-[130px] max-w-[130px] ${TABLE_FROZEN_DIVIDER_CLASS} shadow-[2px_0_4px_-2px_rgba(0,0,0,0.06)] table-header-double-bottom ${TABLE_HEADER_TEXT_CLASS}`}
                 >
                   <div className="flex flex-col items-center justify-start leading-tight">
-                    <Tooltip content="Mois de mise à jour des demandes en compétences clés">
-                      <span className="cursor-help">MOIS MÀJ</span>
+                    <Tooltip content={t('capacity.tooltips.month_update')}>
+                      <span className="cursor-help">{t('capacity.columns.month_update')}</span>
                     </Tooltip>
                     {outdatedProjectsCount > 0 && (
                       <div className="mt-4">
                         <Tooltip
                           variant="error"
                           placement="bottom"
-                          content={`${outdatedProjectsCount} projet${outdatedProjectsCount > 1 ? 's n\'ont pas été mis' : ' n\'a pas été mis'} à jour de leurs demandes de compétences clé pour la période suivante`}
+                          content={
+                            outdatedProjectsCount > 1
+                              ? t('capacity.badges.outdated_tooltip_plural', { count: outdatedProjectsCount })
+                              : t('capacity.badges.outdated_tooltip_singular')
+                          }
                         >
                           <span
                             className="inline-flex items-center justify-center text-[10px] font-bold text-white bg-red-600 px-2 py-0.5 rounded-full shadow-2xs whitespace-nowrap normal-case tracking-normal min-w-[18px] cursor-help"
                           >
-                            {outdatedProjectsCount} proj. à màj.
+                            {outdatedProjectsCount} {t('capacity.badges.proj_to_update_short')}
                           </span>
                         </Tooltip>
                       </div>
@@ -1180,7 +1192,7 @@ export const ProjectsCapacityTable: React.FC<ProjectsCapacityTableProps> = ({
                 {/* Colonnes dynamiques : Une par compétence clé */}
                 {skills.length === 0 ? (
                   <th scope="col" className="sticky top-0 z-40 bg-slate-100 px-4 py-3 text-slate-400 italic align-top table-header-double-bottom">
-                    Aucune compétence clé déclarée dans les paramètres
+                    {t('capacity.no_skills_declared')}
                   </th>
                 ) : (
                   skills.map((skill) => {
@@ -1201,7 +1213,17 @@ export const ProjectsCapacityTable: React.FC<ProjectsCapacityTableProps> = ({
                       >
                         <div className="flex flex-col items-center justify-start gap-1 leading-tight">
                           {/* Nom de la compétence : en gras et rouge uniquement en cas d'alerte dépassement */}
-                          <Tooltip content={skill.name}>
+                          <Tooltip
+                            content={
+                              skill.description?.trim() ? (
+                                <div className="whitespace-pre-line text-left">
+                                  {skill.description.trim()}
+                                </div>
+                              ) : (
+                                skill.name
+                              )
+                            }
+                          >
                             <span
                               className={`text-xs font-bold truncate max-w-[140px] text-center cursor-help ${
                                 isAlerting ? 'text-red-700' : 'text-slate-800'
@@ -1220,12 +1242,27 @@ export const ProjectsCapacityTable: React.FC<ProjectsCapacityTableProps> = ({
                               isAlerting ? (
                                 <div className="text-left text-xs text-white space-y-1 whitespace-nowrap">
                                   <div className="font-bold border-b border-red-400/40 pb-0.5">
-                                    Goulet d'étranglement : {skill.name}
+                                    {t('capacity.tooltips.skill_header_bottleneck', { skill: skill.name })}
                                   </div>
                                   <div className="text-[11px] space-y-0.5 font-normal">
-                                    <div>- demande totale : {formatDaysVal(cap.D)} j sur {cap.P} projet(s)</div>
-                                    <div>- disponibilité : {formatDaysVal(cap.C)} j ({workingDaysNextMonth} jours ouvrés)</div>
-                                    <div className="font-bold">- il manque au total : {missingDaysStr} j</div>
+                                    <div>
+                                      {t('capacity.tooltips.skill_header_demand', {
+                                        demand: formatDaysVal(cap.D),
+                                        count: cap.P,
+                                        projects_word: cap.P > 1 ? t('reports.budget_distribution.projects') : t('reports.budget_distribution.project'),
+                                      })}
+                                    </div>
+                                    <div>
+                                      {t('capacity.tooltips.skill_header_availability', {
+                                        capacity: formatDaysVal(cap.C),
+                                        workingDays: workingDaysNextMonth,
+                                      })}
+                                    </div>
+                                    <div className="font-bold">
+                                      {t('capacity.tooltips.skill_header_missing', {
+                                        missing: missingDaysStr,
+                                      })}
+                                    </div>
                                   </div>
                                 </div>
                               ) : (
@@ -1234,9 +1271,24 @@ export const ProjectsCapacityTable: React.FC<ProjectsCapacityTableProps> = ({
                                     {skill.name} :
                                   </div>
                                   <div className="text-[11px] text-slate-200 space-y-0.5 font-normal">
-                                    <div>- demande totale : {formatDaysVal(cap.D)} j sur {cap.P} projet(s)</div>
-                                    <div>- disponibilité : {formatDaysVal(cap.C)} j ({workingDaysNextMonth} jours ouvrés)</div>
-                                    <div>- reste : {formatDaysVal(cap.R)} j</div>
+                                    <div>
+                                      {t('capacity.tooltips.skill_header_demand', {
+                                        demand: formatDaysVal(cap.D),
+                                        count: cap.P,
+                                        projects_word: cap.P > 1 ? t('reports.budget_distribution.projects') : t('reports.budget_distribution.project'),
+                                      })}
+                                    </div>
+                                    <div>
+                                      {t('capacity.tooltips.skill_header_availability', {
+                                        capacity: formatDaysVal(cap.C),
+                                        workingDays: workingDaysNextMonth,
+                                      })}
+                                    </div>
+                                    <div>
+                                      {t('capacity.tooltips.skill_header_remaining', {
+                                        remaining: formatDaysVal(cap.R),
+                                      })}
+                                    </div>
                                   </div>
                                 </div>
                               )
@@ -1245,7 +1297,7 @@ export const ProjectsCapacityTable: React.FC<ProjectsCapacityTableProps> = ({
                             <div className="flex flex-col items-center justify-start cursor-help">
                               {/* 1ère ligne : "D j / P proj." en police normale (non grasse) et en gris */}
                               <div className="text-xs font-normal text-slate-500 whitespace-nowrap">
-                                {formatDaysVal(cap.D)} j / {cap.P} proj.
+                                {formatDaysVal(cap.D)} {t('capacity.units.day_short')} / {cap.P} {t('capacity.badges.proj_short')}
                               </div>
 
                               {/* 2ème ligne : "( R j / C j )" en police normale et en gris, sauf R en gras blanc sur fond rouge en cas d'alerte dépassement */}
@@ -1253,12 +1305,12 @@ export const ProjectsCapacityTable: React.FC<ProjectsCapacityTableProps> = ({
                                 <span>( </span>
                                 {isAlerting ? (
                                   <span className="inline-flex items-center justify-center bg-red-600 text-white font-bold text-[11px] px-1.5 py-0.5 rounded-full shadow-2xs leading-none">
-                                    {rFormatted} j
+                                    {rFormatted} {t('capacity.units.day_short')}
                                   </span>
                                 ) : (
-                                  <span>{rFormatted} j</span>
+                                  <span>{rFormatted} {t('capacity.units.day_short')}</span>
                                 )}
-                                <span> / {formatDaysVal(cap.C)} j )</span>
+                                <span> / {formatDaysVal(cap.C)} {t('capacity.units.day_short')} )</span>
                               </div>
                             </div>
                           </Tooltip>
@@ -1277,7 +1329,7 @@ export const ProjectsCapacityTable: React.FC<ProjectsCapacityTableProps> = ({
                     colSpan={(showBudgetOverruns ? 8 : 6) + Math.max(skills.length, 1)}
                     className="px-6 py-12 text-center text-slate-400 italic"
                   >
-                    Chargement des projets et compétences capacitaires...
+                    {t('capacity.tooltips.loading_projects')}
                   </td>
                 </tr>
               ) : displayedProjects.length === 0 ? (
@@ -1288,11 +1340,11 @@ export const ProjectsCapacityTable: React.FC<ProjectsCapacityTableProps> = ({
                   >
                     <div className="max-w-md mx-auto space-y-2">
                       <Gauge className="w-10 h-10 text-slate-300 mx-auto" />
-                      <p className="font-semibold text-slate-700">Aucun projet trouvé</p>
+                      <p className="font-semibold text-slate-700">{t('capacity.tooltips.no_projects_found')}</p>
                       <p className="text-xs text-slate-500">
                         {myProjectsOnly || isAlertFilterActive || isStateFilterActive
-                          ? "Aucun projet ne correspond aux filtres appliqués."
-                          : "Déclarez des projets dans l'onglet Priorités pour planifier leurs compétences capacitaires."}
+                          ? t('capacity.tooltips.no_projects_matching_filters')
+                          : t('capacity.tooltips.no_projects_declare')}
                       </p>
                     </div>
                   </td>
@@ -1390,7 +1442,7 @@ export const ProjectsCapacityTable: React.FC<ProjectsCapacityTableProps> = ({
                               {project.isConfidential && (
                                 <span
                                   className="inline-flex items-center justify-center p-1 rounded-md bg-rose-50 border border-red-300 text-red-600 shadow-2xs shrink-0"
-                                  title="Projet confidentiel"
+                                  title={t('projects.tooltips.confidential_badge')}
                                 >
                                   <Lock className="w-3.5 h-3.5 text-red-600" />
                                 </span>
@@ -1400,17 +1452,17 @@ export const ProjectsCapacityTable: React.FC<ProjectsCapacityTableProps> = ({
                                 content={
                                   <div>
                                     <div className="text-[10px] font-semibold text-slate-200 uppercase tracking-wider mb-1 flex items-center justify-between gap-4">
-                                      <span>Description du projet</span>
+                                      <span>{t('projects.tooltips.description_title')}</span>
                                       {project.isConfidential && (
                                         <span className="text-rose-200 flex items-center gap-1 font-medium normal-case">
                                           <Lock className="w-2.5 h-2.5" />
-                                          Confidentiel
+                                          {t('projects.confidential_badge')}
                                         </span>
                                       )}
                                     </div>
                                     <div className="text-white text-xs">
                                       {project.description?.trim() || (
-                                        <span className="italic text-slate-300">Aucune description renseignée</span>
+                                        <span className="italic text-slate-300">{t('projects.tooltips.no_description')}</span>
                                       )}
                                     </div>
                                   </div>
@@ -1427,7 +1479,7 @@ export const ProjectsCapacityTable: React.FC<ProjectsCapacityTableProps> = ({
                                 isStaffed ? 'text-slate-500' : 'text-slate-400'
                               }`}>
                                 {currentStateName}
-                                {!stateNeedsStaffing && !isStaffed && ' (non staffable)'}
+                                {!stateNeedsStaffing && !isStaffed && t('capacity.tooltips.not_staffable_tag')}
                               </span>
                             )}
                           </div>
@@ -1469,23 +1521,19 @@ export const ProjectsCapacityTable: React.FC<ProjectsCapacityTableProps> = ({
                               {isConfidentialHidden ? (
                                 <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-rose-500 bg-rose-50 px-1.5 py-0.5 rounded border border-rose-200">
                                   <Lock className="w-2.5 h-2.5 text-red-600 shrink-0" />
-                                  <span>Confidentiel</span>
+                                  <span>{t('projects.confidential_badge')}</span>
                                 </span>
                               ) : (
-                                <div
-                                  className="flex items-center gap-1.5 truncate"
-                                  title={bl ? `${bl.name} (${bl.budgetKe} K€)` : 'Aucune ligne budgétaire rattachée'}
-                                >
-                                  {bl?.color && (
-                                    <span
-                                      className="w-2.5 h-2.5 rounded-full shrink-0 border border-black/10 shadow-2xs"
-                                      style={{ backgroundColor: bl.color }}
-                                    />
-                                  )}
-                                  <span className={`truncate text-xs ${isStaffed ? 'text-slate-800 font-medium' : 'text-slate-400'}`}>
-                                    {bl ? bl.name : <span className="italic text-slate-400">Non définie</span>}
+                                <Tooltip content={bl ? `${bl.name} (${bl.budgetKe} K€)` : t('capacity.status.no_budget_line')}>
+                                  <span
+                                    className={`truncate block max-w-[130px] text-xs font-semibold cursor-help ${
+                                      !isStaffed ? 'opacity-70' : ''
+                                    }`}
+                                    style={bl?.color ? { color: bl.color } : undefined}
+                                  >
+                                    {bl ? bl.name : <span className="italic text-slate-400 font-normal">{t('capacity.status.not_defined')}</span>}
                                   </span>
-                                </div>
+                                </Tooltip>
                               )}
                             </td>
 
@@ -1506,12 +1554,12 @@ export const ProjectsCapacityTable: React.FC<ProjectsCapacityTableProps> = ({
                                   content={
                                     <div className="space-y-0.5 text-xs">
                                       <div className="font-bold">
-                                        Dépassement budgétaire sur « {budgetDetail?.lineName} »
+                                        {t('capacity.tooltips.budget_overrun_title', { lineName: budgetDetail?.lineName })}
                                       </div>
                                       <div className="text-[11px] font-normal space-y-0.5">
-                                        <div>• Budget alloué à la ligne : {budgetDetail?.lineAllocated} K€</div>
-                                        <div>• Cumul des projets prioritaires : {budgetDetail?.cumulativeTotal} K€</div>
-                                        <div>• Dépassement provoqué : +{budgetDetail?.overrunAmount} K€</div>
+                                        <div>{t('capacity.tooltips.budget_line_allocated', { amount: budgetDetail?.lineAllocated })}</div>
+                                        <div>{t('capacity.tooltips.budget_cumulative_total', { amount: budgetDetail?.cumulativeTotal })}</div>
+                                        <div>{t('capacity.tooltips.budget_overrun_caused', { amount: budgetDetail?.overrunAmount })}</div>
                                       </div>
                                     </div>
                                   }
@@ -1549,7 +1597,7 @@ export const ProjectsCapacityTable: React.FC<ProjectsCapacityTableProps> = ({
                               placement="top"
                               content={
                                 <div className="text-left text-xs whitespace-normal max-w-xs font-medium leading-snug">
-                                  Projet non priorisé : un projet ne peut pas être staffé s'il n'est pas dans un état à prioriser.
+                                  {t('capacity.tooltips.not_prioritized_project')}
                                 </div>
                               }
                             >
@@ -1566,7 +1614,7 @@ export const ProjectsCapacityTable: React.FC<ProjectsCapacityTableProps> = ({
                               placement="top"
                               content={
                                 <div className="text-left text-xs whitespace-normal max-w-xs font-bold leading-snug">
-                                  Ce projet ne devrait pas mobiliser de compétences clé car il est dans un état ({currentStateName}) qui ne nécessite pas de le staffer
+                                  {t('capacity.tooltips.state_does_not_require_staffing', { state: currentStateName })}
                                 </div>
                               }
                             >
@@ -1584,9 +1632,9 @@ export const ProjectsCapacityTable: React.FC<ProjectsCapacityTableProps> = ({
                               placement="top"
                               content={
                                 <div className="text-left text-xs whitespace-normal max-w-xs space-y-0.5">
-                                  <div className="font-bold">Goulet d'étranglement capacitaire</div>
+                                  <div className="font-bold">{t('capacity.tooltips.bottleneck_title')}</div>
                                   <div className="text-[11px] font-normal">
-                                    Ce projet a des demandes de jours sur des compétences clés qui ne pourront pas être totalement honorées car les projets plus prioritaires ont déjà consommé la capacité disponible.
+                                    {t('capacity.tooltips.bottleneck_project_desc')}
                                   </div>
                                 </div>
                               }
@@ -1617,17 +1665,17 @@ export const ProjectsCapacityTable: React.FC<ProjectsCapacityTableProps> = ({
                               title={
                                 !stateNeedsStaffing
                                   ? canToggleStaffing
-                                    ? `L'état de ce projet (« ${currentStateName} ») ne réclame normalement pas d'être staffé. En tant que Value Management Officer, vous pouvez cocher pour le staffer.`
-                                    : `L'état de ce projet (« ${currentStateName} ») n'a pas l'attribut « à staffer » coché.`
+                                    ? t('capacity.tooltips.staffed_vmo_toggle', { state: currentStateName })
+                                    : t('capacity.tooltips.staffed_state_not_staffable', { state: currentStateName })
                                   : !canToggleStaffing
                                   ? isPersonaAdmin
-                                    ? "Les persona Administrateur n'ont pas le droit de cocher / décocher cette case."
+                                    ? t('capacity.tooltips.staffed_admin_forbidden')
                                     : isStaffed
-                                    ? 'Projet staffé (Modification non autorisée)'
-                                    : 'Projet non staffé (Modification non autorisée)'
+                                    ? t('capacity.tooltips.staffed_readonly_staffed')
+                                    : t('capacity.tooltips.staffed_readonly_unstaffed')
                                   : isStaffed
-                                  ? 'Projet staffé : cliquer pour décocher et exclure du staffing'
-                                  : 'Projet non staffé : cliquer pour cocher et reprendre en compte les demandes de compétences clés'
+                                  ? t('capacity.tooltips.staffed_click_to_unstaff')
+                                  : t('capacity.tooltips.staffed_click_to_staff')
                               }
                             />
                           )}
@@ -1659,18 +1707,17 @@ export const ProjectsCapacityTable: React.FC<ProjectsCapacityTableProps> = ({
                               }}
                               title={
                                 isUpdatedForNextMonth
-                                  ? `À jour pour ${nextMonthShort}. Cliquer pour modifier.`
-                                  : `Cliquer pour ouvrir le choix et mettre à jour pour ${nextMonthShort}`
+                                  ? t('capacity.tooltips.up_to_date_month', { period: nextMonthShort })
+                                  : t('capacity.tooltips.click_to_update_month', { period: nextMonthShort })
                               }
                               className={`cursor-pointer transition-transform hover:scale-105 ${!isStaffed ? 'opacity-75' : ''}`}
                             >
                               {isUpdatedForNextMonth ? (
-                                <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md text-xs font-semibold shadow-2xs ${
+                                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-semibold shadow-2xs ${
                                   isStaffed
                                     ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
                                     : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
                                 }`}>
-                                  <Check className="w-3 h-3 text-emerald-600 shrink-0" />
                                   <span>{nextMonthShort}</span>
                                 </span>
                               ) : !monthVal ? (
@@ -1693,14 +1740,13 @@ export const ProjectsCapacityTable: React.FC<ProjectsCapacityTableProps> = ({
                             </button>
                           ) : (
                             /* En lecture seule pour les utilisateurs non autorisés */
-                            <div title="Modification non autorisée : seuls le Super User, le Chef de projet et son adjoint peuvent mettre à jour le mois.">
+                            <div title={t('capacity.tooltips.readonly_month')}>
                               {isUpdatedForNextMonth ? (
-                                <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md text-xs font-semibold shadow-2xs opacity-80 ${
+                                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-semibold shadow-2xs opacity-80 ${
                                   isStaffed
                                     ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
                                     : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
                                 }`}>
-                                  <Check className="w-3 h-3 text-emerald-600 shrink-0" />
                                   <span>{nextMonthShort}</span>
                                 </span>
                               ) : !monthVal ? (
@@ -1732,7 +1778,7 @@ export const ProjectsCapacityTable: React.FC<ProjectsCapacityTableProps> = ({
                                 className="w-full text-left px-2.5 py-1.5 text-xs font-semibold text-slate-800 hover:bg-emerald-50 hover:text-emerald-900 rounded flex items-center gap-2 cursor-pointer transition-colors"
                               >
                                 <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                                <span>à jour pour {nextMonthShort}</span>
+                                <span>{t('capacity.status.up_to_date', { period: nextMonthShort })}</span>
                               </button>
                               {isUpdatedForNextMonth && (
                                 <button
@@ -1745,7 +1791,7 @@ export const ProjectsCapacityTable: React.FC<ProjectsCapacityTableProps> = ({
                                   className="w-full text-left px-2.5 py-1 text-[11px] text-slate-500 hover:bg-slate-100 rounded flex items-center gap-2 cursor-pointer transition-colors mt-0.5 border-t border-slate-100 pt-1"
                                 >
                                   <RotateCcw className="w-3 h-3 text-slate-400 shrink-0" />
-                                  <span>Réinitialiser (???)</span>
+                                  <span>{t('capacity.tooltips.reset_month')}</span>
                                 </button>
                               )}
                             </div>
@@ -1784,12 +1830,17 @@ export const ProjectsCapacityTable: React.FC<ProjectsCapacityTableProps> = ({
                             title={
                               !isStaffed
                                 ? !stateNeedsStaffing
-                                  ? `Saisie désactivée : l'état du projet (« ${project.stateName || ''} ») n'est pas à staffer.`
-                                  : 'Saisie désactivée : projet non staffé (cochez la case Staffé pour réactiver).'
+                                  ? t('capacity.tooltips.cell_input_disabled_state', { state: project.stateName || '' })
+                                  : t('capacity.tooltips.cell_input_disabled_unstaffed')
                                 : !isCellBottleneck
                                 ? !userCanEditCapacity
-                                  ? `Modification non autorisée : seuls le Super User, le Chef de projet et son adjoint peuvent modifier les jours demandés.`
-                                  : `${isConfidentialHidden ? 'Projet confidentiel' : project.name} - ${skill.name} : ${cellVal || '0'} j prévus sur ${nextMonthLabel}`
+                                  ? t('capacity.tooltips.cell_input_readonly')
+                                  : t('capacity.tooltips.cell_input_planned', {
+                                      project: isConfidentialHidden ? t('projects.tooltips.confidential_badge') : project.name,
+                                      skill: skill.name,
+                                      val: cellVal || '0',
+                                      period: nextMonthLabel,
+                                    })
                                 : undefined
                             }
                           />
@@ -1810,17 +1861,17 @@ export const ProjectsCapacityTable: React.FC<ProjectsCapacityTableProps> = ({
                                 content={
                                   <div className="text-left text-xs whitespace-normal max-w-xs space-y-1">
                                     <div className="font-bold border-b border-red-400/50 pb-0.5">
-                                      Goulet d'étranglement : {skill.name}
+                                      {t('capacity.tooltips.cell_bottleneck', { skill: skill.name })}
                                     </div>
                                     <div className="text-[11px] space-y-0.5 font-normal">
-                                      <div>• Demande de ce projet : <span className="font-bold">{cellVal} j</span></div>
-                                      <div>• Capacité disponible : {cellDetail?.capacity ?? 0} j</div>
-                                      <div>• Restant après projets prioritaires : {cellDetail?.availableBefore ?? 0} j</div>
-                                      <div className="font-bold">• Déficit projet : {cellDetail?.deficit ?? 0} j</div>
+                                      <div>{t('capacity.tooltips.cell_demand', { val: cellVal })}</div>
+                                      <div>{t('capacity.tooltips.cell_capacity', { capacity: cellDetail?.capacity ?? 0 })}</div>
+                                      <div>{t('capacity.tooltips.cell_available_before', { availableBefore: cellDetail?.availableBefore ?? 0 })}</div>
+                                      <div className="font-bold">{t('capacity.tooltips.cell_deficit', { deficit: cellDetail?.deficit ?? 0 })}</div>
                                     </div>
                                     {!userCanEditCapacity && (
                                       <div className="text-[10px] italic opacity-90 pt-0.5">
-                                        (Modification non autorisée)
+                                        {t('capacity.tooltips.cell_readonly')}
                                       </div>
                                     )}
                                   </div>
@@ -1857,10 +1908,11 @@ export const ProjectsCapacityTable: React.FC<ProjectsCapacityTableProps> = ({
         users={users}
         bonusConfig={bonusConfig}
         onSuccess={(saved) => {
+          const pNum = saved?.projectNumber || selectedProject?.projectNumber || '';
           setActionSuccess(
             selectedProject
-              ? `Projet #${saved?.projectNumber || selectedProject.projectNumber} mis à jour avec succès.`
-              : `Nouveau projet #${saved?.projectNumber || ''} créé avec succès.`
+              ? t('projects.success_update', { number: pNum })
+              : t('projects.success_create', { number: pNum })
           );
           setTimeout(() => setActionSuccess(null), 4000);
         }}

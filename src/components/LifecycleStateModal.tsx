@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { X, GitFork, AlertCircle, CheckCircle2, UserCheck, SlidersHorizontal } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
+import { X, GitFork, AlertCircle, CheckCircle2, UserCheck, ListOrdered } from 'lucide-react';
 import { ProjectState, ProjectStateFormData } from '../types/lifecycle';
 
 interface LifecycleStateModalProps {
@@ -19,6 +20,7 @@ export const LifecycleStateModal: React.FC<LifecycleStateModalProps> = ({
   existingStates,
   isReadOnly = false,
 }) => {
+  const { t } = useTranslation();
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [needsStaffing, setNeedsStaffing] = useState(false);
@@ -54,7 +56,7 @@ export const LifecycleStateModal: React.FC<LifecycleStateModalProps> = ({
     e.preventDefault();
     const cleanName = name.trim();
     if (!cleanName) {
-      setError("Le nom de l'état est obligatoire.");
+      setError(t('modals.lifecycle_state.error_name_required'));
       return;
     }
 
@@ -65,7 +67,7 @@ export const LifecycleStateModal: React.FC<LifecycleStateModalProps> = ({
         (!editingState || s.id !== editingState.id)
     );
     if (duplicate) {
-      setError(`Un état nommé « ${cleanName} » existe déjà dans le cycle de vie. Le nom doit être unique.`);
+      setError(t('modals.lifecycle_state.error_name_duplicate', { name: cleanName }));
       return;
     }
 
@@ -82,7 +84,7 @@ export const LifecycleStateModal: React.FC<LifecycleStateModalProps> = ({
       });
       onClose();
     } catch (err: any) {
-      setError(err?.message || "Erreur lors de l'enregistrement de l'état.");
+      setError(err?.message || t('modals.lifecycle_state.error_save'));
     } finally {
       setSaving(false);
     }
@@ -100,15 +102,13 @@ export const LifecycleStateModal: React.FC<LifecycleStateModalProps> = ({
             <div>
               <h3 className="font-semibold text-slate-900 text-base">
                 {isReadOnly
-                  ? `Etat du cycle de vie projet : ${editingState?.name || ''}`
+                  ? t('modals.lifecycle_state.title_view', { name: editingState?.name || '' })
                   : editingState
-                  ? 'Modifier l’état du cycle de vie projet : ' + editingState.name
-                  : 'Nouvel état du cycle de vie projet'}
+                  ? t('modals.lifecycle_state.title_edit', { name: editingState.name })
+                  : t('modals.lifecycle_state.title_create')}
               </h3>
               <p className="text-xs text-slate-500">
-                {isReadOnly
-                  ? 'Propriétés et attributs de cet état (Mode lecture seule).'
-                  : 'Définissez les propriétés et les attributs de cet état pour les projets.'}
+                {t('modals.lifecycle_state.subtitle')}
               </p>
             </div>
           </div>
@@ -131,157 +131,155 @@ export const LifecycleStateModal: React.FC<LifecycleStateModalProps> = ({
               </div>
             )}
 
-          {/* Nom (clé unique, obligatoire) */}
-          <div className="space-y-1.5">
-            <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider">
-              Nom de l'état {!isReadOnly && <span className="text-red-500">*</span>}
-              <span className="text-slate-400 font-normal lowercase ml-1">(clé unique obligatoire)</span>
-            </label>
-            <input
-              type="text"
-              required={!isReadOnly}
-              disabled={isReadOnly}
-              autoFocus={!isReadOnly}
-              value={name}
-              onChange={(e) => {
-                setName(e.target.value);
-                setError(null);
-              }}
-              placeholder="Ex: Cadrage, À staffer, En cours, Livré..."
-              className="w-full px-3.5 py-2 border border-slate-300 rounded-lg text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:bg-slate-50 disabled:text-slate-700"
-            />
-            <p className="text-[11px] text-slate-500">
-              Ce libellé servira de référence d'étape pour les projets dans le workflow.
-            </p>
-          </div>
-
-          {/* Description (facultative) */}
-          <div className="space-y-1.5">
-            <div className="flex items-center justify-between">
+            {/* Nom (clé unique, obligatoire) */}
+            <div className="space-y-1.5">
               <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider">
-                Description (facultative)
+                {t('modals.lifecycle_state.name_label')} {!isReadOnly && <span className="text-red-500">*</span>}
               </label>
-              <span className={`text-[11px] font-mono ${description.length > 500 ? 'text-red-600 font-bold' : 'text-slate-400'}`}>
-                {description.length} / 500 car.
-              </span>
+              <input
+                type="text"
+                required={!isReadOnly}
+                disabled={isReadOnly}
+                autoFocus={!isReadOnly}
+                value={name}
+                onChange={(e) => {
+                  setName(e.target.value);
+                  setError(null);
+                }}
+                placeholder={t('modals.lifecycle_state.name_placeholder')}
+                className="w-full px-3.5 py-2 border border-slate-300 rounded-lg text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:bg-slate-50 disabled:text-slate-700"
+              />
             </div>
-            <textarea
-              rows={2}
-              maxLength={500}
-              disabled={isReadOnly}
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="Saisissez une description..."
-              className="w-full px-3.5 py-2 border border-slate-300 rounded-lg text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-y disabled:bg-slate-50 disabled:text-slate-700"
-            />
-          </div>
 
-          {/* Attributs "à staffer" et "à prioriser" */}
-          <div className="space-y-2 pt-2 border-t border-slate-100">
-            <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
-              Attributs d'automatisation et de pilotage :
-            </label>
-
-            {/* Boîte à cocher : À staffer */}
-            <label
-              className={`flex items-start gap-3 p-3 rounded-xl border transition-all ${isReadOnly ? 'cursor-default' : 'cursor-pointer'} select-none ${
-                needsStaffing
-                  ? 'bg-emerald-50/70 border-emerald-300 text-emerald-950 ring-1 ring-emerald-300/60'
-                  : 'bg-slate-50/80 border-slate-200 text-slate-700 hover:bg-slate-100/70'
-              }`}
-            >
-              <input
-                type="checkbox"
-                checked={needsStaffing}
-                disabled={isReadOnly}
-                onChange={(e) => setNeedsStaffing(e.target.checked)}
-                className="mt-0.5 w-4 h-4 text-emerald-600 rounded border-slate-300 focus:ring-emerald-500 cursor-pointer disabled:cursor-not-allowed"
-              />
-              <div className="flex-1">
-                <div className="flex items-center gap-1.5 font-bold text-xs">
-                  <UserCheck className="w-3.5 h-3.5 text-emerald-600" />
-                  <span>À staffer</span>
-                </div>
-                <p className="text-[11px] text-slate-500 mt-0.5 leading-relaxed">
-                  Cochez cette case si les projets ayant cet état nécessitent l'affectation ou le suivi des compétences clés et ressources (Resource Managers).
-                </p>
-              </div>
-            </label>
-
-            {/* Boîte à cocher : À prioriser */}
-            <label
-              className={`flex items-start gap-3 p-3 rounded-xl border transition-all ${isReadOnly ? 'cursor-default' : 'cursor-pointer'} select-none ${
-                needsPrioritization
-                  ? 'bg-indigo-50/70 border-indigo-300 text-indigo-950 ring-1 ring-indigo-300/60'
-                  : 'bg-slate-50/80 border-slate-200 text-slate-700 hover:bg-slate-100/70'
-              }`}
-            >
-              <input
-                type="checkbox"
-                checked={needsPrioritization}
-                disabled={isReadOnly}
-                onChange={(e) => setNeedsPrioritization(e.target.checked)}
-                className="mt-0.5 w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500 cursor-pointer disabled:cursor-not-allowed"
-              />
-              <div className="flex-1">
-                <div className="flex items-center gap-1.5 font-bold text-xs">
-                  <SlidersHorizontal className="w-3.5 h-3.5 text-indigo-600" />
-                  <span>À prioriser</span>
-                </div>
-                <p className="text-[11px] text-slate-500 mt-0.5 leading-relaxed">
-                  Cochez cette case si les projets à cet état doivent être évalués sur la grille des critères de priorisation (Valeur & Coût) et soumis aux arbitrages.
-                </p>
-              </div>
-            </label>
-          </div>
-        </div>
-
-        {/* Boutons d'action (bandeau inférieur fixe) */}
-        <div className="shrink-0 px-6 py-4 border-t border-slate-200 bg-slate-50/80 flex items-center justify-between gap-2.5">
-          <div className="flex-1 min-w-0">
-            {!isReadOnly && missingRequiredCount > 0 && (
-              <div className="flex items-center gap-1.5 text-xs font-semibold text-red-600 animate-in fade-in">
-                <AlertCircle className="w-4 h-4 text-red-600 shrink-0" />
-                <span>
-                  {missingRequiredCount === 1
-                    ? '1 attribut obligatoire non renseigné'
-                    : `${missingRequiredCount} attributs obligatoires non renseignés`}
+            {/* Description (facultative) */}
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider">
+                  {t('modals.lifecycle_state.description_label')}
+                </label>
+                <span className={`text-[11px] font-mono ${description.length > 500 ? 'text-red-600 font-bold' : 'text-slate-400'}`}>
+                  {description.length} / 500 car.
                 </span>
               </div>
-            )}
-          </div>
-          <div className="flex items-center gap-2.5 shrink-0">
-            {isReadOnly ? (
-              <button
-                type="button"
-                onClick={onClose}
-                className="px-4 py-2 text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition-colors cursor-pointer"
+              <textarea
+                rows={2}
+                maxLength={500}
+                disabled={isReadOnly}
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder={t('modals.lifecycle_state.description_placeholder')}
+                className="w-full px-3.5 py-2 border border-slate-300 rounded-lg text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-y disabled:bg-slate-50 disabled:text-slate-700"
+              />
+            </div>
+
+            {/* Attributs "à staffer" et "à prioriser" */}
+            <div className="space-y-2 pt-2 border-t border-slate-100">
+              {/* Boîte à cocher : À staffer */}
+              <label
+                className={`flex items-start gap-3 p-3 rounded-xl border transition-all ${isReadOnly ? 'cursor-default' : 'cursor-pointer'} select-none ${
+                  needsStaffing
+                    ? 'bg-rose-50/70 border-rose-300 text-rose-950 ring-1 ring-rose-300/60'
+                    : 'bg-slate-50/80 border-slate-200 text-slate-700 hover:bg-slate-100/70'
+                }`}
               >
-                Fermer
-              </button>
-            ) : (
-              <>
+                <input
+                  type="checkbox"
+                  checked={needsStaffing}
+                  disabled={isReadOnly}
+                  onChange={(e) => setNeedsStaffing(e.target.checked)}
+                  className="mt-0.5 w-4 h-4 text-rose-900 rounded border-slate-300 focus:ring-rose-800 cursor-pointer disabled:cursor-not-allowed"
+                />
+                <div className="flex-1">
+                  <div className="flex items-center gap-1.5 font-bold text-xs">
+                    <UserCheck className="w-3.5 h-3.5 text-rose-900" />
+                    <span>{t('modals.lifecycle_state.staffed_title')}</span>
+                  </div>
+                  <p className="text-[11px] text-slate-500 mt-0.5 leading-relaxed">
+                    {t('modals.lifecycle_state.staffed_desc')}
+                  </p>
+                </div>
+              </label>
+
+              {/* Boîte à cocher : À prioriser */}
+              <label
+                className={`flex items-start gap-3 p-3 rounded-xl border transition-all ${isReadOnly ? 'cursor-default' : 'cursor-pointer'} select-none ${
+                  needsPrioritization
+                    ? 'bg-blue-50/70 border-blue-300 text-blue-950 ring-1 ring-blue-300/60'
+                    : 'bg-slate-50/80 border-slate-200 text-slate-700 hover:bg-slate-100/70'
+                }`}
+              >
+                <input
+                  type="checkbox"
+                  checked={needsPrioritization}
+                  disabled={isReadOnly}
+                  onChange={(e) => setNeedsPrioritization(e.target.checked)}
+                  className="mt-0.5 w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500 cursor-pointer disabled:cursor-not-allowed"
+                />
+                <div className="flex-1">
+                  <div className="flex items-center gap-1.5 font-bold text-xs">
+                    <ListOrdered className="w-3.5 h-3.5 text-blue-600" />
+                    <span>{t('modals.lifecycle_state.prioritized_title')}</span>
+                  </div>
+                  <p className="text-[11px] text-slate-500 mt-0.5 leading-relaxed">
+                    {t('modals.lifecycle_state.prioritized_desc')}
+                  </p>
+                </div>
+              </label>
+            </div>
+          </div>
+
+          {/* Boutons d'action (bandeau inférieur fixe) */}
+          <div className="shrink-0 px-6 py-4 border-t border-slate-200 bg-slate-50/80 flex items-center justify-between gap-2.5">
+            <div className="flex-1 min-w-0">
+              {!isReadOnly && missingRequiredCount > 0 && (
+                <div className="flex items-center gap-1.5 text-xs font-semibold text-red-600 animate-in fade-in">
+                  <AlertCircle className="w-4 h-4 text-red-600 shrink-0" />
+                  <span>
+                    {missingRequiredCount === 1
+                      ? t('modals.common.missing_required_one')
+                      : t('modals.common.missing_required_other', { count: missingRequiredCount })}
+                  </span>
+                </div>
+              )}
+            </div>
+            <div className="flex items-center gap-2.5 shrink-0">
+              {isReadOnly ? (
                 <button
                   type="button"
                   onClick={onClose}
-                  className="px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
+                  className="px-4 py-2 text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition-colors cursor-pointer"
                 >
-                  Annuler
+                  {t('modals.common.close')}
                 </button>
-                <button
-                  type="submit"
-                  disabled={saving || missingRequiredCount > 0}
-                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-semibold shadow-xs transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
-                >
-                  <CheckCircle2 className="w-4 h-4" />
-                  <span>{saving ? 'Enregistrement...' : editingState ? 'Enregistrer les modifications' : "Créer l'état"}</span>
-                </button>
-              </>
-            )}
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    onClick={onClose}
+                    className="px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
+                  >
+                    {t('modals.common.cancel')}
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={saving || missingRequiredCount > 0}
+                    className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-semibold shadow-xs transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
+                  >
+                    <CheckCircle2 className="w-4 h-4" />
+                    <span>
+                      {saving
+                        ? t('modals.common.saving')
+                        : editingState
+                        ? t('modals.lifecycle_state.btn_save')
+                        : t('modals.lifecycle_state.btn_create')}
+                    </span>
+                  </button>
+                </>
+              )}
+            </div>
           </div>
-        </div>
-      </form>
+        </form>
+      </div>
     </div>
-  </div>
-);
+  );
 };

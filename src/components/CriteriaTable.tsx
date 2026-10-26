@@ -13,6 +13,7 @@ import {
   Eye,
   Sparkles,
 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import {
   Criterion,
   CRITERION_POINTS,
@@ -55,6 +56,7 @@ export const CriteriaTable: React.FC<CriteriaTableProps> = ({
   onSeedExample,
   seeding = false,
 }) => {
+  const { t } = useTranslation();
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedCriterion, setSelectedCriterion] = useState<Criterion | null>(null);
   const [isReadOnlyModal, setIsReadOnlyModal] = useState(false);
@@ -154,12 +156,12 @@ export const CriteriaTable: React.FC<CriteriaTableProps> = ({
         <div>
           <h2 className="text-xl font-bold text-emerald-600 flex items-center gap-2.5">
             <Sliders className="w-5 h-5 text-emerald-600 shrink-0" />
-            <span>Critères de priorisation (Valeur &amp; Coût)</span>
+            <span>{t('settings.criteria.title')}</span>
           </h2>
           <p className="text-xs text-slate-600 mt-1 max-w-2xl">
             {isAdmin
-              ? "Gérez les critères de priorité sous forme d'abaques sur 6 niveaux (correspondant respectivement à 0, 1, 2, 3, 5, 8 points). Les modifications sont immédiates."
-              : "Consultez le référentiel des critères de priorisation défini par l'administrateur."}
+              ? t('settings.criteria.subtitle_admin')
+              : t('settings.criteria.subtitle_consult')}
           </p>
         </div>
 
@@ -171,7 +173,7 @@ export const CriteriaTable: React.FC<CriteriaTableProps> = ({
               className="inline-flex items-center gap-2 px-3 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 text-xs font-semibold rounded-lg transition-colors shadow-2xs cursor-pointer"
             >
               <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
-              <span>{seeding ? 'Chargement en cours...' : 'Charger les critères par défaut (6 critères)'}</span>
+              <span>{seeding ? t('settings.criteria.loading_defaults') : t('settings.criteria.load_defaults')}</span>
             </button>
           )}
 
@@ -181,7 +183,7 @@ export const CriteriaTable: React.FC<CriteriaTableProps> = ({
               className="inline-flex items-center gap-2 px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-lg shadow-xs transition-colors cursor-pointer"
             >
               <Plus className="w-4 h-4" />
-              <span>Créer un nouveau critère</span>
+              <span>{t('settings.criteria.add_button')}</span>
             </button>
           )}
         </div>
@@ -192,7 +194,7 @@ export const CriteriaTable: React.FC<CriteriaTableProps> = ({
         <div className="p-3.5 bg-amber-50 border border-amber-200 rounded-xl flex items-center gap-3 text-amber-800 text-xs">
           <Lock className="w-4 h-4 text-amber-600 shrink-0" />
           <span>
-            <strong>Mode consultation :</strong> En tant que Chef de projet ou Resource Manager, vous visualisez la liste des critères, leur état d'activation, leurs poids et échelles de cotation fixés par l'administrateur.
+            <strong>{t('settings.common.consultation_mode')}</strong> {t('settings.criteria.consult_notice')}
           </span>
         </div>
       )}
@@ -213,31 +215,31 @@ export const CriteriaTable: React.FC<CriteriaTableProps> = ({
                 {/* Ordre */}
                 {isAdmin && (
                   <th scope="col" className="py-3 px-3 w-14 text-center">
-                    Ordre
+                    {t('settings.criteria.col_order')}
                   </th>
                 )}
                 {/* Boîte à cocher Actif */}
                 <th scope="col" className="py-3 px-3 w-16 text-center">
-                  <Tooltip content="Critère actif pour le calcul des priorités" className="w-full inline-block">
+                  <Tooltip content={t('settings.criteria.col_active_tooltip')} className="w-full inline-block">
                     <div className="flex items-center justify-center gap-1 cursor-help">
                       <CheckSquare className="w-3.5 h-3.5 text-slate-500" />
-                      <span>Actif</span>
+                      <span>{t('settings.criteria.col_active')}</span>
                     </div>
                   </Tooltip>
                 </th>
                 {/* Type */}
                 <th scope="col" className="py-3 px-4 w-24">
-                  Type
+                  {t('settings.criteria.col_type')}
                 </th>
                 {/* Nom du critère */}
                 <th scope="col" className="py-3 px-4 min-w-[170px]">
-                  Nom du critère
+                  {t('settings.criteria.col_name')}
                 </th>
                 {/* Poids */}
                 <th scope="col" className="py-3 px-3 w-20 text-center bg-slate-50/90">
                   <div className="flex items-center justify-center gap-1">
                     <Scale className="w-3.5 h-3.5 text-slate-500" />
-                    <span>Poids</span>
+                    <span>{t('settings.criteria.col_weight')}</span>
                   </div>
                 </th>
                 {/* 6 échelons textuels */}
@@ -254,7 +256,7 @@ export const CriteriaTable: React.FC<CriteriaTableProps> = ({
                 ))}
                 {/* Actions */}
                 <th scope="col" className="py-3 px-4 w-24 text-right sticky right-0 bg-slate-100">
-                  Actions
+                  {t('settings.criteria.col_actions')}
                 </th>
               </tr>
             </thead>
@@ -263,7 +265,7 @@ export const CriteriaTable: React.FC<CriteriaTableProps> = ({
               {loading ? (
                 <tr>
                   <td colSpan={isAdmin ? 12 : 10} className="py-12 text-center text-slate-400">
-                    Chargement des critères...
+                    {t('settings.common.loading')}
                   </td>
                 </tr>
               ) : criteria.length === 0 ? (
@@ -271,11 +273,11 @@ export const CriteriaTable: React.FC<CriteriaTableProps> = ({
                   <td colSpan={isAdmin ? 12 : 10} className="py-12 text-center text-slate-500">
                     <div className="flex flex-col items-center justify-center gap-2">
                       <Sliders className="w-8 h-8 text-slate-300" />
-                      <p className="font-medium text-slate-700">Aucun critère de priorisation défini</p>
+                      <p className="font-medium text-slate-700">{t('settings.criteria.empty')}</p>
                       {isAdmin ? (
                         <>
                           <p className="text-xs text-slate-400 max-w-sm">
-                            Cliquez sur "Ajouter un critère" pour créer votre premier critère de VALEUR ou de COÛT avec son poids et état d'activation.
+                            {t('settings.criteria.empty_hint')}
                           </p>
                           <div className="flex items-center justify-center gap-2 mt-2">
                             {onSeedExample && (
@@ -285,7 +287,7 @@ export const CriteriaTable: React.FC<CriteriaTableProps> = ({
                                 className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 rounded-md font-semibold text-xs transition-colors cursor-pointer border border-indigo-200 shadow-2xs"
                               >
                                 <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
-                                <span>{seeding ? 'Chargement...' : 'Charger les critères par défaut (6 critères)'}</span>
+                                <span>{seeding ? t('settings.criteria.loading_defaults') : t('settings.criteria.load_defaults')}</span>
                               </button>
                             )}
                             <button
@@ -293,13 +295,13 @@ export const CriteriaTable: React.FC<CriteriaTableProps> = ({
                               className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 text-white hover:bg-indigo-700 rounded-md font-semibold text-xs transition-colors cursor-pointer shadow-xs"
                             >
                               <Plus className="w-3.5 h-3.5" />
-                              <span>Créer un critère</span>
+                              <span>{t('settings.criteria.add_button')}</span>
                             </button>
                           </div>
                         </>
                       ) : (
                         <p className="text-xs text-slate-400">
-                          L'administrateur n'a pas encore saisi de critères de priorisation.
+                          {t('settings.criteria.subtitle_consult')}
                         </p>
                       )}
                     </div>
@@ -382,7 +384,7 @@ export const CriteriaTable: React.FC<CriteriaTableProps> = ({
                               : 'bg-amber-50 text-amber-700 border border-amber-200'
                           }`}
                         >
-                          {criterion.type}
+                          {criterion.type === 'VALEUR' ? t('settings.criteria.type_value') : t('settings.criteria.type_cost')}
                         </span>
                       </td>
 
@@ -507,12 +509,10 @@ export const CriteriaTable: React.FC<CriteriaTableProps> = ({
         <div className="fixed inset-0 z-50 bg-slate-900/50 flex items-center justify-center p-4">
           <div className="bg-white rounded-xl shadow-xl border border-slate-200 max-w-md w-full p-6 animate-in fade-in zoom-in-95">
             <h3 className="text-base font-bold text-slate-900 mb-2">
-              Confirmer la suppression
+              {t('settings.criteria.delete_title')}
             </h3>
             <p className="text-sm text-slate-600 mb-6">
-              Êtes-vous sûr de vouloir supprimer le critère{' '}
-              <strong className="text-slate-900 font-semibold">« {deleteCandidate.name} »</strong> ?
-              Cette action est irréversible.
+              {t('settings.criteria.delete_desc', { name: deleteCandidate.name })}
             </p>
             <div className="flex items-center justify-end gap-3">
               <button
@@ -520,7 +520,7 @@ export const CriteriaTable: React.FC<CriteriaTableProps> = ({
                 onClick={() => setDeleteCandidate(null)}
                 className="px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
               >
-                Annuler
+                {t('settings.common.cancel')}
               </button>
               <button
                 type="button"
@@ -528,7 +528,7 @@ export const CriteriaTable: React.FC<CriteriaTableProps> = ({
                 onClick={handleDeleteConfirm}
                 className="px-4 py-2 text-sm font-medium bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors shadow-xs cursor-pointer"
               >
-                {processing ? 'Suppression...' : 'Supprimer'}
+                {processing ? t('settings.common.saving') : t('settings.common.delete')}
               </button>
             </div>
           </div>

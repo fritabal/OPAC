@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Menu,
   Download,
@@ -33,6 +34,7 @@ export const SuperUserBackupMenu: React.FC<SuperUserBackupMenuProps> = ({
   isSuperUser,
   currentUserEmail,
 }) => {
+  const { t, i18n } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [exportSuccess, setExportSuccess] = useState(false);
@@ -91,7 +93,7 @@ export const SuperUserBackupMenu: React.FC<SuperUserBackupMenuProps> = ({
       }, 1500);
     } catch (err: any) {
       console.error('Erreur export données:', err);
-      alert("Erreur lors de l'export des données : " + (err?.message || 'Erreur inconnue'));
+      alert(t('superuser_backup.export.error', { error: err?.message || 'Erreur inconnue' }));
     } finally {
       setExporting(false);
     }
@@ -114,19 +116,19 @@ export const SuperUserBackupMenu: React.FC<SuperUserBackupMenuProps> = ({
         const json = JSON.parse(text);
 
         if (!json || typeof json !== 'object') {
-          throw new Error('Fichier JSON invalide.');
+          throw new Error(t('superuser_backup.import.invalid_json'));
         }
 
         const dataBlock = json.data || json;
         if (!dataBlock || typeof dataBlock !== 'object') {
-          throw new Error('Le fichier ne contient pas de données OPAC exploitables.');
+          throw new Error(t('superuser_backup.import.no_data'));
         }
 
         setParsedBackup(json as BackupData);
         setImportModalOpen(true);
         setIsOpen(false);
       } catch (err: any) {
-        setParseError(err?.message || 'Erreur lors de la lecture du fichier JSON.');
+        setParseError(err?.message || t('superuser_backup.import.read_error'));
         setParsedBackup(null);
         setImportModalOpen(true);
       }
@@ -151,7 +153,7 @@ export const SuperUserBackupMenu: React.FC<SuperUserBackupMenuProps> = ({
       setImportResult(res);
     } catch (err: any) {
       console.error('Erreur import données:', err);
-      setImportError(err?.message || "Erreur lors de l'import des données.");
+      setImportError(err?.message || t('superuser_backup.import.error', { error: err?.message || '' }));
     } finally {
       setImporting(false);
     }
@@ -166,9 +168,13 @@ export const SuperUserBackupMenu: React.FC<SuperUserBackupMenuProps> = ({
     setImportError(null);
   };
 
+  const confirmKeyword = t('superuser_backup.erase.confirm_keyword').toUpperCase();
+  const inputUpper = eraseConfirmText.trim().toUpperCase();
+  const isEraseConfirmed = inputUpper === confirmKeyword || inputUpper === 'EFFACER' || inputUpper === 'DELETE' || inputUpper === 'ELIMINA';
+
   // Exécution de l'effacement total de la base
   const handleConfirmErase = async () => {
-    if (eraseConfirmText.trim().toUpperCase() !== 'EFFACER') return;
+    if (!isEraseConfirmed) return;
     setErasing(true);
     setEraseError(null);
 
@@ -177,7 +183,7 @@ export const SuperUserBackupMenu: React.FC<SuperUserBackupMenuProps> = ({
       setEraseResult(res);
     } catch (err: any) {
       console.error('Erreur effacement données:', err);
-      setEraseError(err?.message || "Erreur lors de l'effacement des données.");
+      setEraseError(err?.message || t('superuser_backup.erase.error', { error: err?.message || '' }));
     } finally {
       setErasing(false);
     }
@@ -205,8 +211,8 @@ export const SuperUserBackupMenu: React.FC<SuperUserBackupMenuProps> = ({
       <button
         type="button"
         onClick={() => setIsOpen((prev) => !prev)}
-        title="Menu Super User (Export / Import de toutes les données)"
-        aria-label="Menu Super User"
+        title={t('superuser_backup.menu_tooltip')}
+        aria-label={t('superuser_backup.menu_label')}
         aria-expanded={isOpen}
         className={`w-9 h-9 rounded-lg flex items-center justify-center transition-all cursor-pointer ${
           isOpen
@@ -223,10 +229,10 @@ export const SuperUserBackupMenu: React.FC<SuperUserBackupMenuProps> = ({
           <div className="px-3 py-2 border-b border-slate-100 mb-1">
             <div className="text-[11px] font-bold text-amber-800 uppercase tracking-wider flex items-center gap-1.5">
               <Database className="w-3.5 h-3.5 text-amber-600" />
-              <span>Administration Super User</span>
+              <span>{t('superuser_backup.title')}</span>
             </div>
             <p className="text-[11px] text-slate-500 mt-0.5">
-              Sauvegarde et réplication de l'application
+              {t('superuser_backup.subtitle')}
             </p>
           </div>
 
@@ -250,13 +256,13 @@ export const SuperUserBackupMenu: React.FC<SuperUserBackupMenuProps> = ({
               <div>
                 <div className="text-xs font-bold text-slate-900 group-hover:text-indigo-600 transition-colors">
                   {exporting
-                    ? 'Export en cours...'
+                    ? t('superuser_backup.export.in_progress')
                     : exportSuccess
-                    ? 'Téléchargement lancé !'
-                    : 'Exporter toutes les données'}
+                    ? t('superuser_backup.export.success')
+                    : t('superuser_backup.export.button')}
                 </div>
                 <div className="text-[11px] text-slate-500 mt-0.5 leading-tight">
-                  Génère un fichier .json de sauvegarde complet (projets, utilisateurs, paramètres)
+                  {t('superuser_backup.export.desc')}
                 </div>
               </div>
             </button>
@@ -274,10 +280,10 @@ export const SuperUserBackupMenu: React.FC<SuperUserBackupMenuProps> = ({
               </div>
               <div>
                 <div className="text-xs font-bold text-slate-900 group-hover:text-amber-700 transition-colors">
-                  Importer toutes les données
+                  {t('superuser_backup.import.button')}
                 </div>
                 <div className="text-[11px] text-slate-500 mt-0.5 leading-tight">
-                  Restaure ou clone un jeu de données complet à l'identique depuis un fichier .json
+                  {t('superuser_backup.import.desc')}
                 </div>
               </div>
             </button>
@@ -300,10 +306,10 @@ export const SuperUserBackupMenu: React.FC<SuperUserBackupMenuProps> = ({
                 </div>
                 <div>
                   <div className="text-xs font-bold text-rose-700 group-hover:text-rose-800 transition-colors">
-                    Effacer toutes les données
+                    {t('superuser_backup.erase.button')}
                   </div>
                   <div className="text-[11px] text-rose-500 mt-0.5 leading-tight">
-                    Supprime tous les projets, utilisateurs et paramètres, en conservant l'accès Super User
+                    {t('superuser_backup.erase.desc')}
                   </div>
                 </div>
               </button>
@@ -326,10 +332,10 @@ export const SuperUserBackupMenu: React.FC<SuperUserBackupMenuProps> = ({
                 </div>
                 <div>
                   <h3 className="font-bold text-slate-900 text-base">
-                    Importation de données OPAC
+                    {t('superuser_backup.import.modal_title')}
                   </h3>
                   <p className="text-xs text-slate-500">
-                    Restauration d'une sauvegarde complète
+                    {t('superuser_backup.import.modal_subtitle')}
                   </p>
                 </div>
               </div>
@@ -349,7 +355,7 @@ export const SuperUserBackupMenu: React.FC<SuperUserBackupMenuProps> = ({
                 <div className="p-4 bg-red-50 border border-red-200 rounded-xl flex items-start gap-3 text-red-700 text-xs">
                   <AlertCircle className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
                   <div>
-                    <strong className="block font-bold">Fichier incompatible ou corrompu</strong>
+                    <strong className="block font-bold">{t('superuser_backup.import.corrupted_title')}</strong>
                     <span>{parseError}</span>
                   </div>
                 </div>
@@ -360,25 +366,25 @@ export const SuperUserBackupMenu: React.FC<SuperUserBackupMenuProps> = ({
                     <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
                     <div>
                       <strong className="block font-bold text-sm">
-                        Importation réussie avec succès !
+                        {t('superuser_backup.import.success_title')}
                       </strong>
                       <p className="mt-1">
-                        Toutes les données ont été réinjectées dans la base Firestore. L'application est synchronisée à l'identique.
+                        {t('superuser_backup.import.success_desc')}
                       </p>
                     </div>
                   </div>
 
                   <div className="bg-slate-50 rounded-xl p-4 border border-slate-200 text-xs space-y-2">
-                    <div className="font-bold text-slate-800">Résumé des données importées :</div>
+                    <div className="font-bold text-slate-800">{t('superuser_backup.import.summary_title')}</div>
                     <div className="grid grid-cols-2 gap-2 text-slate-600 font-mono text-[11px]">
-                      <div>📁 Projets : <strong>{importResult.counts.projects}</strong></div>
-                      <div>👥 Utilisateurs : <strong>{importResult.counts.users}</strong></div>
-                      <div>⚖️ Critères : <strong>{importResult.counts.criteria}</strong></div>
-                      <div>💰 Lignes budgétaires : <strong>{importResult.counts.budgetLines}</strong></div>
-                      <div>🎯 Compétences clés : <strong>{importResult.counts.keySkills}</strong></div>
-                      <div>🔄 Cycle de vie : <strong>{importResult.counts.projectStates}</strong></div>
-                      <div>⚙️ Paramètres projets : <strong>{importResult.counts.projectCustomParams}</strong></div>
-                      <div>🔧 Configuration & bonus : <strong>{importResult.counts.settings}</strong></div>
+                      <div>📁 {t('superuser_backup.entities.projects')} : <strong>{importResult.counts.projects}</strong></div>
+                      <div>👥 {t('superuser_backup.entities.users')} : <strong>{importResult.counts.users}</strong></div>
+                      <div>⚖️ {t('superuser_backup.entities.criteria')} : <strong>{importResult.counts.criteria}</strong></div>
+                      <div>💰 {t('superuser_backup.entities.budget_lines')} : <strong>{importResult.counts.budgetLines}</strong></div>
+                      <div>🎯 {t('superuser_backup.entities.key_skills')} : <strong>{importResult.counts.keySkills}</strong></div>
+                      <div>🔄 {t('superuser_backup.entities.lifecycle')} : <strong>{importResult.counts.projectStates}</strong></div>
+                      <div>⚙️ {t('superuser_backup.entities.custom_params')} : <strong>{importResult.counts.projectCustomParams}</strong></div>
+                      <div>🔧 {t('superuser_backup.entities.settings')} : <strong>{importResult.counts.settings}</strong></div>
                     </div>
                   </div>
                 </div>
@@ -389,28 +395,34 @@ export const SuperUserBackupMenu: React.FC<SuperUserBackupMenuProps> = ({
                     <FileJson className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
                     <div className="flex-1">
                       <div className="font-bold text-blue-950">
-                        {selectedFile?.name || 'Fichier de sauvegarde'}
+                        {selectedFile?.name || t('superuser_backup.import.fallback_filename')}
                       </div>
                       <div className="text-[11px] text-blue-700 mt-0.5">
-                        Exporté le : {parsedBackup.exportedAt ? new Date(parsedBackup.exportedAt).toLocaleString('fr-FR') : 'Date inconnue'}{' '}
-                        {parsedBackup.exportedBy ? `par ${parsedBackup.exportedBy}` : ''}
+                        {t('superuser_backup.import.exported_on', {
+                          date: parsedBackup.exportedAt
+                            ? new Date(parsedBackup.exportedAt).toLocaleString(
+                                i18n.language === 'en' ? 'en-US' : i18n.language === 'it' ? 'it-IT' : 'fr-FR'
+                              )
+                            : t('superuser_backup.import.unknown_date'),
+                        })}{' '}
+                        {parsedBackup.exportedBy ? t('superuser_backup.import.exported_by', { by: parsedBackup.exportedBy }) : ''}
                       </div>
                     </div>
                   </div>
 
                   {/* Statistiques du fichier */}
                   <div className="bg-slate-50 rounded-xl p-3.5 border border-slate-200 text-xs space-y-2">
-                    <div className="font-bold text-slate-800">Contenu détecté dans l'archive :</div>
+                    <div className="font-bold text-slate-800">{t('superuser_backup.import.preview_title')}</div>
                     <div className="grid grid-cols-2 gap-2 text-slate-600 text-[11px]">
-                      <div>📁 Projets : <strong>{(parsedBackup.data?.projects || []).length}</strong></div>
-                      <div>👥 Utilisateurs : <strong>{(parsedBackup.data?.users || []).length}</strong></div>
-                      <div>⚖️ Critères : <strong>{(parsedBackup.data?.criteria || []).length}</strong></div>
-                      <div>💰 Lignes budgétaires : <strong>{(parsedBackup.data?.budgetLines || []).length}</strong></div>
-                      <div>🎯 Compétences clés : <strong>{(parsedBackup.data?.keySkills || []).length}</strong></div>
-                      <div>📅 Ressources & indisponibilités : <strong>{(parsedBackup.data?.resources || []).length}</strong></div>
-                      <div>🔄 Cycle de vie : <strong>{(parsedBackup.data?.projectStates || []).length}</strong></div>
-                      <div>⚙️ Paramètres personnalisés : <strong>{(parsedBackup.data?.projectCustomParams || []).length}</strong></div>
-                      <div>🔧 Configuration : <strong>{(parsedBackup.data?.settings || []).length}</strong></div>
+                      <div>📁 {t('superuser_backup.entities.projects')} : <strong>{(parsedBackup.data?.projects || []).length}</strong></div>
+                      <div>👥 {t('superuser_backup.entities.users')} : <strong>{(parsedBackup.data?.users || []).length}</strong></div>
+                      <div>⚖️ {t('superuser_backup.entities.criteria')} : <strong>{(parsedBackup.data?.criteria || []).length}</strong></div>
+                      <div>💰 {t('superuser_backup.entities.budget_lines')} : <strong>{(parsedBackup.data?.budgetLines || []).length}</strong></div>
+                      <div>🎯 {t('superuser_backup.entities.key_skills')} : <strong>{(parsedBackup.data?.keySkills || []).length}</strong></div>
+                      <div>📅 {t('superuser_backup.entities.resources')} : <strong>{(parsedBackup.data?.resources || []).length}</strong></div>
+                      <div>🔄 {t('superuser_backup.entities.lifecycle')} : <strong>{(parsedBackup.data?.projectStates || []).length}</strong></div>
+                      <div>⚙️ {t('superuser_backup.entities.custom_params')} : <strong>{(parsedBackup.data?.projectCustomParams || []).length}</strong></div>
+                      <div>🔧 {t('superuser_backup.entities.settings')} : <strong>{(parsedBackup.data?.settings || []).length}</strong></div>
                     </div>
                   </div>
 
@@ -426,10 +438,10 @@ export const SuperUserBackupMenu: React.FC<SuperUserBackupMenuProps> = ({
                       />
                       <div className="text-xs">
                         <span className="font-bold text-slate-800 block">
-                          Remplacement intégral à l'identique (recommandé)
+                          {t('superuser_backup.import.replace_all_label')}
                         </span>
                         <span className="text-[11px] text-slate-500 block mt-0.5 leading-relaxed">
-                          Supprime les données actuellement en base avant d'injecter la sauvegarde, évitant tout doublon ou orphelin.
+                          {t('superuser_backup.import.replace_all_desc')}
                         </span>
                       </div>
                     </label>
@@ -439,7 +451,7 @@ export const SuperUserBackupMenu: React.FC<SuperUserBackupMenuProps> = ({
                   <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl flex items-start gap-2.5 text-amber-900 text-xs">
                     <ShieldAlert className="w-4 h-4 text-amber-700 shrink-0 mt-0.5" />
                     <span>
-                      <strong>Attention :</strong> Cette opération va écraser les données de l'environnement actuel par celles de la sauvegarde.
+                      <strong className="font-bold">{t('common.warning', { defaultValue: 'Attention :' })}</strong> {t('superuser_backup.import.security_warning')}
                     </span>
                   </div>
 
@@ -461,7 +473,7 @@ export const SuperUserBackupMenu: React.FC<SuperUserBackupMenuProps> = ({
                   onClick={closeImportModal}
                   className="px-4 py-2 text-xs font-semibold bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors shadow-xs cursor-pointer"
                 >
-                  Fermer
+                  {t('common.close', { defaultValue: 'Fermer' })}
                 </button>
               ) : (
                 <>
@@ -471,7 +483,7 @@ export const SuperUserBackupMenu: React.FC<SuperUserBackupMenuProps> = ({
                     disabled={importing}
                     className="px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-200 rounded-lg transition-colors cursor-pointer disabled:opacity-50"
                   >
-                    Annuler
+                    {t('common.cancel', { defaultValue: 'Annuler' })}
                   </button>
                   {parsedBackup && !parseError && (
                     <button
@@ -483,12 +495,12 @@ export const SuperUserBackupMenu: React.FC<SuperUserBackupMenuProps> = ({
                       {importing ? (
                         <>
                           <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                          <span>Importation en cours...</span>
+                          <span>{t('superuser_backup.import.in_progress')}</span>
                         </>
                       ) : (
                         <>
                           <Upload className="w-3.5 h-3.5" />
-                          <span>Confirmer et importer</span>
+                          <span>{t('superuser_backup.import.confirm_button')}</span>
                         </>
                       )}
                     </button>
@@ -514,10 +526,10 @@ export const SuperUserBackupMenu: React.FC<SuperUserBackupMenuProps> = ({
                 </div>
                 <div>
                   <h3 className="font-bold text-slate-900 text-base">
-                    Effacer toutes les données
+                    {t('superuser_backup.erase.modal_title')}
                   </h3>
                   <p className="text-xs text-rose-600 font-medium">
-                    Opération irréversible de remise à zéro
+                    {t('superuser_backup.erase.modal_subtitle')}
                   </p>
                 </div>
               </div>
@@ -540,25 +552,25 @@ export const SuperUserBackupMenu: React.FC<SuperUserBackupMenuProps> = ({
                     <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
                     <div>
                       <strong className="block font-bold text-sm">
-                        Toutes les données ont été effacées avec succès !
+                        {t('superuser_backup.erase.success_title')}
                       </strong>
                       <p className="mt-1">
-                        La base a été remise à zéro. Votre compte Super User a été préservé et vous permet de continuer à administrer l'application.
+                        {t('superuser_backup.erase.success_desc')}
                       </p>
                     </div>
                   </div>
 
                   <div className="bg-slate-50 rounded-xl p-4 border border-slate-200 text-xs space-y-2">
-                    <div className="font-bold text-slate-800">Éléments supprimés :</div>
+                    <div className="font-bold text-slate-800">{t('superuser_backup.erase.summary_title')}</div>
                     <div className="grid grid-cols-2 gap-2 text-slate-600 font-mono text-[11px]">
-                      <div>📁 Projets : <strong>{eraseResult.deletedCounts.projects || 0}</strong></div>
-                      <div>👥 Utilisateurs : <strong>{eraseResult.deletedCounts.users || 0}</strong></div>
-                      <div>⚖️ Critères : <strong>{eraseResult.deletedCounts.criteria || 0}</strong></div>
-                      <div>💰 Lignes budgétaires : <strong>{eraseResult.deletedCounts.budgetLines || 0}</strong></div>
-                      <div>🎯 Compétences clés : <strong>{eraseResult.deletedCounts.keySkills || 0}</strong></div>
-                      <div>🔄 Cycle de vie : <strong>{eraseResult.deletedCounts.projectStates || 0}</strong></div>
-                      <div>⚙️ Paramètres projets : <strong>{eraseResult.deletedCounts.projectCustomParams || 0}</strong></div>
-                      <div>🔧 Configuration : <strong>{eraseResult.deletedCounts.settings || 0}</strong></div>
+                      <div>📁 {t('superuser_backup.entities.projects')} : <strong>{eraseResult.deletedCounts.projects || 0}</strong></div>
+                      <div>👥 {t('superuser_backup.entities.users')} : <strong>{eraseResult.deletedCounts.users || 0}</strong></div>
+                      <div>⚖️ {t('superuser_backup.entities.criteria')} : <strong>{eraseResult.deletedCounts.criteria || 0}</strong></div>
+                      <div>💰 {t('superuser_backup.entities.budget_lines')} : <strong>{eraseResult.deletedCounts.budgetLines || 0}</strong></div>
+                      <div>🎯 {t('superuser_backup.entities.key_skills')} : <strong>{eraseResult.deletedCounts.keySkills || 0}</strong></div>
+                      <div>🔄 {t('superuser_backup.entities.lifecycle')} : <strong>{eraseResult.deletedCounts.projectStates || 0}</strong></div>
+                      <div>⚙️ {t('superuser_backup.entities.custom_params')} : <strong>{eraseResult.deletedCounts.projectCustomParams || 0}</strong></div>
+                      <div>🔧 {t('superuser_backup.entities.settings')} : <strong>{eraseResult.deletedCounts.settings || 0}</strong></div>
                     </div>
                   </div>
                 </div>
@@ -569,10 +581,10 @@ export const SuperUserBackupMenu: React.FC<SuperUserBackupMenuProps> = ({
                     <ShieldAlert className="w-5 h-5 text-rose-600 shrink-0 mt-0.5" />
                     <div>
                       <strong className="block font-bold text-sm text-rose-950">
-                        Attention : action destructrice et définitive
+                        {t('superuser_backup.erase.warning_title')}
                       </strong>
                       <p className="mt-1 leading-relaxed">
-                        Cette opération va supprimer l'intégralité des <strong>projets</strong>, <strong>critères</strong>, <strong>lignes budgétaires</strong>, <strong>compétences</strong>, <strong>états du cycle de vie</strong>, <strong>paramètres personnalisés</strong>, ainsi que <strong>tous les autres comptes utilisateurs</strong>.
+                        {t('superuser_backup.erase.warning_desc')}
                       </p>
                     </div>
                   </div>
@@ -582,10 +594,10 @@ export const SuperUserBackupMenu: React.FC<SuperUserBackupMenuProps> = ({
                     <ShieldCheck className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
                     <div>
                       <strong className="block font-bold text-emerald-900">
-                        Préservation du compte Super User garantie
+                        {t('superuser_backup.erase.superuser_preserved_title')}
                       </strong>
                       <p className="mt-0.5 text-emerald-800 leading-relaxed text-[11px]">
-                        Votre compte Super User (<strong>{currentUserEmail || 'stephane.labati@goood.com'}</strong>) ainsi que vos droits d'accès sont strictement protégés. Vous resterez connecté et pourrez continuer à utiliser l'application.
+                        {t('superuser_backup.erase.superuser_preserved_desc', { email: currentUserEmail || 'stephane.labati@goood.com' })}
                       </p>
                     </div>
                   </div>
@@ -593,13 +605,16 @@ export const SuperUserBackupMenu: React.FC<SuperUserBackupMenuProps> = ({
                   {/* Saisie de sécurité */}
                   <div className="pt-2">
                     <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                      Pour confirmer l'effacement définitif, veuillez saisir le mot <span className="font-mono text-rose-600 font-bold bg-rose-50 px-1 py-0.5 rounded border border-rose-200">EFFACER</span> ci-dessous :
+                      {t('superuser_backup.erase.confirm_prompt', { keyword: '' })}{' '}
+                      <span className="font-mono text-rose-600 font-bold bg-rose-50 px-1 py-0.5 rounded border border-rose-200">
+                        {confirmKeyword}
+                      </span>
                     </label>
                     <input
                       type="text"
                       value={eraseConfirmText}
                       onChange={(e) => setEraseConfirmText(e.target.value)}
-                      placeholder="Tapez EFFACER"
+                      placeholder={t('superuser_backup.erase.placeholder')}
                       disabled={erasing}
                       className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs font-mono focus:ring-2 focus:ring-rose-500 focus:border-rose-500 outline-none"
                     />
@@ -623,7 +638,7 @@ export const SuperUserBackupMenu: React.FC<SuperUserBackupMenuProps> = ({
                   onClick={closeEraseModal}
                   className="px-4 py-2 text-xs font-semibold bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors shadow-xs cursor-pointer"
                 >
-                  Fermer
+                  {t('common.close', { defaultValue: 'Fermer' })}
                 </button>
               ) : (
                 <>
@@ -633,23 +648,23 @@ export const SuperUserBackupMenu: React.FC<SuperUserBackupMenuProps> = ({
                     disabled={erasing}
                     className="px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-200 rounded-lg transition-colors cursor-pointer disabled:opacity-50"
                   >
-                    Annuler
+                    {t('common.cancel', { defaultValue: 'Annuler' })}
                   </button>
                   <button
                     type="button"
                     onClick={handleConfirmErase}
-                    disabled={erasing || eraseConfirmText.trim().toUpperCase() !== 'EFFACER'}
+                    disabled={erasing || !isEraseConfirmed}
                     className="px-4 py-2 text-xs font-semibold bg-rose-600 hover:bg-rose-700 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg transition-colors shadow-xs flex items-center gap-2 cursor-pointer"
                   >
                     {erasing ? (
                       <>
                         <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                        <span>Effacement en cours...</span>
+                        <span>{t('superuser_backup.erase.in_progress')}</span>
                       </>
                     ) : (
                       <>
                         <Trash2 className="w-3.5 h-3.5" />
-                        <span>Confirmer la suppression intégrale</span>
+                        <span>{t('superuser_backup.erase.confirm_button')}</span>
                       </>
                     )}
                   </button>

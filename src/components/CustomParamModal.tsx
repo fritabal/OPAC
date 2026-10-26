@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   X,
   SlidersHorizontal,
@@ -41,6 +42,7 @@ export const CustomParamModal: React.FC<CustomParamModalProps> = ({
   onSuccess,
   isReadOnly = false,
 }) => {
+  const { t } = useTranslation();
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [type, setType] = useState<CustomParamType>('texte court');
@@ -115,23 +117,23 @@ export const CustomParamModal: React.FC<CustomParamModalProps> = ({
 
     const trimmedName = name.trim();
     if (!trimmedName) {
-      setError('Le nom du paramètre personnalisé est obligatoire.');
+      setError(t('modals.custom_param.error_name_required'));
       return;
     }
 
     if (trimmedName.length > 30) {
-      setError('Le nom ne peut pas dépasser 30 caractères.');
+      setError(t('modals.custom_param.error_name_required'));
       return;
     }
 
     const trimmedDesc = description.trim();
     if (trimmedDesc.length > 500) {
-      setError('La description ne peut pas dépasser 500 caractères.');
+      setError(t('modals.custom_param.description_label'));
       return;
     }
 
     if (type === 'liste de valeurs' && options.length === 0) {
-      setError('Veuillez ajouter au moins une valeur prédéfinie pour la liste.');
+      setError(t('modals.custom_param.error_options_empty'));
       return;
     }
 
@@ -139,7 +141,7 @@ export const CustomParamModal: React.FC<CustomParamModalProps> = ({
     try {
       const exists = await checkCustomParamNameExists(trimmedName, paramToEdit?.id);
       if (exists) {
-        setError(`Un paramètre nommé « ${trimmedName} » existe déjà. Le nom doit être une clé unique.`);
+        setError(t('modals.custom_param.error_name_duplicate', { name: trimmedName }));
         setSaving(false);
         return;
       }
@@ -171,7 +173,7 @@ export const CustomParamModal: React.FC<CustomParamModalProps> = ({
       onSuccess();
       onClose();
     } catch (err: any) {
-      setError(err?.message || 'Une erreur est survenue lors de l’enregistrement.');
+      setError(err?.message || t('modals.custom_param.error_save'));
     } finally {
       setSaving(false);
     }
@@ -189,15 +191,13 @@ export const CustomParamModal: React.FC<CustomParamModalProps> = ({
             <div>
               <h3 className="font-semibold text-slate-900 text-base">
                 {isReadOnly
-                  ? `Paramètre projet personnalisé : ${paramToEdit?.name || ''}`
+                  ? t('modals.custom_param.title_view', { name: paramToEdit?.name || '' })
                   : paramToEdit
-                  ? 'Modifier le paramètre personnalisé : ' + paramToEdit.name
-                  : 'Nouveau paramètre personnalisé de projet'}
+                  ? t('modals.custom_param.title_edit', { name: paramToEdit.name })
+                  : t('modals.custom_param.title_create')}
               </h3>
               <p className="text-xs text-slate-500">
-                {isReadOnly
-                  ? 'Champ additionnel configurable pour les projets (Mode lecture seule)'
-                  : 'Champ additionnel configurable pour les projets'}
+                {t('modals.custom_param.subtitle')}
               </p>
             </div>
           </div>
@@ -223,7 +223,7 @@ export const CustomParamModal: React.FC<CustomParamModalProps> = ({
           <div>
             <div className="flex items-center justify-between mb-1.5">
               <label className="text-xs font-semibold text-slate-700 uppercase tracking-wider">
-                Nom du paramètre {!isReadOnly && <span className="text-red-500">*</span>}
+                {t('modals.custom_param.name_label')} {!isReadOnly && <span className="text-red-500">*</span>}
               </label>
               <span className={`text-[11px] font-mono ${name.length > 30 ? 'text-red-600 font-bold' : 'text-slate-400'}`}>
                 {name.length} / 30 car.
@@ -236,18 +236,18 @@ export const CustomParamModal: React.FC<CustomParamModalProps> = ({
               maxLength={30}
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="Ex : Référence contrat"
+              placeholder={t('modals.custom_param.name_placeholder')}
               className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 font-medium disabled:bg-slate-50 disabled:text-slate-700"
             />
             <p className="text-[11px] text-slate-500 mt-1">
-              Clé unique (30 caractères max), apparaîtra dans l’encart « Autres » du projet.
+              {t('modals.common.unique_key')} (30 car. max)
             </p>
           </div>
 
           {/* Type du paramètre */}
           <div>
             <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
-              Type de donnée {!isReadOnly && <span className="text-red-500">*</span>}
+              {t('modals.custom_param.type_label')} {!isReadOnly && <span className="text-red-500">*</span>}
             </label>
             <select
               value={type}
@@ -255,9 +255,9 @@ export const CustomParamModal: React.FC<CustomParamModalProps> = ({
               onChange={(e) => setType(e.target.value as CustomParamType)}
               className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white disabled:bg-slate-50 disabled:text-slate-700 disabled:cursor-not-allowed"
             >
-              {CUSTOM_PARAM_TYPES.map((t) => (
-                <option key={t} value={t}>
-                  {CUSTOM_PARAM_TYPE_LABELS[t]}
+              {CUSTOM_PARAM_TYPES.map((tVal) => (
+                <option key={tVal} value={tVal}>
+                  {CUSTOM_PARAM_TYPE_LABELS[tVal]}
                 </option>
               ))}
             </select>
@@ -272,13 +272,13 @@ export const CustomParamModal: React.FC<CustomParamModalProps> = ({
             <div className="p-4 bg-indigo-50/50 border border-indigo-100 rounded-xl space-y-4 animate-in fade-in">
               <div className="flex items-center gap-2 text-indigo-900 font-bold text-xs uppercase tracking-wider">
                 <List className="w-4 h-4 text-indigo-600 shrink-0" />
-                <span>Configuration de la liste de valeurs</span>
+                <span>{t('modals.custom_param.options_title')}</span>
               </div>
 
               {/* Mode de sélection : choix unique ou choix multiple */}
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                  Sélection autorisée dans le projet {!isReadOnly && <span className="text-red-500">*</span>}
+                  {t('modals.custom_param.allow_multiple_title')} {!isReadOnly && <span className="text-red-500">*</span>}
                 </label>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   <button
@@ -299,8 +299,8 @@ export const CustomParamModal: React.FC<CustomParamModalProps> = ({
                       {!allowMultiple && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
                     </div>
                     <div>
-                      <div className="text-xs font-bold">Valeur unique</div>
-                      <div className="text-[11px] text-slate-500">Une et une seule valeur sélectionnable</div>
+                      <div className="text-xs font-bold">{t('modals.custom_param.val_single')}</div>
+                      <div className="text-[11px] text-slate-500">{t('modals.custom_param.val_single_desc')}</div>
                     </div>
                   </button>
 
@@ -322,8 +322,8 @@ export const CustomParamModal: React.FC<CustomParamModalProps> = ({
                       {allowMultiple && <Check className="w-3 h-3 text-white" />}
                     </div>
                     <div>
-                      <div className="text-xs font-bold">Valeurs multiples</div>
-                      <div className="text-[11px] text-slate-500">Plusieurs valeurs sélectionnables</div>
+                      <div className="text-xs font-bold">{t('modals.custom_param.val_multiple')}</div>
+                      <div className="text-[11px] text-slate-500">{t('modals.custom_param.val_multiple_desc')}</div>
                     </div>
                   </button>
                 </div>
@@ -333,10 +333,12 @@ export const CustomParamModal: React.FC<CustomParamModalProps> = ({
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <label className="text-xs font-semibold text-slate-700">
-                    Valeurs prédéfinies de la liste {!isReadOnly && <span className="text-red-500">*</span>}
+                    {t('modals.custom_param.options_title')} {!isReadOnly && <span className="text-red-500">*</span>}
                   </label>
                   <span className="text-[11px] text-slate-500 font-mono">
-                    {options.length} valeur{options.length > 1 ? 's' : ''}
+                    {options.length === 1
+                      ? t('modals.custom_param.options_count_one')
+                      : t('modals.custom_param.options_count_other', { count: options.length })}
                   </span>
                 </div>
 
@@ -352,7 +354,7 @@ export const CustomParamModal: React.FC<CustomParamModalProps> = ({
                           handleAddOption();
                         }
                       }}
-                      placeholder="Ajouter une valeur (ex : France, Prioritaire...)"
+                      placeholder={t('modals.custom_param.options_placeholder')}
                       className="flex-1 px-3 py-1.5 border border-slate-300 rounded-lg text-xs bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
                     />
                     <button
@@ -362,7 +364,7 @@ export const CustomParamModal: React.FC<CustomParamModalProps> = ({
                       className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-semibold transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1 shrink-0 cursor-pointer shadow-2xs"
                     >
                       <Plus className="w-3.5 h-3.5" />
-                      <span>Ajouter</span>
+                      <span>{t('modals.custom_param.btn_add_option')}</span>
                     </button>
                   </div>
                 )}
@@ -371,7 +373,7 @@ export const CustomParamModal: React.FC<CustomParamModalProps> = ({
                 <div className="max-h-48 overflow-y-auto space-y-1.5 border border-slate-200 bg-white rounded-xl p-2">
                   {options.length === 0 ? (
                     <div className="py-4 text-center text-slate-400 text-xs italic">
-                      Aucune valeur définie. Saisissez une valeur ci-dessus puis cliquez sur Ajouter.
+                      {t('modals.custom_param.no_options')}
                     </div>
                   ) : (
                     options.map((opt, idx) => (
@@ -421,11 +423,11 @@ export const CustomParamModal: React.FC<CustomParamModalProps> = ({
             </div>
           )}
 
-          {/* Description du paramètre (100 car. max) */}
+          {/* Description du paramètre (500 car. max) */}
           <div>
             <div className="flex items-center justify-between mb-1.5">
               <label className="text-xs font-semibold text-slate-700 uppercase tracking-wider">
-                Description (facultative)
+                {t('modals.custom_param.description_label')}
               </label>
               <span className={`text-[11px] font-mono ${description.length > 500 ? 'text-red-600 font-bold' : 'text-slate-400'}`}>
                 {description.length} / 500 car.
@@ -437,12 +439,9 @@ export const CustomParamModal: React.FC<CustomParamModalProps> = ({
               maxLength={500}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="Saisissez une description..."
+              placeholder={t('modals.custom_param.description_placeholder')}
               className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:bg-slate-50 disabled:text-slate-700 resize-y"
             />
-            <p className="text-[11px] text-slate-500 mt-1">
-              Affichée au survol du point d’interrogation (?) dans le projet (500 caractères max).
-            </p>
           </div>
 
           {/* Attribut Obligatoire (case à cocher) */}
@@ -459,11 +458,10 @@ export const CustomParamModal: React.FC<CustomParamModalProps> = ({
               />
               <div className="flex-1">
                 <div className="flex items-center gap-1.5">
-                  <span className="text-xs font-bold text-slate-800">Paramètre obligatoire</span>
-                  <span className="text-red-500 font-bold">*</span>
+                  <span className="text-xs font-bold text-slate-800">{t('modals.custom_param.required_title')}</span>
                 </div>
                 <p className="text-[11px] text-slate-500 mt-0.5">
-                  Si coché, une étoile rouge apparaîtra à droite du nom dans les fiches projets et la saisie de ce paramètre sera obligatoire pour pouvoir enregistrer le projet.
+                  {t('modals.custom_param.required_desc')}
                 </p>
               </div>
             </label>
@@ -483,10 +481,10 @@ export const CustomParamModal: React.FC<CustomParamModalProps> = ({
               />
               <div className="flex-1">
                 <div className="flex items-center gap-1.5">
-                  <span className="text-xs font-bold text-slate-800">Affiché dans le tableau</span>
+                  <span className="text-xs font-bold text-slate-800">{t('modals.custom_param.show_in_table_title')}</span>
                 </div>
                 <p className="text-[11px] text-slate-500 mt-0.5">
-                  Si coché, ce paramètre apparaîtra sous forme de colonne dédiée dans le tableau des projets de l’onglet Priorités, selon l’ordre configuré.
+                  {t('modals.custom_param.show_in_table_desc')}
                 </p>
               </div>
             </label>
@@ -502,8 +500,8 @@ export const CustomParamModal: React.FC<CustomParamModalProps> = ({
                   <AlertCircle className="w-4 h-4 text-red-600 shrink-0" />
                   <span>
                     {missingRequiredCount === 1
-                      ? '1 attribut obligatoire non renseigné'
-                      : `${missingRequiredCount} attributs obligatoires non renseignés`}
+                      ? t('modals.common.missing_required_one')
+                      : t('modals.common.missing_required_other', { count: missingRequiredCount })}
                   </span>
                 </div>
               )}
@@ -515,7 +513,7 @@ export const CustomParamModal: React.FC<CustomParamModalProps> = ({
                   onClick={onClose}
                   className="px-4 py-2 text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition-colors cursor-pointer"
                 >
-                  Fermer
+                  {t('modals.common.close')}
                 </button>
               ) : (
                 <>
@@ -525,14 +523,18 @@ export const CustomParamModal: React.FC<CustomParamModalProps> = ({
                     disabled={saving}
                     className="px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
                   >
-                    Annuler
+                    {t('modals.common.cancel')}
                   </button>
                   <button
                     type="submit"
                     disabled={saving || missingRequiredCount > 0 || name.length > 30 || description.length > 500}
                     className="px-4 py-2 text-xs font-semibold bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors shadow-xs cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    {saving ? 'Enregistrement...' : paramToEdit ? 'Enregistrer les modifications' : 'Créer le paramètre'}
+                    {saving
+                      ? t('modals.common.saving')
+                      : paramToEdit
+                      ? t('modals.custom_param.btn_save')
+                      : t('modals.custom_param.btn_create')}
                   </button>
                 </>
               )}

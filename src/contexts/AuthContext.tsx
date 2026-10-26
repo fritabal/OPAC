@@ -3,6 +3,7 @@ import { User, onAuthStateChanged } from 'firebase/auth';
 import { auth, googleProvider, signInWithPopup, signOut, testConnection } from '../lib/firebase';
 import { AppUser, UserRole } from '../types/user';
 import { subscribeToUsers, SUPER_ADMIN_EMAIL, isSuperAdminEmail } from '../services/userService';
+import { changeAppLanguage, SupportedLanguage } from '../i18n';
 
 interface AuthContextType {
   firebaseUser: User | null;
@@ -192,6 +193,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setIsAuthenticated(true);
     setIsConceptionMode(isSuperAdminEmail(user.email));
     setAssumedRole(null);
+    if (user.preferredLanguage && (user.preferredLanguage === 'fr' || user.preferredLanguage === 'en' || user.preferredLanguage === 'it')) {
+      changeAppLanguage(user.preferredLanguage as SupportedLanguage);
+    }
   };
 
   const handleSignOut = async () => {
@@ -230,6 +234,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setImpersonatedUser(targetUser);
     setAssumedRole(null);
     setIsAuthenticated(true);
+    if (targetUser.preferredLanguage && (targetUser.preferredLanguage === 'fr' || targetUser.preferredLanguage === 'en' || targetUser.preferredLanguage === 'it')) {
+      changeAppLanguage(targetUser.preferredLanguage as SupportedLanguage);
+    }
   };
 
   const stopImpersonation = () => {

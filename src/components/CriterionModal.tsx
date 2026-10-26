@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { X, AlertCircle, Sliders } from 'lucide-react';
 import {
   Criterion,
@@ -26,6 +27,7 @@ export const CriterionModal: React.FC<CriterionModalProps> = ({
   existingCriteria,
   isReadOnly = false,
 }) => {
+  const { t } = useTranslation();
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [type, setType] = useState<CriterionType>('VALEUR');
@@ -98,7 +100,7 @@ export const CriterionModal: React.FC<CriterionModalProps> = ({
     const trimmedName = name.trim();
 
     if (!trimmedName) {
-      setError('Le nom du critère est obligatoire.');
+      setError(t('modals.criterion.error_name_required'));
       return;
     }
 
@@ -110,14 +112,14 @@ export const CriterionModal: React.FC<CriterionModalProps> = ({
     );
 
     if (isDuplicate) {
-      setError(`Un critère nommé "${trimmedName}" existe déjà. Le nom doit être unique.`);
+      setError(t('modals.criterion.error_name_duplicate', { name: trimmedName }));
       return;
     }
 
     // Check that all 6 levels are provided
     for (let i = 0; i < 6; i++) {
       if (!levels[i].trim()) {
-        setError(`Veuillez renseigner le libellé pour l'échelon correspondant à = ${CRITERION_POINTS[i]}.`);
+        setError(t('modals.criterion.error_level_required', { points: CRITERION_POINTS[i] }));
         return;
       }
     }
@@ -143,7 +145,7 @@ export const CriterionModal: React.FC<CriterionModalProps> = ({
       });
       onClose();
     } catch (err: any) {
-      setError(err?.message || 'Erreur lors de l’enregistrement du critère.');
+      setError(err?.message || t('modals.criterion.error_save'));
     } finally {
       setSaving(false);
     }
@@ -161,15 +163,15 @@ export const CriterionModal: React.FC<CriterionModalProps> = ({
             <div>
               <h3 className="font-semibold text-slate-900 text-base">
                 {isReadOnly
-                  ? `Critère de priorisation : ${criterionToEdit?.name || ''}`
+                  ? t('modals.criterion.title_view', { name: criterionToEdit?.name || '' })
                   : criterionToEdit
-                  ? 'Modifier le critère de priorisation : ' + criterionToEdit.name
-                  : 'Nouveau critère de priorisation'}
+                  ? t('modals.criterion.title_edit', { name: criterionToEdit.name })
+                  : t('modals.criterion.title_create')}
               </h3>
               <p className="text-xs text-slate-500">
                 {isReadOnly
-                  ? 'Visualisation des paramètres, du type, du poids et de l\'échelle de cotation (Mode lecture seule).'
-                  : 'Définissez le nom, le type, le poids relatif, l\'activation et les 6 libellés de l’échelle de cotation (0, 1, 2, 3, 5, 8).'}
+                  ? t('modals.criterion.subtitle_view')
+                  : t('modals.criterion.subtitle_edit')}
               </p>
             </div>
           </div>
@@ -191,187 +193,192 @@ export const CriterionModal: React.FC<CriterionModalProps> = ({
               </div>
             )}
 
-          {!criterionToEdit && !isReadOnly && (
-            <div className="flex justify-end">
-              <button
-                type="button"
-                onClick={handleApplyExample}
-                className="text-xs text-indigo-600 hover:text-indigo-800 font-medium hover:underline inline-flex items-center gap-1 cursor-pointer"
-              >
-                Pré-remplir avec l'exemple « CA additionnel » (Poids 2)
-              </button>
-            </div>
-          )}
-
-          <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
-            {/* Nom du critère */}
-            <div className="md:col-span-6">
-              <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
-                Nom du critère (unique) {!isReadOnly && <span className="text-red-500">*</span>}
-              </label>
-              <input
-                type="text"
-                required={!isReadOnly}
-                disabled={isReadOnly}
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="Ex : CA additionnel, Alignement stratégique..."
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 disabled:bg-slate-50 disabled:text-slate-700"
-              />
-            </div>
-
-            {/* Type de critère */}
-            <div className="md:col-span-3">
-              <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
-                Type {!isReadOnly && <span className="text-red-500">*</span>}
-              </label>
-              <select
-                value={type}
-                disabled={isReadOnly}
-                onChange={(e) => setType(e.target.value as CriterionType)}
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 font-medium cursor-pointer disabled:bg-slate-50 disabled:text-slate-700 disabled:cursor-not-allowed"
-              >
-                <option value="VALEUR">VALEUR</option>
-                <option value="COÛT">COÛT</option>
-              </select>
-            </div>
-
-            {/* Poids relatif */}
-            <div className="md:col-span-3">
-              <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
-                Poids relatif {!isReadOnly && <span className="text-red-500">*</span>}
-              </label>
-              <select
-                value={weight}
-                disabled={isReadOnly}
-                onChange={(e) => setWeight(Number(e.target.value) as CriterionWeight)}
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 font-bold text-slate-800 cursor-pointer disabled:bg-slate-50 disabled:text-slate-700 disabled:cursor-not-allowed"
-              >
-                {CRITERION_WEIGHTS.map((w) => (
-                  <option key={w} value={w}>
-                    {w}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          {/* Description (facultative) */}
-          <div>
-            <div className="flex items-center justify-between mb-1.5">
-              <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider">
-                Description (facultative)
-              </label>
-              <span className={`text-[11px] font-mono ${description.length > 500 ? 'text-red-600 font-bold' : 'text-slate-400'}`}>
-                {description.length} / 500 car.
-              </span>
-            </div>
-            <textarea
-              rows={2}
-              maxLength={500}
-              disabled={isReadOnly}
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="Saisissez une description..."
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 disabled:bg-slate-50 disabled:text-slate-700 resize-y"
-            />
-          </div>
-
-          {/* Statut Actif / Inactif */}
-          <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg flex items-center">
-            <label htmlFor="criterion-is-active" className={`flex items-center gap-2.5 ${isReadOnly ? 'cursor-default' : 'cursor-pointer'}`}>
-              <input
-                type="checkbox"
-                id="criterion-is-active"
-                checked={isActive}
-                disabled={isReadOnly}
-                onChange={(e) => setIsActive(e.target.checked)}
-                className="w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500 cursor-pointer disabled:cursor-not-allowed"
-              />
-              <div>
-                <span className="text-xs font-bold text-slate-900 block">
-                  Critère actif (pris en compte dans les calculs de priorité)
-                </span>
-                <span className="text-[11px] text-slate-500 block">
-                  Si décoché, le critère est conservé dans le référentiel mais exclu des calculs de priorité.
-                </span>
-              </div>
-            </label>
-          </div>
-
-          <div>
-            <div className="flex items-center justify-between mb-1.5">
-              <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider">
-                Échelle de cotation (6 valeurs textuelles pour 0, 1, 2, 3, 5, 8) {!isReadOnly && <span className="text-red-500">*</span>}
-              </label>
-              <span className="text-[11px] text-slate-500">Poids appliqué : ×{weight}</span>
-            </div>
-            <div className="space-y-2.5 bg-slate-50 p-3.5 rounded-lg border border-slate-200">
-              {CRITERION_POINTS.map((points, idx) => (
-                <div key={points} className="flex items-center gap-3">
-                  <div className="w-16 shrink-0 text-center py-1.5 px-2 bg-white border border-slate-300 rounded text-xs font-bold text-slate-700 shadow-2xs">
-                    = {points}
-                  </div>
-                  <input
-                    type="text"
-                    required={!isReadOnly}
-                    disabled={isReadOnly}
-                    value={levels[idx]}
-                    onChange={(e) => handleLevelChange(idx, e.target.value)}
-                    placeholder={`Valeur textuelle pour note ${points}`}
-                    className="flex-1 px-3 py-1.5 bg-white border border-slate-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 disabled:bg-slate-50 disabled:text-slate-700"
-                  />
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* Bandeau d'actions fixe */}
-        <div className="shrink-0 px-6 py-4 border-t border-slate-200 bg-slate-50/80 flex items-center justify-between gap-3">
-          <div className="flex-1 min-w-0">
-            {!isReadOnly && missingRequiredCount > 0 && (
-              <div className="flex items-center gap-1.5 text-xs font-semibold text-red-600 animate-in fade-in">
-                <AlertCircle className="w-4 h-4 text-red-600 shrink-0" />
-                <span>
-                  {missingRequiredCount === 1
-                    ? '1 attribut obligatoire non renseigné'
-                    : `${missingRequiredCount} attributs obligatoires non renseignés`}
-                </span>
+            {!criterionToEdit && !isReadOnly && (
+              <div className="flex justify-end">
+                <button
+                  type="button"
+                  onClick={handleApplyExample}
+                  className="text-xs text-indigo-600 hover:text-indigo-800 font-medium hover:underline inline-flex items-center gap-1 cursor-pointer"
+                >
+                  {t('modals.criterion.example_button')}
+                </button>
               </div>
             )}
+
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
+              {/* Nom du critère */}
+              <div className="md:col-span-6">
+                <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
+                  {t('modals.criterion.name_label')} {!isReadOnly && <span className="text-red-500">*</span>}
+                </label>
+                <input
+                  type="text"
+                  required={!isReadOnly}
+                  disabled={isReadOnly}
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder={t('modals.criterion.name_placeholder')}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 disabled:bg-slate-50 disabled:text-slate-700"
+                />
+              </div>
+
+              {/* Type de critère */}
+              <div className="md:col-span-3">
+                <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
+                  {t('modals.criterion.type_label')} {!isReadOnly && <span className="text-red-500">*</span>}
+                </label>
+                <select
+                  value={type}
+                  disabled={isReadOnly}
+                  onChange={(e) => setType(e.target.value as CriterionType)}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 font-medium cursor-pointer disabled:bg-slate-50 disabled:text-slate-700 disabled:cursor-not-allowed"
+                >
+                  <option value="VALEUR">VALEUR</option>
+                  <option value="COÛT">COÛT</option>
+                </select>
+              </div>
+
+              {/* Poids relatif */}
+              <div className="md:col-span-3">
+                <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
+                  {t('modals.criterion.weight_label')} {!isReadOnly && <span className="text-red-500">*</span>}
+                </label>
+                <select
+                  value={weight}
+                  disabled={isReadOnly}
+                  onChange={(e) => setWeight(Number(e.target.value) as CriterionWeight)}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 font-bold text-slate-800 cursor-pointer disabled:bg-slate-50 disabled:text-slate-700 disabled:cursor-not-allowed"
+                >
+                  {CRITERION_WEIGHTS.map((w) => (
+                    <option key={w} value={w}>
+                      {w}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {/* Description (facultative) */}
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider">
+                  {t('modals.criterion.description_label')}
+                </label>
+                <span className={`text-[11px] font-mono ${description.length > 500 ? 'text-red-600 font-bold' : 'text-slate-400'}`}>
+                  {description.length} / 500 car.
+                </span>
+              </div>
+              <textarea
+                rows={2}
+                maxLength={500}
+                disabled={isReadOnly}
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder={t('modals.criterion.description_placeholder')}
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 disabled:bg-slate-50 disabled:text-slate-700 resize-y"
+              />
+            </div>
+
+            {/* Statut Actif / Inactif */}
+            <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg flex items-center">
+              <label htmlFor="criterion-is-active" className={`flex items-center gap-2.5 ${isReadOnly ? 'cursor-default' : 'cursor-pointer'}`}>
+                <input
+                  type="checkbox"
+                  id="criterion-is-active"
+                  checked={isActive}
+                  disabled={isReadOnly}
+                  onChange={(e) => setIsActive(e.target.checked)}
+                  className="w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500 cursor-pointer disabled:cursor-not-allowed"
+                />
+                <div>
+                  <span className="text-xs font-bold text-slate-900 block">
+                    {t('modals.criterion.active_title')}
+                  </span>
+                  <span className="text-[11px] text-slate-500 block">
+                    {t('modals.criterion.active_desc')}
+                  </span>
+                </div>
+              </label>
+            </div>
+
+            {/* Échelle de cotation */}
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider">
+                  {t('modals.criterion.levels_title')} {!isReadOnly && <span className="text-red-500">*</span>}
+                </label>
+                <span className="text-[11px] text-slate-500">Poids : ×{weight}</span>
+              </div>
+              <div className="space-y-2.5 bg-slate-50 p-3.5 rounded-lg border border-slate-200">
+                {CRITERION_POINTS.map((points, idx) => (
+                  <div key={points} className="flex items-center gap-3">
+                    <div className="w-16 shrink-0 text-center py-1.5 px-2 bg-white border border-slate-300 rounded text-xs font-bold text-slate-700 shadow-2xs">
+                      = {points}
+                    </div>
+                    <input
+                      type="text"
+                      required={!isReadOnly}
+                      disabled={isReadOnly}
+                      value={levels[idx]}
+                      onChange={(e) => handleLevelChange(idx, e.target.value)}
+                      placeholder={t('modals.criterion.level_placeholder', { points })}
+                      className="flex-1 px-3 py-1.5 bg-white border border-slate-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 disabled:bg-slate-50 disabled:text-slate-700"
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
-          <div className="flex items-center gap-3 shrink-0">
-            {isReadOnly ? (
-              <button
-                type="button"
-                onClick={onClose}
-                className="px-4 py-2 text-sm font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition-colors cursor-pointer"
-              >
-                Fermer
-              </button>
-            ) : (
-              <>
+
+          {/* Bandeau d'actions fixe */}
+          <div className="shrink-0 px-6 py-4 border-t border-slate-200 bg-slate-50/80 flex items-center justify-between gap-3">
+            <div className="flex-1 min-w-0">
+              {!isReadOnly && missingRequiredCount > 0 && (
+                <div className="flex items-center gap-1.5 text-xs font-semibold text-red-600 animate-in fade-in">
+                  <AlertCircle className="w-4 h-4 text-red-600 shrink-0" />
+                  <span>
+                    {missingRequiredCount === 1
+                      ? t('modals.common.missing_required_one')
+                      : t('modals.common.missing_required_other', { count: missingRequiredCount })}
+                  </span>
+                </div>
+              )}
+            </div>
+            <div className="flex items-center gap-3 shrink-0">
+              {isReadOnly ? (
                 <button
                   type="button"
                   onClick={onClose}
-                  className="px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
+                  className="px-4 py-2 text-sm font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition-colors cursor-pointer"
                 >
-                  Annuler
+                  {t('modals.common.close')}
                 </button>
-                <button
-                  type="submit"
-                  disabled={saving || missingRequiredCount > 0}
-                  className="px-4 py-2 text-sm font-medium bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors shadow-xs disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-2 cursor-pointer"
-                >
-                  {saving ? 'Enregistrement...' : criterionToEdit ? 'Enregistrer les modifications' : 'Créer le critère'}
-                </button>
-              </>
-            )}
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    onClick={onClose}
+                    className="px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
+                  >
+                    {t('modals.common.cancel')}
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={saving || missingRequiredCount > 0}
+                    className="px-4 py-2 text-sm font-medium bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors shadow-xs disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-2 cursor-pointer"
+                  >
+                    {saving
+                      ? t('modals.common.saving')
+                      : criterionToEdit
+                      ? t('modals.criterion.btn_save')
+                      : t('modals.criterion.btn_create')}
+                  </button>
+                </>
+              )}
+            </div>
           </div>
-        </div>
-      </form>
+        </form>
+      </div>
     </div>
-  </div>
-);
+  );
 };
