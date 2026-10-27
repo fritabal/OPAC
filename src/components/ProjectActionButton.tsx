@@ -1,5 +1,6 @@
 import React from 'react';
 import { Pencil, Eye, Lock, Trash2 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { Project } from '../types/project';
 import {
   ProjectPermissionContext,
@@ -23,6 +24,7 @@ export const ProjectActionButton: React.FC<ProjectActionButtonProps> = ({
   onDeleteProject,
   showDelete = false,
 }) => {
+  const { t } = useTranslation();
   const isConfidentialHidden =
     Boolean(project.isConfidential) && !canViewConfidentialProject(project, permissionContext);
   const userCanEdit = canEditProject(project, permissionContext);
@@ -32,7 +34,7 @@ export const ProjectActionButton: React.FC<ProjectActionButtonProps> = ({
     return (
       <span
         className="p-1.5 text-slate-400 select-none cursor-not-allowed inline-flex items-center rounded-md"
-        title="Projet confidentiel — Visualisation et modification interdites"
+        title={t('projects.tooltips.confidential_locked', 'Projet confidentiel — Visualisation et modification interdites')}
       >
         <Lock className="w-3.5 h-3.5 text-slate-400" />
       </span>
@@ -46,7 +48,8 @@ export const ProjectActionButton: React.FC<ProjectActionButtonProps> = ({
           type="button"
           onClick={() => onOpenProject(project, false)}
           className="p-1.5 rounded-md transition-colors cursor-pointer text-slate-500 hover:text-indigo-600 hover:bg-indigo-50"
-          title="Modifier ce projet"
+          title={t('projects.tooltips.edit_project', 'Modifier ce projet')}
+          aria-label={t('projects.tooltips.edit_project', 'Modifier ce projet')}
         >
           <Pencil className="w-3.5 h-3.5" />
         </button>
@@ -55,7 +58,8 @@ export const ProjectActionButton: React.FC<ProjectActionButtonProps> = ({
           type="button"
           onClick={() => onOpenProject(project, true)}
           className="p-1.5 rounded-md transition-colors cursor-pointer text-slate-400 hover:text-slate-600 hover:bg-slate-100"
-          title="Consulter ce projet (Lecture seule)"
+          title={t('projects.tooltips.view_project', 'Consulter ce projet (Lecture seule)')}
+          aria-label={t('projects.tooltips.view_project', 'Consulter ce projet (Lecture seule)')}
         >
           <Eye className="w-3.5 h-3.5" />
         </button>
@@ -66,7 +70,8 @@ export const ProjectActionButton: React.FC<ProjectActionButtonProps> = ({
           type="button"
           onClick={() => onDeleteProject(project)}
           className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors cursor-pointer"
-          title="Supprimer ce projet"
+          title={t('projects.actions.delete', 'Supprimer ce projet')}
+          aria-label={t('projects.actions.delete', 'Supprimer ce projet')}
         >
           <Trash2 className="w-3.5 h-3.5" />
         </button>

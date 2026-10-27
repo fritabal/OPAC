@@ -23,6 +23,7 @@ import { BudgetLine, BudgetLineFormData } from '../types/budget';
 import { BudgetLineModal } from './BudgetLineModal';
 import { Tooltip } from './Tooltip';
 import { BUDGET_PALETTE_32 } from '../constants/colors';
+import { CREATE_ITEM_BUTTON_CLASS } from '../constants/ui';
 import {
   addBudgetLine,
   updateBudgetLine,
@@ -223,7 +224,7 @@ export const BudgetLinesTable: React.FC<BudgetLinesTableProps> = ({
           {isAdmin && (
             <button
               onClick={handleOpenAdd}
-              className="inline-flex items-center gap-2 px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-lg shadow-xs transition-colors cursor-pointer"
+              className={CREATE_ITEM_BUTTON_CLASS}
             >
               <Plus className="w-4 h-4" />
               <span>{t('settings.budgets.add_button')}</span>
@@ -338,9 +339,9 @@ export const BudgetLinesTable: React.FC<BudgetLinesTableProps> = ({
                             )}
                             <button
                               onClick={handleOpenAdd}
-                              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 text-white hover:bg-indigo-700 rounded-md font-semibold text-xs transition-colors cursor-pointer shadow-xs"
+                              className={CREATE_ITEM_BUTTON_CLASS}
                             >
-                              <Plus className="w-3.5 h-3.5" />
+                              <Plus className="w-4 h-4" />
                               <span>{t('settings.budgets.add_button')}</span>
                             </button>
                           </div>

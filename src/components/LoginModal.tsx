@@ -6,17 +6,16 @@ import {
   EyeOff,
   CheckCircle2,
   XCircle,
+  X,
   AlertCircle,
   ArrowLeft,
   KeyRound,
   ShieldCheck,
-  Sparkles,
   Send,
   UserCheck,
-  Crown,
 } from 'lucide-react';
 import { validatePassword, hashPassword } from '../utils/passwordSecurity';
-import { AppUser, ROLE_LABELS, getRoleLabel } from '../types/user';
+import { AppUser } from '../types/user';
 import {
   requestPasswordResetLink,
   resendAccountActivationEmail,
@@ -28,8 +27,9 @@ interface LoginModalProps {
   isOpen: boolean;
   allUsers: AppUser[];
   onLoginSuccess: (user: AppUser) => void;
-  onEnterConceptionMode: () => void;
+  onEnterConceptionMode?: () => void;
   onImpersonateDirectly?: (targetUser: AppUser) => void;
+  onClose?: () => void;
 }
 
 type AuthView = 'login' | 'forgot_password' | 'force_new_password' | 'activate_account' | 'token_entry';
@@ -40,6 +40,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
   onLoginSuccess,
   onEnterConceptionMode,
   onImpersonateDirectly,
+  onClose,
 }) => {
   const [view, setView] = useState<AuthView>('login');
 
@@ -105,9 +106,17 @@ export const LoginModal: React.FC<LoginModalProps> = ({
       return;
     }
 
-    // Cas du Super User en mode direct
+    // Cas du Super User : vérification obligatoire du mot de passe s'il a été défini
     if (cleanEmail === SUPER_ADMIN_EMAIL.toLowerCase()) {
-      onEnterConceptionMode();
+      if (user.passwordHash) {
+        const attemptHash = await hashPassword(password, cleanEmail);
+        if (attemptHash !== user.passwordHash) {
+          setLoginError('Email ou mot de passe incorrect.');
+          setLoading(false);
+          return;
+        }
+      }
+      onLoginSuccess(user);
       setLoading(false);
       return;
     }
@@ -271,6 +280,17 @@ export const LoginModal: React.FC<LoginModalProps> = ({
       <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-200">
         {/* En-tête */}
         <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 p-6 text-white text-center relative">
+          {onClose && (
+            <button
+              type="button"
+              onClick={onClose}
+              className="absolute right-4 top-4 p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+              title="Fermer"
+              aria-label="Fermer"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          )}
           <div className="w-12 h-12 rounded-xl bg-indigo-500/20 border border-indigo-400/30 flex items-center justify-center mx-auto mb-3 shadow-inner">
             {view === 'activate_account' ? (
               <UserCheck className="w-6 h-6 text-emerald-400" />
@@ -341,7 +361,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
             <form onSubmit={handleLoginSubmit} className="space-y-4">
               <div>
                 <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
-                  Adresse email <span className="text-red-500">*</span>
+                  Adresse email <span className="text-slate-400 font-normal lowercase">(identifiant unique)</span> <span className="text-red-500">*</span>
                 </label>
                 <div className="relative">
                   <Mail className="w-4 h-4 text-slate-400 absolute left-3 top-2.5 pointer-events-none" />
@@ -414,61 +434,6 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                   <KeyRound className="w-3.5 h-3.5 text-indigo-600" />
                   <span>J'ai un code d'activation ou de réinitialisation</span>
                 </button>
-              </div>
-
-              {/* Raccourci et privilège exclusif Super User */}
-              <div className="pt-3 border-t border-slate-200 space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-[11px] font-bold text-amber-800 uppercase tracking-wider flex items-center gap-1.5">
-                    <Crown className="w-3.5 h-3.5 text-amber-600" />
-                    <span>Privilège Super User :</span>
-                  </span>
-                </div>
-
-                <div className="flex flex-col sm:flex-row items-stretch gap-2">
-                  <button
-                    type="button"
-                    onClick={onEnterConceptionMode}
-                    className="flex-1 py-2 px-2.5 bg-amber-50 hover:bg-amber-100 border border-amber-300 text-amber-900 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
-                    title="Accéder directement en tant que Stéphane Labati (Super User)"
-                  >
-                    <Sparkles className="w-3.5 h-3.5 text-amber-600 shrink-0" />
-                    <span>Accès direct Super User</span>
-                  </button>
-
-                  {allUsers.length > 0 && onImpersonateDirectly && (
-                    <div className="flex-1 relative">
-                      <select
-                        defaultValue=""
-                        onChange={(e) => {
-                          const target = allUsers.find((u) => u.id === e.target.value);
-                          if (target) {
-                            onImpersonateDirectly(target);
-                          }
-                        }}
-                        className="w-full py-2 px-2.5 bg-amber-50/80 hover:bg-amber-100 border border-amber-300 text-amber-950 rounded-lg text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-amber-500 cursor-pointer"
-                        title="Se connecter directement à la place de n'importe quel autre utilisateur"
-                      >
-                        <option value="" disabled>
-                          Se connecter à la place de...
-                        </option>
-                        {allUsers.map((u) => {
-                          const rolesList = (u.roles && u.roles.length > 0 ? u.roles : [u.role || 'chef de projet'])
-                            .map((r) => getRoleLabel(r))
-                            .join(' & ');
-                          return (
-                            <option key={u.id} value={u.id}>
-                              {u.displayName} ({rolesList})
-                            </option>
-                          );
-                        })}
-                      </select>
-                    </div>
-                  )}
-                </div>
-                <p className="text-[10px] text-slate-400 text-center">
-                  Privilège réservé au Super User. Les autres profils doivent s'authentifier avec leur email et mot de passe.
-                </p>
               </div>
             </form>
           )}

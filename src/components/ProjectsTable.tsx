@@ -61,6 +61,7 @@ import {
 import { ProjectActionButton } from './ProjectActionButton';
 import { LifecycleStateFilter } from './LifecycleStateFilter';
 import { BudgetLineFilter } from './BudgetLineFilter';
+import { CREATE_ITEM_BUTTON_CLASS } from '../constants/ui';
 
 export type SortColumn = 'id' | 'roi' | 'name' | 'state' | 'pm' | 'budgetLine' | 'bonus' | string;
 export type SortDirection = 'asc' | 'desc';
@@ -1187,7 +1188,7 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
           {canCreate && (
             <button
               onClick={handleOpenCreate}
-              className="inline-flex items-center gap-2 px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-lg shadow-xs transition-colors cursor-pointer shrink-0 h-8"
+              className={CREATE_ITEM_BUTTON_CLASS}
             >
               <Plus className="w-4 h-4" />
               <span>{t('projects.new_project')}</span>
@@ -1573,10 +1574,10 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
             {canCreate && projects.length === 0 && (
               <button
                 onClick={handleOpenCreate}
-                className="inline-flex items-center gap-2 px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-lg shadow-xs transition-colors cursor-pointer"
+                className={CREATE_ITEM_BUTTON_CLASS}
               >
                 <Plus className="w-4 h-4" />
-                <span>Créer le premier projet</span>
+                <span>{t('projects.new_project')}</span>
               </button>
             )}
           </div>

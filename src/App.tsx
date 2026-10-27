@@ -519,15 +519,25 @@ function Dashboard() {
     }
   };
 
-  // Si l'utilisateur n'est pas authentifié (et pas en mode conception Super User direct), afficher la fenêtre de login
-  if (!authLoading && !isAuthenticated) {
+  // Chargement initial des utilisateurs et de l'état d'authentification
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-slate-900 flex items-center justify-center p-4">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-8 h-8 border-3 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+          <p className="text-xs text-slate-400 font-medium">Chargement...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Si l'utilisateur n'est pas authentifié ou pas d'utilisateur actif, afficher obligatoirement la mire de connexion
+  if (!isAuthenticated || !activeUser) {
     return (
       <LoginModal
         isOpen={true}
         allUsers={allUsers}
         onLoginSuccess={(u) => loginAsUser(u)}
-        onEnterConceptionMode={enterConceptionMode}
-        onImpersonateDirectly={(target) => impersonateUser(target)}
       />
     );
   }
@@ -1163,6 +1173,7 @@ function Dashboard() {
           <div className="space-y-6">
             <CriteriaTable
               criteria={criteria}
+              projects={projects}
               loading={loadingCriteria}
               isAdmin={isAdmin}
               canManageBonus={canManageBonus}
@@ -1290,17 +1301,10 @@ function Dashboard() {
       {/* Fenêtre de Connexion / Définition du mot de passe / Activation */}
       <LoginModal
         isOpen={loginModalOpen}
+        onClose={() => setLoginModalOpen(false)}
         allUsers={allUsers}
         onLoginSuccess={(user) => {
           loginAsUser(user);
-          setLoginModalOpen(false);
-        }}
-        onEnterConceptionMode={() => {
-          enterConceptionMode();
-          setLoginModalOpen(false);
-        }}
-        onImpersonateDirectly={(target) => {
-          impersonateUser(target);
           setLoginModalOpen(false);
         }}
       />

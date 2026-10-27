@@ -51,6 +51,7 @@ import {
   isGmailAuthorized,
 } from '../services/emailService';
 import { Tooltip } from './Tooltip';
+import { CREATE_ITEM_BUTTON_CLASS } from '../constants/ui';
 
 interface UserManagementProps {
   users: AppUser[];
@@ -765,9 +766,9 @@ export const UserManagement: React.FC<UserManagementProps> = ({
 
             <button
               onClick={handleOpenAdd}
-              className="inline-flex items-center gap-2 px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-lg shadow-xs transition-colors cursor-pointer"
+              className={CREATE_ITEM_BUTTON_CLASS}
             >
-              <UserPlus className="w-4 h-4" />
+              <Plus className="w-4 h-4" />
               <span>{t('users.authorize_user')}</span>
             </button>
           </div>

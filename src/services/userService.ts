@@ -122,22 +122,17 @@ export function subscribeToUsers(
         };
       });
 
-      // Ensure super user stephane.labati@goood.com is present if not yet synced
+      // S'assurer que le super user existe dans la liste en mémoire si la base n'a pas encore répondu
       if (!users.some((u) => u.email.toLowerCase() === SUPER_ADMIN_EMAIL.toLowerCase())) {
         const defaultAdminData = {
           email: SUPER_ADMIN_EMAIL,
-          displayName: 'Stéphane Labati (Concepteur / Super User)',
-          roles: ['super user'] as UserRole[],
+          displayName: 'Stéphane Super User',
+          roles: ['super user', 'resource manager', 'chef de projet', 'value management officer', 'administrateur'] as UserRole[],
           role: 'super user' as UserRole,
           isSuperAdmin: true,
           isActive: true,
           mustResetPassword: false,
         };
-        addDoc(collection(db, COLLECTION_NAME), {
-          ...defaultAdminData,
-          createdAt: serverTimestamp(),
-          updatedAt: serverTimestamp(),
-        }).catch(() => {});
 
         users.unshift({
           id: 'bootstrap-superadmin',
@@ -283,8 +278,36 @@ export async function setUserNewPassword(
     throw new Error(validation.errors[0] || 'Le mot de passe ne respecte pas les critères de sécurité.');
   }
 
-  const hash = await hashPassword(newPassword, email);
-  const docRef = doc(db, COLLECTION_NAME, userId);
+  const cleanEmail = email.trim().toLowerCase();
+  const hash = await hashPassword(newPassword, cleanEmail);
+
+  // Recherche systématique par adresse email unique pour garantir qu'aucun doublon n'est créé
+  let targetId = userId;
+  const q = query(collection(db, COLLECTION_NAME), where('email', '==', cleanEmail), limit(1));
+  const snap = await getDocs(q);
+
+  if (!snap.empty) {
+    targetId = snap.docs[0].id;
+  } else if (!targetId || targetId === 'default-superuser' || targetId.startsWith('bootstrap-')) {
+    const isSuper = cleanEmail === SUPER_ADMIN_EMAIL.toLowerCase();
+    const defaultRoles: UserRole[] = isSuper
+      ? ['super user', 'administrateur', 'chef de projet', 'resource manager', 'value management officer']
+      : ['chef de projet'];
+    const newDoc = await addDoc(collection(db, COLLECTION_NAME), {
+      email: cleanEmail,
+      displayName: isSuper ? 'Stéphane Super User' : cleanEmail.split('@')[0],
+      role: defaultRoles[0],
+      roles: defaultRoles,
+      isSuperAdmin: isSuper,
+      isActive: true,
+      mustResetPassword: false,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    });
+    targetId = newDoc.id;
+  }
+
+  const docRef = doc(db, COLLECTION_NAME, targetId);
 
   try {
     await updateDoc(docRef, {
@@ -299,7 +322,8 @@ export async function setUserNewPassword(
       updatedAt: serverTimestamp(),
     });
   } catch (error) {
-    handleFirestoreError(error, OperationType.UPDATE, `${COLLECTION_NAME}/${userId}`);
+    handleFirestoreError(error, OperationType.UPDATE, `${COLLECTION_NAME}/${targetId}`);
+    throw error;
   }
 }
 
@@ -409,7 +433,16 @@ export async function updateUser(
   userId: string,
   data: Partial<AppUserFormData>
 ): Promise<void> {
-  const docRef = doc(db, COLLECTION_NAME, userId);
+  let targetId = userId;
+  if (targetId === 'default-superuser' || targetId.startsWith('bootstrap-') || !targetId) {
+    const emailToFind = data.email || SUPER_ADMIN_EMAIL;
+    const q = query(collection(db, COLLECTION_NAME), where('email', '==', emailToFind.trim().toLowerCase()), limit(1));
+    const snap = await getDocs(q);
+    if (!snap.empty) {
+      targetId = snap.docs[0].id;
+    }
+  }
+  const docRef = doc(db, COLLECTION_NAME, targetId);
   try {
     const payload: Record<string, unknown> = {
       updatedAt: serverTimestamp(),

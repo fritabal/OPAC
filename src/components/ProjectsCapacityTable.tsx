@@ -43,6 +43,7 @@ import { ProjectModal } from './ProjectModal';
 import {
   ProjectPermissionContext,
   canViewConfidentialProject,
+  canEditProject,
 } from '../utils/projectPermissions';
 import { ProjectActionButton } from './ProjectActionButton';
 import { LifecycleStateFilter } from './LifecycleStateFilter';
@@ -1249,7 +1250,7 @@ export const ProjectsCapacityTable: React.FC<ProjectsCapacityTableProps> = ({
                                       {t('capacity.tooltips.skill_header_demand', {
                                         demand: formatDaysVal(cap.D),
                                         count: cap.P,
-                                        projects_word: cap.P > 1 ? t('reports.budget_distribution.projects') : t('reports.budget_distribution.project'),
+                                        projects_word: cap.P > 1 ? t('capacity.projects') : t('capacity.project'),
                                       })}
                                     </div>
                                     <div>
@@ -1275,7 +1276,7 @@ export const ProjectsCapacityTable: React.FC<ProjectsCapacityTableProps> = ({
                                       {t('capacity.tooltips.skill_header_demand', {
                                         demand: formatDaysVal(cap.D),
                                         count: cap.P,
-                                        projects_word: cap.P > 1 ? t('reports.budget_distribution.projects') : t('reports.budget_distribution.project'),
+                                        projects_word: cap.P > 1 ? t('capacity.projects') : t('capacity.project'),
                                       })}
                                     </div>
                                     <div>
@@ -1432,10 +1433,19 @@ export const ProjectsCapacityTable: React.FC<ProjectsCapacityTableProps> = ({
                           <div className="flex flex-col">
                             <div className="flex items-center gap-1.5 flex-wrap">
                               <span
-                                className={`font-bold text-xs truncate max-w-[150px] ${
+                                onClick={() => {
+                                  setSelectedProject(project);
+                                  setIsReadOnlyModal(!canEditProject(project, permissionContext));
+                                  setModalOpen(true);
+                                }}
+                                className={`font-bold text-xs truncate max-w-[150px] cursor-pointer hover:text-indigo-600 hover:underline ${
                                   isStaffed ? 'text-slate-900' : 'text-slate-500'
                                 }`}
-                                title={project.name}
+                                title={
+                                  canEditProject(project, permissionContext)
+                                    ? t('projects.tooltips.edit_project')
+                                    : t('projects.tooltips.view_project')
+                                }
                               >
                                 {project.name}
                               </span>
@@ -1601,11 +1611,8 @@ export const ProjectsCapacityTable: React.FC<ProjectsCapacityTableProps> = ({
                                 </div>
                               }
                             >
-                              <input
-                                type="checkbox"
-                                checked={false}
-                                disabled={true}
-                                className="w-4 h-4 rounded opacity-30 cursor-not-allowed bg-slate-200 border-slate-300 text-blue-600 focus:ring-0"
+                              <div
+                                className="w-4 h-4 rounded-[4px] opacity-30 cursor-not-allowed bg-slate-200 border border-slate-300"
                               />
                             </Tooltip>
                           ) : isStaffed && !stateNeedsStaffing ? (
@@ -1618,12 +1625,38 @@ export const ProjectsCapacityTable: React.FC<ProjectsCapacityTableProps> = ({
                                 </div>
                               }
                             >
-                              <input
-                                type="checkbox"
-                                checked={isStaffed}
+                              <button
+                                type="button"
+                                role="checkbox"
+                                aria-checked={true}
                                 disabled={!canToggleStaffing}
-                                onChange={() => handleToggleStaffing(project)}
-                                className="w-4 h-4 rounded transition-colors border-red-500 text-red-600 focus:ring-red-500 accent-red-600 cursor-pointer"
+                                onClick={() => canToggleStaffing && handleToggleStaffing(project)}
+                                className={`w-4 h-4 rounded-[4px] transition-colors border-2 border-red-500 bg-red-600 text-white flex items-center justify-center ${
+                                  canToggleStaffing ? 'cursor-pointer hover:bg-red-700 hover:border-red-700' : 'opacity-60 cursor-not-allowed'
+                                }`}
+                              >
+                                <Check className="w-3 h-3 stroke-[3]" />
+                              </button>
+                            </Tooltip>
+                          ) : !isStaffed && stateNeedsStaffing ? (
+                            <Tooltip
+                              variant="error"
+                              placement="top"
+                              content={
+                                <div className="text-left text-xs whitespace-normal max-w-xs font-bold leading-snug">
+                                  {t('capacity.tooltips.state_requires_staffing_unstaffed', { state: currentStateName })}
+                                </div>
+                              }
+                            >
+                              <button
+                                type="button"
+                                role="checkbox"
+                                aria-checked={false}
+                                disabled={!canToggleStaffing}
+                                onClick={() => canToggleStaffing && handleToggleStaffing(project)}
+                                className={`w-4 h-4 rounded-[4px] transition-colors border-2 border-red-500 bg-white flex items-center justify-center ${
+                                  canToggleStaffing ? 'cursor-pointer hover:border-red-600 hover:bg-red-50/50' : 'opacity-60 cursor-not-allowed'
+                                }`}
                               />
                             </Tooltip>
                           ) : isStaffed && isProjectBottlenecked ? (
@@ -1639,29 +1672,37 @@ export const ProjectsCapacityTable: React.FC<ProjectsCapacityTableProps> = ({
                                 </div>
                               }
                             >
-                              <input
-                                type="checkbox"
-                                checked={isStaffed}
+                              <button
+                                type="button"
+                                role="checkbox"
+                                aria-checked={true}
                                 disabled={!canToggleStaffing}
-                                onChange={() => handleToggleStaffing(project)}
-                                className={`w-4 h-4 rounded transition-colors border-slate-300 text-blue-600 focus:ring-blue-500 accent-blue-600 ${
-                                  canToggleStaffing ? 'cursor-pointer' : 'opacity-60 cursor-not-allowed'
+                                onClick={() => canToggleStaffing && handleToggleStaffing(project)}
+                                className={`w-4 h-4 rounded-[4px] transition-colors border border-blue-600 bg-blue-600 text-white flex items-center justify-center ${
+                                  canToggleStaffing ? 'cursor-pointer hover:bg-blue-700 hover:border-blue-700' : 'opacity-60 cursor-not-allowed'
                                 }`}
-                              />
+                              >
+                                <Check className="w-3 h-3 stroke-[3]" />
+                              </button>
                             </Tooltip>
                           ) : (
-                            <input
-                              type="checkbox"
-                              checked={isStaffed}
+                            <button
+                              type="button"
+                              role="checkbox"
+                              aria-checked={isStaffed}
                               disabled={!canToggleStaffing}
-                              onChange={() => handleToggleStaffing(project)}
-                              className={`w-4 h-4 rounded transition-colors ${
+                              onClick={() => canToggleStaffing && handleToggleStaffing(project)}
+                              className={`w-4 h-4 rounded-[4px] transition-colors flex items-center justify-center ${
+                                isStaffed
+                                  ? 'border border-blue-600 bg-blue-600 text-white hover:bg-blue-700 hover:border-blue-700'
+                                  : 'border border-slate-300 bg-white hover:border-slate-400'
+                              } ${
                                 !stateNeedsStaffing && !canToggleStaffing
-                                  ? 'opacity-30 cursor-not-allowed bg-slate-200'
+                                  ? 'opacity-30 cursor-not-allowed bg-slate-200 border-slate-300'
                                   : canToggleStaffing
                                   ? 'cursor-pointer'
                                   : 'opacity-60 cursor-not-allowed'
-                              } border-slate-300 text-blue-600 focus:ring-blue-500 accent-blue-600`}
+                              }`}
                               title={
                                 !stateNeedsStaffing
                                   ? canToggleStaffing
@@ -1677,7 +1718,9 @@ export const ProjectsCapacityTable: React.FC<ProjectsCapacityTableProps> = ({
                                   ? t('capacity.tooltips.staffed_click_to_unstaff')
                                   : t('capacity.tooltips.staffed_click_to_staff')
                               }
-                            />
+                            >
+                              {isStaffed && <Check className="w-3 h-3 stroke-[3]" />}
+                            </button>
                           )}
                         </div>
                       </td>

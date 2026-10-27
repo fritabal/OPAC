@@ -29,6 +29,7 @@ import {
 } from '../services/lifecycleService';
 import { LifecycleStateModal } from './LifecycleStateModal';
 import { Tooltip } from './Tooltip';
+import { CREATE_ITEM_BUTTON_CLASS } from '../constants/ui';
 
 interface LifecycleStatesTableProps {
   states: ProjectState[];
@@ -167,7 +168,7 @@ export const LifecycleStatesTable: React.FC<LifecycleStatesTableProps> = ({
           {isAdmin && (
             <button
               onClick={handleOpenAdd}
-              className="inline-flex items-center gap-2 px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-lg shadow-xs transition-colors cursor-pointer"
+              className={CREATE_ITEM_BUTTON_CLASS}
             >
               <Plus className="w-4 h-4" />
               <span>{t('settings.lifecycle.add_button')}</span>
@@ -266,7 +267,7 @@ export const LifecycleStatesTable: React.FC<LifecycleStatesTableProps> = ({
                           </button>
                           <button
                             onClick={handleOpenAdd}
-                            className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-semibold shadow-xs cursor-pointer transition-colors"
+                            className={CREATE_ITEM_BUTTON_CLASS}
                           >
                             <Plus className="w-4 h-4" />
                             <span>{t('settings.lifecycle.add_button')}</span>

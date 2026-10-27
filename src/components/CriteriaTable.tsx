@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   ArrowUp,
   ArrowDown,
@@ -21,10 +21,12 @@ import {
   CriterionFormData,
   CriterionWeight,
 } from '../types/criteria';
+import { Project } from '../types/project';
 import { BonusConfig, DEFAULT_BONUS_CONFIG } from '../types/bonus';
 import { CriterionModal } from './CriterionModal';
 import { Tooltip } from './Tooltip';
 import { BonusSettingsCard } from './BonusSettingsCard';
+import { CREATE_ITEM_BUTTON_CLASS } from '../constants/ui';
 import {
   addCriterion,
   updateCriterion,
@@ -35,6 +37,7 @@ import {
 
 interface CriteriaTableProps {
   criteria: Criterion[];
+  projects?: Project[];
   loading: boolean;
   isAdmin?: boolean;
   canManageBonus?: boolean;
@@ -47,6 +50,7 @@ interface CriteriaTableProps {
 
 export const CriteriaTable: React.FC<CriteriaTableProps> = ({
   criteria,
+  projects = [],
   loading,
   isAdmin = true,
   canManageBonus = true,
@@ -63,6 +67,79 @@ export const CriteriaTable: React.FC<CriteriaTableProps> = ({
   const [deleteCandidate, setDeleteCandidate] = useState<Criterion | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [processing, setProcessing] = useState(false);
+  const [showDistribution, setShowDistribution] = useState(false);
+
+  // Calcul de la répartition des projets pour chaque valeur de critère (0, 1, 2, 3, 5, 8).
+  // La méthode des plus forts restes garantit mathématiquement que la somme des % entiers vaut 100%.
+  const distributionsByCriterion = useMemo(() => {
+    const result: Record<string, Record<number, { count: number; percentage: number }>> = {};
+    const totalProjects = (projects || []).length;
+
+    criteria.forEach((c) => {
+      const counts: Record<number, number> = { 0: 0, 1: 0, 2: 0, 3: 0, 5: 0, 8: 0 };
+      (projects || []).forEach((p) => {
+        const rawVal = p.criteriaValues?.[c.id];
+        const val = rawVal !== undefined ? Number(rawVal) : 0;
+        if (counts[val] !== undefined) {
+          counts[val] += 1;
+        } else {
+          counts[0] += 1;
+        }
+      });
+
+      const critResult: Record<number, { count: number; percentage: number }> = {};
+
+      if (totalProjects === 0) {
+        CRITERION_POINTS.forEach((pt) => {
+          critResult[pt] = { count: 0, percentage: 0 };
+        });
+      } else {
+        let sumFloor = 0;
+        const remainders: { pt: number; remainder: number; floorVal: number; count: number }[] = [];
+
+        CRITERION_POINTS.forEach((pt) => {
+          const exactPct = (counts[pt] / totalProjects) * 100;
+          const floorVal = Math.floor(exactPct);
+          const remainder = exactPct - floorVal;
+          sumFloor += floorVal;
+          remainders.push({ pt, remainder, floorVal, count: counts[pt] });
+        });
+
+        let diff = 100 - sumFloor;
+        remainders.sort((a, b) => b.remainder - a.remainder);
+
+        const finalPcts: Record<number, number> = {};
+        remainders.forEach((item) => {
+          let add = 0;
+          if (diff > 0 && item.count > 0) {
+            add = 1;
+            diff -= 1;
+          }
+          finalPcts[item.pt] = item.floorVal + add;
+        });
+
+        if (diff > 0) {
+          remainders.forEach((item) => {
+            if (diff > 0) {
+              finalPcts[item.pt] = (finalPcts[item.pt] || 0) + 1;
+              diff -= 1;
+            }
+          });
+        }
+
+        CRITERION_POINTS.forEach((pt) => {
+          critResult[pt] = {
+            count: counts[pt],
+            percentage: finalPcts[pt] ?? 0,
+          };
+        });
+      }
+
+      result[c.id] = critResult;
+    });
+
+    return result;
+  }, [criteria, projects]);
 
   const handleOpenAdd = () => {
     if (!isAdmin) return;
@@ -165,27 +242,45 @@ export const CriteriaTable: React.FC<CriteriaTableProps> = ({
           </p>
         </div>
 
-        <div className="flex items-center gap-2.5">
-          {isAdmin && criteria.length === 0 && !loading && onSeedExample && (
-            <button
-              onClick={onSeedExample}
-              disabled={seeding}
-              className="inline-flex items-center gap-2 px-3 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 text-xs font-semibold rounded-lg transition-colors shadow-2xs cursor-pointer"
-            >
-              <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
-              <span>{seeding ? t('settings.criteria.loading_defaults') : t('settings.criteria.load_defaults')}</span>
-            </button>
-          )}
+        <div className="flex flex-col sm:items-end gap-2.5">
+          <div className="flex items-center gap-2.5">
+            {isAdmin && criteria.length === 0 && !loading && onSeedExample && (
+              <button
+                onClick={onSeedExample}
+                disabled={seeding}
+                className="inline-flex items-center gap-2 px-3 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 text-xs font-semibold rounded-lg transition-colors shadow-2xs cursor-pointer"
+              >
+                <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
+                <span>{seeding ? t('settings.criteria.loading_defaults') : t('settings.criteria.load_defaults')}</span>
+              </button>
+            )}
 
-          {isAdmin && (
-            <button
-              onClick={handleOpenAdd}
-              className="inline-flex items-center gap-2 px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-lg shadow-xs transition-colors cursor-pointer"
-            >
-              <Plus className="w-4 h-4" />
-              <span>{t('settings.criteria.add_button')}</span>
-            </button>
-          )}
+            {isAdmin && (
+              <button
+                onClick={handleOpenAdd}
+                className={CREATE_ITEM_BUTTON_CLASS}
+              >
+                <Plus className="w-4 h-4" />
+                <span>{t('settings.criteria.add_button')}</span>
+              </button>
+            )}
+          </div>
+
+          {/* Case à cocher Afficher la répartition */}
+          <Tooltip
+            content={t('settings.criteria.show_distribution_tooltip')}
+            placement="bottom"
+          >
+            <label className="inline-flex items-center gap-2 text-xs font-medium text-slate-700 hover:text-slate-900 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={showDistribution}
+                onChange={(e) => setShowDistribution(e.target.checked)}
+                className="w-4 h-4 rounded-[4px] text-indigo-600 border-slate-300 focus:ring-indigo-500 cursor-pointer"
+              />
+              <span>{t('settings.criteria.show_distribution')}</span>
+            </label>
+          </Tooltip>
         </div>
       </div>
 
@@ -292,9 +387,9 @@ export const CriteriaTable: React.FC<CriteriaTableProps> = ({
                             )}
                             <button
                               onClick={handleOpenAdd}
-                              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 text-white hover:bg-indigo-700 rounded-md font-semibold text-xs transition-colors cursor-pointer shadow-xs"
+                              className={CREATE_ITEM_BUTTON_CLASS}
                             >
-                              <Plus className="w-3.5 h-3.5" />
+                              <Plus className="w-4 h-4" />
                               <span>{t('settings.criteria.add_button')}</span>
                             </button>
                           </div>
@@ -436,19 +531,75 @@ export const CriteriaTable: React.FC<CriteriaTableProps> = ({
                         )}
                       </td>
 
-                      {/* 6 échelons textuels */}
-                      {CRITERION_POINTS.map((pt, pIdx) => (
-                        <td
-                          key={pt}
-                          className={`py-2.5 px-3 border-l border-slate-100 text-xs break-words max-w-[200px] ${
-                            isActive ? 'text-slate-700' : 'text-slate-400 italic'
-                          }`}
-                        >
-                          {criterion.levels?.[pIdx] || (
-                            <span className="text-slate-300 italic">—</span>
-                          )}
-                        </td>
-                      ))}
+                      {/* 6 échelons textuels avec bargraph optionnel de répartition */}
+                      {CRITERION_POINTS.map((pt, pIdx) => {
+                        const dist = distributionsByCriterion[criterion.id]?.[pt] || { count: 0, percentage: 0 };
+                        const totalProjects = (projects || []).length;
+                        const projectWord = dist.count <= 1 ? 'projet' : 'projets';
+                        const totalWord = totalProjects <= 1 ? 'projet' : 'projets';
+                        const tooltipText = t('settings.criteria.projects_distribution_tooltip', {
+                          count: dist.count,
+                          projectWord,
+                          total: totalProjects,
+                          totalWord,
+                        });
+
+                        return (
+                          <td
+                            key={pt}
+                            className={`border-l border-slate-100 text-xs break-words max-w-[200px] align-middle ${
+                              showDistribution ? 'py-1.5 px-2.5' : 'py-2.5 px-3'
+                            } ${isActive ? 'text-slate-700' : 'text-slate-400 italic'}`}
+                          >
+                            {showDistribution ? (
+                              <div className="flex flex-col gap-1">
+                                <div className="text-left text-xs leading-tight">
+                                  {criterion.levels?.[pIdx] || (
+                                    <span className="text-slate-300 italic">—</span>
+                                  )}
+                                </div>
+                                <div className="w-full px-0.5">
+                                  <Tooltip
+                                    content={tooltipText}
+                                    placement="top"
+                                    className="w-full block"
+                                  >
+                                    <div className="relative w-full h-3.5 bg-slate-100 rounded-[3px] border border-slate-300 overflow-hidden cursor-help select-none">
+                                      {dist.percentage > 0 && (
+                                        <div
+                                          className="absolute left-0 top-0 bottom-0 bg-slate-600 rounded-l-[2px] transition-all duration-300"
+                                          style={{ width: `${dist.percentage}%` }}
+                                        />
+                                      )}
+                                      {dist.percentage > 80 ? (
+                                        <span
+                                          className="absolute top-0 bottom-0 flex items-center justify-end pr-1 text-[9px] font-bold text-white leading-none select-none"
+                                          style={{ width: `${dist.percentage}%` }}
+                                        >
+                                          {dist.percentage}%
+                                        </span>
+                                      ) : (
+                                        <span
+                                          className="absolute top-0 bottom-0 flex items-center pl-1 text-[9px] font-bold text-slate-800 leading-none select-none"
+                                          style={{ left: `${dist.percentage}%` }}
+                                        >
+                                          {dist.percentage}%
+                                        </span>
+                                      )}
+                                    </div>
+                                  </Tooltip>
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="text-left text-xs leading-snug">
+                                {criterion.levels?.[pIdx] || (
+                                  <span className="text-slate-300 italic">—</span>
+                                )}
+                              </div>
+                            )}
+                          </td>
+                        );
+                      })}
 
                       {/* Actions : Modifier / Supprimer (admin) ou Visualiser (non-admin) */}
                       <td className="py-2.5 px-4 text-right whitespace-nowrap sticky right-0 bg-white group-hover:bg-slate-50/80">

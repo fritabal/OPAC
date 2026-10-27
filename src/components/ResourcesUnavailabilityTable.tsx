@@ -21,6 +21,7 @@ import { AppUser } from '../types/user';
 import { ResourceModal } from './ResourceModal';
 import { Tooltip } from './Tooltip';
 import {
+  CREATE_ITEM_BUTTON_CLASS,
   PRIMARY_ACTION_HEADER_BUTTON_CLASS,
   MY_FILTER_BUTTON_ACTIVE_CLASS,
   MY_FILTER_BUTTON_INACTIVE_CLASS,
@@ -331,7 +332,7 @@ export const ResourcesUnavailabilityTable: React.FC<ResourcesUnavailabilityTable
           <button
             type="button"
             onClick={handleOpenCreate}
-            className={PRIMARY_ACTION_HEADER_BUTTON_CLASS}
+            className={CREATE_ITEM_BUTTON_CLASS}
           >
             <Plus className="w-4 h-4" />
             <span>{t('unavailabilities.new_resource')}</span>

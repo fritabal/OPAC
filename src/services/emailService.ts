@@ -316,16 +316,81 @@ export async function sendPasswordResetNotification(options: {
   displayName: string;
   resetToken?: string;
   appUrl?: string;
+  language?: 'fr' | 'en' | 'it' | 'de';
+  requestedBySelf?: boolean;
 }): Promise<EmailSendResult> {
   const currentOrigin = options.appUrl || window.location.origin;
   const resetUrl = `${currentOrigin}?action=reset_password&email=${encodeURIComponent(options.toEmail)}&token=${options.resetToken || ''}`;
+  const lang = options.language || 'fr';
+  const requestedBySelf = options.requestedBySelf ?? false;
+
+  const contentByLang = {
+    fr: {
+      subject: 'OPAC - Réinitialisation de votre mot de passe',
+      accountSecurity: 'Sécurité du compte',
+      greeting: `Bonjour ${options.displayName},`,
+      bodyText: requestedBySelf
+        ? 'Vous avez demandé la réinitialisation de votre mot de passe pour la plateforme <strong>OPAC</strong>.'
+        : 'Une réinitialisation de votre mot de passe pour la plateforme <strong>OPAC</strong> a été demandée par <strong>Stéphane Labati</strong>.',
+      warning: 'Votre mot de passe précédent a été désactivé. Vous devez obligatoirement en définir un nouveau pour accéder à l\'application.',
+      ctaButton: 'Définir mon nouveau mot de passe',
+      codeTitle: 'Votre code de réinitialisation sécurisé :',
+      codeHint: 'ℹ️ <strong>Remarque :</strong> Si l\'accès par le lien direct ci-dessus affiche une restriction réseau (Erreur 403) depuis votre navigateur externe, ouvrez simplement votre application OPAC et cliquez sur <em>« J\'ai un code de réinitialisation »</em> pour renseigner ce code.',
+      securityReminder: 'Rappel sécurité : Votre mot de passe doit comporter un minimum de 20 caractères, incluant au moins une majuscule, une minuscule, un chiffre et un caractère spécial.',
+      footerSender: `Ce message a été envoyé depuis le compte de Stéphane Labati (<a href="mailto:${SUPER_ADMIN_EMAIL}" style="color: #64748b;">${SUPER_ADMIN_EMAIL}</a>).`,
+    },
+    en: {
+      subject: 'OPAC - Reset your password',
+      accountSecurity: 'Account Security',
+      greeting: `Hello ${options.displayName},`,
+      bodyText: requestedBySelf
+        ? 'You have requested a password reset for your <strong>OPAC</strong> account.'
+        : 'A password reset for your <strong>OPAC</strong> account has been requested by <strong>Stéphane Labati</strong>.',
+      warning: 'Your previous password has been deactivated. You must define a new password to access the application.',
+      ctaButton: 'Set my new password',
+      codeTitle: 'Your secure reset code:',
+      codeHint: 'ℹ️ <strong>Note:</strong> If direct access via the link above shows a network restriction (Error 403), simply open your OPAC app and click <em>"I have a reset code"</em> to enter this code.',
+      securityReminder: 'Security reminder: Your password must contain at least 20 characters, including at least one uppercase letter, one lowercase letter, one number, and one special character.',
+      footerSender: `This message was sent from Stéphane Labati's account (<a href="mailto:${SUPER_ADMIN_EMAIL}" style="color: #64748b;">${SUPER_ADMIN_EMAIL}</a>).`,
+    },
+    it: {
+      subject: 'OPAC - Reimpostazione della password',
+      accountSecurity: 'Sicurezza dell\'account',
+      greeting: `Ciao ${options.displayName},`,
+      bodyText: requestedBySelf
+        ? 'Hai richiesto la reimpostazione della password per il tuo account <strong>OPAC</strong>.'
+        : 'Una reimpostazione della password per la piattaforma <strong>OPAC</strong> è stata richiesta da <strong>Stéphane Labati</strong>.',
+      warning: 'La password precedente è stata disattivata. Devi impostarne una nuova per accedere all\'applicazione.',
+      ctaButton: 'Imposta la mia nuova password',
+      codeTitle: 'Il tuo codice di sicurezza:',
+      codeHint: 'ℹ️ <strong>Nota:</strong> Se l\'accesso tramite il link diretto mostra una restrizione di rete (Errore 403), apri semplicemente l\'applicazione OPAC e fai clic su <em>« Ho un codice di sicurezza »</em> per inserire questo codice.',
+      securityReminder: 'Promemoria di sicurezza: la tua password deve contenere almeno 20 caratteri, di cui almeno una maiuscola, una minuscola, un numero e un carattere speciale.',
+      footerSender: `Questo messaggio è stato inviato dall'account di Stéphane Labati (<a href="mailto:${SUPER_ADMIN_EMAIL}" style="color: #64748b;">${SUPER_ADMIN_EMAIL}</a>).`,
+    },
+    de: {
+      subject: 'OPAC - Zurücksetzen Ihres Passworts',
+      accountSecurity: 'Kontosicherheit',
+      greeting: `Hallo ${options.displayName},`,
+      bodyText: requestedBySelf
+        ? 'Sie haben das Zurücksetzen Ihres Passworts für die Plattform <strong>OPAC</strong> angefordert.'
+        : 'Eine Zurücksetzung Ihres Passworts für die Plattform <strong>OPAC</strong> wurde von <strong>Stéphane Labati</strong> angefordert.',
+      warning: 'Ihr bisheriges Passwort wurde deaktiviert. Sie müssen ein neues Passwort festlegen, um auf die Anwendung zuzugreifen.',
+      ctaButton: 'Mein neues Passwort festlegen',
+      codeTitle: 'Ihr sicherer Rücksetzcode:',
+      codeHint: 'ℹ️ <strong>Hinweis:</strong> Falls der Direktlink eine Netzwerkeinschränkung anzeigt (Fehler 403), öffnen Sie einfach Ihre OPAC-App und klicken Sie auf <em>„Ich habe einen Rücksetzcode“</em>, um diesen Code einzugeben.',
+      securityReminder: 'Sicherheitshinweis: Ihr Passwort muss mindestens 20 Zeichen umfassen, darunter mindestens ein Großbuchstabe, ein Kleinbuchstabe, eine Ziffer und ein Sonderzeichen.',
+      footerSender: `Diese Nachricht wurde vom Konto von Stéphane Labati gesendet (<a href="mailto:${SUPER_ADMIN_EMAIL}" style="color: #64748b;">${SUPER_ADMIN_EMAIL}</a>).`,
+    },
+  };
+
+  const c = contentByLang[lang] || contentByLang.fr;
 
   const htmlContent = `
 <!DOCTYPE html>
-<html lang="fr">
+<html lang="${lang}">
 <head>
   <meta charset="UTF-8">
-  <title>Réinitialisation de votre mot de passe OPAC</title>
+  <title>${c.subject}</title>
 </head>
 <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; color: #1e293b; background-color: #f8fafc; margin: 0; padding: 24px;">
   <table width="100%" border="0" cellspacing="0" cellpadding="0">
@@ -336,7 +401,7 @@ export async function sendPasswordResetNotification(options: {
           <tr>
             <td style="background-color: #0f172a; padding: 28px 36px; text-align: left;">
               <h1 style="margin: 0; color: #ffffff; font-size: 20px; font-weight: 800; letter-spacing: 0.5px;">
-                OPAC <span style="font-size: 13px; font-weight: 500; color: #94a3b8; margin-left: 8px;">Sécurité du compte</span>
+                OPAC <span style="font-size: 13px; font-weight: 500; color: #94a3b8; margin-left: 8px;">${c.accountSecurity}</span>
               </h1>
             </td>
           </tr>
@@ -344,15 +409,15 @@ export async function sendPasswordResetNotification(options: {
           <tr>
             <td style="padding: 36px;">
               <h2 style="margin: 0 0 16px; color: #0f172a; font-size: 18px; font-weight: 700;">
-                Bonjour ${options.displayName},
+                ${c.greeting}
               </h2>
               <p style="margin: 0 0 16px; font-size: 14px; color: #475569;">
-                Une réinitialisation de votre mot de passe pour la plateforme <strong>OPAC</strong> a été demandée par <strong>Stéphane Labati</strong>.
+                ${c.bodyText}
               </p>
               
               <div style="background-color: #fef2f2; border-left: 4px solid #ef4444; padding: 14px 18px; border-radius: 0 8px 8px 0; margin-bottom: 24px;">
                 <p style="margin: 0; font-size: 13px; color: #991b1b; font-weight: 500;">
-                  Votre mot de passe précédent a été désactivé. Vous devez obligatoirement en définir un nouveau pour accéder à l'application.
+                  ${c.warning}
                 </p>
               </div>
 
@@ -361,7 +426,7 @@ export async function sendPasswordResetNotification(options: {
                 <tr>
                   <td align="center" style="border-radius: 8px; background-color: #4f46e5;">
                     <a href="${resetUrl}" target="_blank" style="font-size: 14px; font-weight: 700; color: #ffffff; text-decoration: none; padding: 14px 28px; border-radius: 8px; display: inline-block;">
-                      Définir mon nouveau mot de passe
+                      ${c.ctaButton}
                     </a>
                   </td>
                 </tr>
@@ -373,13 +438,13 @@ export async function sendPasswordResetNotification(options: {
                   ? `
               <div style="background-color: #f8fafc; border: 1px dashed #cbd5e1; border-radius: 10px; padding: 16px 20px; margin: 20px 0;">
                 <p style="margin: 0 0 4px; font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px;">
-                  Votre code de réinitialisation sécurisé :
+                  ${c.codeTitle}
                 </p>
                 <p style="margin: 0 0 8px; font-family: Consolas, 'Courier New', monospace; font-size: 17px; font-weight: 800; color: #0f172a; letter-spacing: 1px;">
                   ${options.resetToken}
                 </p>
                 <p style="margin: 0; font-size: 11px; color: #64748b; line-height: 1.4;">
-                  ℹ️ <strong>Remarque :</strong> Si l'accès par le lien direct ci-dessus affiche une restriction réseau (Erreur 403) depuis votre navigateur externe, ouvrez simplement votre application OPAC et cliquez sur <em>« J'ai un code de réinitialisation »</em> pour renseigner ce code.
+                  ${c.codeHint}
                 </p>
               </div>
               `
@@ -387,13 +452,13 @@ export async function sendPasswordResetNotification(options: {
               }
 
               <p style="margin: 0 0 8px; font-size: 12px; color: #94a3b8;">
-                Rappel sécurité : Votre mot de passe doit comporter un minimum de 20 caractères, incluant au moins une majuscule, une minuscule, un chiffre et un caractère spécial.
+                ${c.securityReminder}
               </p>
 
               <hr style="border: none; border-top: 1px solid #f1f5f9; margin: 24px 0;" />
 
               <p style="margin: 0; font-size: 12px; color: #64748b;">
-                Ce message a été envoyé depuis le compte de Stéphane Labati (<a href="mailto:${SUPER_ADMIN_EMAIL}" style="color: #64748b;">${SUPER_ADMIN_EMAIL}</a>).
+                ${c.footerSender}
               </p>
             </td>
           </tr>
@@ -408,7 +473,7 @@ export async function sendPasswordResetNotification(options: {
   return sendEmailViaGmail({
     toEmail: options.toEmail,
     toName: options.displayName,
-    subject: 'OPAC - Réinitialisation de votre mot de passe',
+    subject: c.subject,
     htmlContent,
   });
 }

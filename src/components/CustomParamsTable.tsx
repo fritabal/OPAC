@@ -35,6 +35,7 @@ import {
 import { CustomParamModal } from './CustomParamModal';
 import { Tooltip } from './Tooltip';
 import { DEFAULT_CUSTOM_PARAMS_SEED } from '../constants/defaultLpmParams';
+import { CREATE_ITEM_BUTTON_CLASS } from '../constants/ui';
 
 interface CustomParamsTableProps {
   params: CustomProjectParam[];
@@ -197,7 +198,7 @@ export const CustomParamsTable: React.FC<CustomParamsTableProps> = ({
           {isAdmin && (
             <button
               onClick={handleOpenAdd}
-              className="inline-flex items-center gap-2 px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-lg shadow-xs transition-colors cursor-pointer"
+              className={CREATE_ITEM_BUTTON_CLASS}
             >
               <Plus className="w-4 h-4" />
               <span>{t('settings.custom_params.add_button')}</span>
@@ -245,7 +246,7 @@ export const CustomParamsTable: React.FC<CustomParamsTableProps> = ({
                 </button>
                 <button
                   onClick={handleOpenAdd}
-                  className="inline-flex items-center gap-2 px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-lg shadow-xs transition-colors cursor-pointer"
+                  className={CREATE_ITEM_BUTTON_CLASS}
                 >
                   <Plus className="w-4 h-4" />
                   <span>{t('settings.custom_params.add_button')}</span>

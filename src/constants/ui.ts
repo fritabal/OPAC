@@ -2,13 +2,24 @@
  * Paramètres graphiques et classes de style globales pour l'interface utilisateur
  */
 
+// =========================================================================
+// BOUTONS GLOBAUX DE CRÉATION D'UN NOUVEL ITEM ("Créer un nouveau...", "Créer une nouvelle...")
+// =========================================================================
+
+// Variables globales de couleur et de police pour tous les boutons de création de l'application
+export const CREATE_ITEM_BUTTON_BG = 'bg-blue-600 hover:bg-blue-700';
+export const CREATE_ITEM_BUTTON_TEXT = 'text-white text-xs font-semibold';
+
+// Style global unifié pour TOUS les boutons de création d'un nouvel item dans tous les onglets
+export const CREATE_ITEM_BUTTON_CLASS =
+  `inline-flex items-center gap-2 px-3.5 py-2 ${CREATE_ITEM_BUTTON_BG} ${CREATE_ITEM_BUTTON_TEXT} rounded-lg shadow-xs transition-colors cursor-pointer shrink-0 disabled:opacity-50 disabled:cursor-not-allowed`;
+
 // Couleur standard bleue pour tous les boutons d'action principale : création et validation de modification
 export const PRIMARY_ACTION_BUTTON_CLASS =
   'bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg shadow-xs transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed';
 
 // Style compact pour les boutons d'ajout dans les en-têtes d'onglets (Nouveau projet, Nouvelle ressource, etc.)
-export const PRIMARY_ACTION_HEADER_BUTTON_CLASS =
-  `inline-flex items-center gap-2 px-3.5 py-2 ${PRIMARY_ACTION_BUTTON_CLASS} text-xs`;
+export const PRIMARY_ACTION_HEADER_BUTTON_CLASS = CREATE_ITEM_BUTTON_CLASS;
 
 // Style pour les boutons de validation dans les fenêtres modales (Enregistrer, Créer, Valider)
 export const PRIMARY_ACTION_MODAL_BUTTON_CLASS =
