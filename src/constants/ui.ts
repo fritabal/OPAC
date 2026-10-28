@@ -73,3 +73,19 @@ export const TABLE_FROZEN_DIVIDER_CLASS = 'table-frozen-divider';
 // Double filet horizontal sous la ligne de titre des tableaux (toujours visible, même lors du défilement)
 export const TABLE_HEADER_DOUBLE_BOTTOM_CLASS = 'table-header-double-bottom';
 
+// =========================================================================
+// CASES À COCHER GLOBALES (CHECKBOXES ET LEURS LIBELLÉS)
+// =========================================================================
+
+// Style global pour le libellé associé à une case à cocher (non gras text-slate-700, fonce en text-slate-900 au survol)
+export const CHECKBOX_LABEL_CLASS =
+  'text-xs font-medium text-slate-700 hover:text-slate-900 group-hover:text-slate-900 transition-colors cursor-pointer select-none leading-tight';
+
+// Style global pour l'élément case à cocher (bordure slate-300 qui fonce en slate-400 au survol sans changer de teinte)
+export const CHECKBOX_INPUT_CLASS =
+  'h-4 w-4 rounded-[4px] border-slate-300 hover:border-slate-400 group-hover:border-slate-400 text-blue-600 focus:ring-blue-500 transition-colors cursor-pointer shrink-0 disabled:cursor-not-allowed disabled:opacity-50';
+
+// Conteneur complet d'une case à cocher avec son texte
+export const CHECKBOX_CONTAINER_CLASS =
+  'flex items-center gap-2 select-none group cursor-pointer';
+

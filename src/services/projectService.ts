@@ -14,6 +14,7 @@ import {
 import { db } from '../lib/firebase';
 import { handleFirestoreError, OperationType } from '../lib/firestoreErrors';
 import { Project, ProjectFormData } from '../types/project';
+import { broadcastCollaborationChange } from './collaborationNotificationService';
 
 const COLLECTION_NAME = 'projects';
 const COUNTER_DOC_PATH = 'counters/projects';
@@ -164,6 +165,15 @@ export async function createProject(formData: ProjectFormData): Promise<Project>
 
     const docRef = await addDoc(collection(db, COLLECTION_NAME), cleanPayload);
 
+    // Diffusion de la notification aux autres utilisateurs connectés
+    broadcastCollaborationChange({
+      category: 'project_created',
+      title: 'Nouveau projet créé',
+      message: `Un autre utilisateur vient de créer le projet « ${trimmedName} » (#${projectNumber}).`,
+      projectName: trimmedName,
+      projectId: docRef.id,
+    });
+
     return {
       id: docRef.id,
       ...formData,
@@ -235,6 +245,44 @@ export async function updateProject(id: string, formData: Partial<ProjectFormDat
     }
 
     await updateDoc(docRef, cleanPayload);
+
+    // Notification spécifique selon la nature de la mise à jour
+    const targetProjectName = formData.name ? formData.name.trim() : '';
+    if (formData.criteriaValues !== undefined || formData.bonus !== undefined) {
+      broadcastCollaborationChange({
+        category: 'project_prioritization',
+        title: 'Critères de priorité réévalués',
+        message: targetProjectName
+          ? `Un autre utilisateur vient de réévaluer les critères de priorité du projet « ${targetProjectName} ».`
+          : `Un autre utilisateur vient de réévaluer les critères de priorité d'un projet.`,
+        projectName: targetProjectName,
+        projectId: id,
+      });
+    } else if (
+      formData.capacityDaysPerSkill !== undefined ||
+      formData.isStaffed !== undefined ||
+      formData.capacityUpdatedMonth !== undefined
+    ) {
+      broadcastCollaborationChange({
+        category: 'project_staffing',
+        title: 'Demandes de staffing modifiées',
+        message: targetProjectName
+          ? `Un autre utilisateur vient de mettre à jour les demandes de staffing du projet « ${targetProjectName} ».`
+          : `Un autre utilisateur vient de mettre à jour les demandes de staffing d'un projet.`,
+        projectName: targetProjectName,
+        projectId: id,
+      });
+    } else {
+      broadcastCollaborationChange({
+        category: 'project_general',
+        title: 'Projet mis à jour',
+        message: targetProjectName
+          ? `Un autre utilisateur vient de mettre à jour les informations du projet « ${targetProjectName} ».`
+          : `Un autre utilisateur vient de mettre à jour les informations d'un projet.`,
+        projectName: targetProjectName,
+        projectId: id,
+      });
+    }
   } catch (error) {
     handleFirestoreError(error, OperationType.UPDATE, `${COLLECTION_NAME}/${id}`);
     throw error;
@@ -244,12 +292,30 @@ export async function updateProject(id: string, formData: Partial<ProjectFormDat
 /**
  * Met à jour rapidement le statut de staffing d'un projet.
  */
-export async function updateProjectStaffing(id: string, isStaffed: boolean): Promise<void> {
+export async function updateProjectStaffing(
+  id: string,
+  isStaffed: boolean,
+  projectName?: string
+): Promise<void> {
   try {
     const docRef = doc(db, COLLECTION_NAME, id);
     await updateDoc(docRef, {
       isStaffed: Boolean(isStaffed),
       updatedAt: serverTimestamp(),
+    });
+
+    broadcastCollaborationChange({
+      category: 'project_staffing',
+      title: 'Statut de staffing modifié',
+      message: projectName
+        ? `Un autre utilisateur vient de modifier le statut de staffing du projet « ${projectName} » (${
+            isStaffed ? 'marqué comme staffé' : 'décoché'
+          }).`
+        : `Un autre utilisateur vient de modifier le statut de staffing d'un projet (${
+            isStaffed ? 'marqué comme staffé' : 'décoché'
+          }).`,
+      projectName,
+      projectId: id,
     });
   } catch (error) {
     handleFirestoreError(error, OperationType.UPDATE, `${COLLECTION_NAME}/${id}`);
@@ -263,7 +329,8 @@ export async function updateProjectStaffing(id: string, isStaffed: boolean): Pro
 export async function updateProjectCapacity(
   id: string,
   capacityUpdatedMonth: string | null | undefined,
-  capacityDaysPerSkill: Record<string, number | null> | undefined
+  capacityDaysPerSkill: Record<string, number | null> | undefined,
+  projectName?: string
 ): Promise<void> {
   try {
     const docRef = doc(db, COLLECTION_NAME, id);
@@ -277,6 +344,16 @@ export async function updateProjectCapacity(
       payload.capacityDaysPerSkill = capacityDaysPerSkill;
     }
     await updateDoc(docRef, payload);
+
+    broadcastCollaborationChange({
+      category: 'project_staffing',
+      title: 'Demandes capacitaires mises à jour',
+      message: projectName
+        ? `Un autre utilisateur vient de mettre à jour les demandes capacitaires du projet « ${projectName} ».`
+        : `Un autre utilisateur vient de mettre à jour les demandes capacitaires d'un projet.`,
+      projectName,
+      projectId: id,
+    });
   } catch (error) {
     handleFirestoreError(error, OperationType.UPDATE, `${COLLECTION_NAME}/${id}`);
     throw error;
@@ -286,9 +363,19 @@ export async function updateProjectCapacity(
 /**
  * Supprime un projet.
  */
-export async function deleteProject(id: string): Promise<void> {
+export async function deleteProject(id: string, projectName?: string): Promise<void> {
   try {
     await deleteDoc(doc(db, COLLECTION_NAME, id));
+
+    broadcastCollaborationChange({
+      category: 'project_deleted',
+      title: 'Projet supprimé',
+      message: projectName
+        ? `Un autre utilisateur vient de supprimer le projet « ${projectName} ».`
+        : `Un autre utilisateur vient de supprimer un projet.`,
+      projectName,
+      projectId: id,
+    });
   } catch (error) {
     handleFirestoreError(error, OperationType.DELETE, `${COLLECTION_NAME}/${id}`);
     throw error;

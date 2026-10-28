@@ -61,7 +61,12 @@ import {
 import { ProjectActionButton } from './ProjectActionButton';
 import { LifecycleStateFilter } from './LifecycleStateFilter';
 import { BudgetLineFilter } from './BudgetLineFilter';
-import { CREATE_ITEM_BUTTON_CLASS } from '../constants/ui';
+import {
+  CREATE_ITEM_BUTTON_CLASS,
+  CHECKBOX_INPUT_CLASS,
+  CHECKBOX_LABEL_CLASS,
+  CHECKBOX_CONTAINER_CLASS,
+} from '../constants/ui';
 
 export type SortColumn = 'id' | 'roi' | 'name' | 'state' | 'pm' | 'budgetLine' | 'bonus' | string;
 export type SortDirection = 'asc' | 'desc';
@@ -1357,21 +1362,22 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
 
           {/* Case à cocher pour le Value Management Officer alignée horizontalement à droite */}
           {isValueManagementOfficer && (
-            <label
-              htmlFor="vmo-checkbox-show-confidential-priorities"
-              className="flex items-center gap-1.5 cursor-pointer select-none text-xs font-semibold text-slate-700 hover:text-slate-900 px-0.5 shrink-0"
-            >
+            <div className={CHECKBOX_CONTAINER_CLASS}>
               <input
                 type="checkbox"
                 id="vmo-checkbox-show-confidential-priorities"
                 checked={showConfidentialProjects}
                 onChange={(e) => setShowConfidentialProjects(e.target.checked)}
-                className="w-3.5 h-3.5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer shrink-0"
+                className={CHECKBOX_INPUT_CLASS}
               />
-              <span className="text-xs" title={t('projects.show_confidential')}>
+              <label
+                htmlFor="vmo-checkbox-show-confidential-priorities"
+                className={CHECKBOX_LABEL_CLASS}
+                title={t('projects.show_confidential')}
+              >
                 {t('projects.show_confidential')}
-              </span>
-            </label>
+              </label>
+            </div>
           )}
         </div>
       </div>
@@ -1409,7 +1415,7 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
               {/* Les 3 boîtes à cocher avec pictogrammes (?) et bulles d'information au survol */}
               <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-6 xl:gap-8 xl:justify-end flex-wrap">
                 {/* Boîte à cocher 1 : Bonus actifs */}
-                <div className="flex items-center gap-2 select-none">
+                <div className={CHECKBOX_CONTAINER_CLASS}>
                   <input
                     type="checkbox"
                     id="projects-checkbox-bonus-active"
@@ -1419,39 +1425,30 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
                       e.stopPropagation();
                       handleToggleBonusActive();
                     }}
-                    className="h-4 w-4 rounded border-slate-300 text-teal-600 focus:ring-teal-500 cursor-pointer disabled:cursor-not-allowed shrink-0"
+                    className={CHECKBOX_INPUT_CLASS}
                   />
-                  <div className="flex items-center gap-1.5">
+                  <Tooltip
+                    content={
+                      bonusConfig.isBonusActive
+                        ? t('projects.bonus_panel.active_tooltip_on')
+                        : t('projects.bonus_panel.active_tooltip_off')
+                    }
+                    placement="top"
+                    maxWidthClass="w-56"
+                  >
                     <label
                       htmlFor="projects-checkbox-bonus-active"
-                      className={`text-xs font-bold leading-tight ${
-                        canToggleBonus ? 'cursor-pointer hover:text-teal-700' : 'cursor-default'
-                      } ${bonusConfig.isBonusActive ? 'text-teal-950' : 'text-slate-800'}`}
+                      className={`${CHECKBOX_LABEL_CLASS} ${
+                        !canToggleBonus ? 'cursor-default' : ''
+                      }`}
                     >
                       {t('projects.bonus_panel.active_label')}
                     </label>
-                    <Tooltip
-                      content={
-                        bonusConfig.isBonusActive
-                          ? t('projects.bonus_panel.active_tooltip_on')
-                          : t('projects.bonus_panel.active_tooltip_off')
-                      }
-                      placement="top"
-                      maxWidthClass="w-56"
-                    >
-                      <span
-                        tabIndex={0}
-                        role="button"
-                        className="text-slate-400 hover:text-slate-600 focus:text-slate-600 cursor-help inline-flex items-center"
-                      >
-                        <HelpCircle className="w-3.5 h-3.5" />
-                      </span>
-                    </Tooltip>
-                  </div>
+                  </Tooltip>
                 </div>
 
                 {/* Boîte à cocher 2 : Vérification des quotas de bonus */}
-                <div className="flex items-center gap-2 select-none">
+                <div className={CHECKBOX_CONTAINER_CLASS}>
                   <input
                     type="checkbox"
                     id="projects-checkbox-bonus-quotas"
@@ -1461,39 +1458,30 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
                       e.stopPropagation();
                       handleToggleCheckQuotas();
                     }}
-                    className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer disabled:cursor-not-allowed shrink-0"
+                    className={CHECKBOX_INPUT_CLASS}
                   />
-                  <div className="flex items-center gap-1.5">
+                  <Tooltip
+                    content={
+                      bonusConfig.checkQuotas
+                        ? t('projects.bonus_panel.quotas_tooltip_on')
+                        : t('projects.bonus_panel.quotas_tooltip_off')
+                    }
+                    placement="top"
+                    maxWidthClass="w-56"
+                  >
                     <label
                       htmlFor="projects-checkbox-bonus-quotas"
-                      className={`text-xs font-bold leading-tight ${
-                        canToggleBonus ? 'cursor-pointer hover:text-indigo-700' : 'cursor-default'
-                      } ${bonusConfig.checkQuotas ? 'text-indigo-950' : 'text-slate-800'}`}
+                      className={`${CHECKBOX_LABEL_CLASS} ${
+                        !canToggleBonus ? 'cursor-default' : ''
+                      }`}
                     >
                       {t('projects.bonus_panel.quotas_label')}
                     </label>
-                    <Tooltip
-                      content={
-                        bonusConfig.checkQuotas
-                          ? t('projects.bonus_panel.quotas_tooltip_on')
-                          : t('projects.bonus_panel.quotas_tooltip_off')
-                      }
-                      placement="top"
-                      maxWidthClass="w-56"
-                    >
-                      <span
-                        tabIndex={0}
-                        role="button"
-                        className="text-slate-400 hover:text-slate-600 focus:text-slate-600 cursor-help inline-flex items-center"
-                      >
-                        <HelpCircle className="w-3.5 h-3.5" />
-                      </span>
-                    </Tooltip>
-                  </div>
+                  </Tooltip>
                 </div>
 
                 {/* Boîte à cocher 3 : Projets bonussés uniquement */}
-                <div className="flex items-center gap-2 select-none">
+                <div className={CHECKBOX_CONTAINER_CLASS}>
                   <input
                     type="checkbox"
                     id="projects-checkbox-bonused-only"
@@ -1502,31 +1490,20 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
                       e.stopPropagation();
                       handleBonusedOnlyChange(e.target.checked);
                     }}
-                    className="h-4 w-4 rounded border-slate-300 text-teal-600 focus:ring-teal-500 cursor-pointer shrink-0"
+                    className={CHECKBOX_INPUT_CLASS}
                   />
-                  <div className="flex items-center gap-1.5">
+                  <Tooltip
+                    content={t('projects.bonus_panel.only_bonused_tooltip')}
+                    placement="top"
+                    maxWidthClass="w-56"
+                  >
                     <label
                       htmlFor="projects-checkbox-bonused-only"
-                      className={`text-xs font-bold leading-tight cursor-pointer ${
-                        bonusedOnly ? 'text-teal-950' : 'text-slate-800 hover:text-teal-700'
-                      }`}
+                      className={CHECKBOX_LABEL_CLASS}
                     >
                       {t('projects.bonus_panel.only_bonused_label')}
                     </label>
-                    <Tooltip
-                      content={t('projects.bonus_panel.only_bonused_tooltip')}
-                      placement="top"
-                      maxWidthClass="w-56"
-                    >
-                      <span
-                        tabIndex={0}
-                        role="button"
-                        className="text-slate-400 hover:text-slate-600 focus:text-slate-600 cursor-help inline-flex items-center"
-                      >
-                        <HelpCircle className="w-3.5 h-3.5" />
-                      </span>
-                    </Tooltip>
-                  </div>
+                  </Tooltip>
                 </div>
               </div>
             </div>

@@ -12,6 +12,7 @@ import {
 import { db } from '../lib/firebase';
 import { handleFirestoreError, OperationType } from '../lib/firestoreErrors';
 import { Resource, ResourceFormData, cleanObsoleteMonths, getRolling12Months } from '../types/resource';
+import { broadcastCollaborationChange } from './collaborationNotificationService';
 
 const COLLECTION_NAME = 'resources';
 
@@ -64,6 +65,13 @@ export async function addResource(data: ResourceFormData): Promise<string> {
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     });
+
+    broadcastCollaborationChange({
+      category: 'settings_resources',
+      title: 'Ressource ajoutée',
+      message: `Un autre utilisateur vient d'ajouter la ressource « ${data.name.trim()} ».`,
+    });
+
     return docRef.id;
   } catch (error) {
     handleFirestoreError(error, OperationType.CREATE, COLLECTION_NAME);
@@ -92,6 +100,14 @@ export async function updateResource(
     }
 
     await updateDoc(docRef, updatePayload);
+
+    broadcastCollaborationChange({
+      category: 'settings_resources',
+      title: 'Ressource modifiée',
+      message: data.name
+        ? `Un autre utilisateur vient de modifier la ressource « ${data.name.trim()} ».`
+        : `Un autre utilisateur vient de modifier une ressource.`,
+    });
   } catch (error) {
     handleFirestoreError(error, OperationType.UPDATE, COLLECTION_NAME);
   }
@@ -110,6 +126,12 @@ export async function updateResourceUnavailability(
       [fieldPath]: cleanDays,
       updatedAt: serverTimestamp(),
     });
+
+    broadcastCollaborationChange({
+      category: 'settings_resources',
+      title: 'Indisponibilité mise à jour',
+      message: `Un autre utilisateur vient de mettre à jour le calendrier d'indisponibilité d'une ressource.`,
+    });
   } catch (error) {
     handleFirestoreError(error, OperationType.UPDATE, COLLECTION_NAME);
   }
@@ -119,6 +141,12 @@ export async function deleteResource(id: string): Promise<void> {
   const docRef = doc(db, COLLECTION_NAME, id);
   try {
     await deleteDoc(docRef);
+
+    broadcastCollaborationChange({
+      category: 'settings_resources',
+      title: 'Ressource supprimée',
+      message: `Un autre utilisateur vient de supprimer une ressource.`,
+    });
   } catch (error) {
     handleFirestoreError(error, OperationType.DELETE, COLLECTION_NAME);
   }

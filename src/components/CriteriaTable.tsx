@@ -26,7 +26,12 @@ import { BonusConfig, DEFAULT_BONUS_CONFIG } from '../types/bonus';
 import { CriterionModal } from './CriterionModal';
 import { Tooltip } from './Tooltip';
 import { BonusSettingsCard } from './BonusSettingsCard';
-import { CREATE_ITEM_BUTTON_CLASS } from '../constants/ui';
+import {
+  CREATE_ITEM_BUTTON_CLASS,
+  CHECKBOX_INPUT_CLASS,
+  CHECKBOX_LABEL_CLASS,
+  CHECKBOX_CONTAINER_CLASS,
+} from '../constants/ui';
 import {
   addCriterion,
   updateCriterion,
@@ -271,15 +276,21 @@ export const CriteriaTable: React.FC<CriteriaTableProps> = ({
             content={t('settings.criteria.show_distribution_tooltip')}
             placement="bottom"
           >
-            <label className="inline-flex items-center gap-2 text-xs font-medium text-slate-700 hover:text-slate-900 cursor-pointer select-none">
+            <div className={CHECKBOX_CONTAINER_CLASS}>
               <input
                 type="checkbox"
+                id="checkbox-show-distribution"
                 checked={showDistribution}
                 onChange={(e) => setShowDistribution(e.target.checked)}
-                className="w-4 h-4 rounded-[4px] text-indigo-600 border-slate-300 focus:ring-indigo-500 cursor-pointer"
+                className={CHECKBOX_INPUT_CLASS}
               />
-              <span>{t('settings.criteria.show_distribution')}</span>
-            </label>
+              <label
+                htmlFor="checkbox-show-distribution"
+                className={CHECKBOX_LABEL_CLASS}
+              >
+                {t('settings.criteria.show_distribution')}
+              </label>
+            </div>
           </Tooltip>
         </div>
       </div>

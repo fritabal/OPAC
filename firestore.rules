@@ -66,6 +66,11 @@ service cloud.firestore {
       allow read, write: if true;
     }
 
+    // Activity events for real-time collaborative notifications
+    match /activity_events/{eventId} {
+      allow read, write: if true;
+    }
+
     // Generic collection fallback for app features
     match /{collectionName}/{docId} {
       allow read, write: if true;

@@ -13,6 +13,7 @@ import {
 import { db } from '../lib/firebase';
 import { handleFirestoreError, OperationType } from '../lib/firestoreErrors';
 import { Criterion, CriterionFormData, CriterionWeight, CRITERION_WEIGHTS } from '../types/criteria';
+import { broadcastCollaborationChange } from './collaborationNotificationService';
 
 const COLLECTION_NAME = 'criteria';
 
@@ -72,6 +73,13 @@ export async function addCriterion(data: CriterionFormData): Promise<string> {
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     });
+
+    broadcastCollaborationChange({
+      category: 'settings_criteria',
+      title: 'Critère de priorité ajouté',
+      message: `Un autre utilisateur vient d'ajouter le critère « ${data.name.trim()} ».`,
+    });
+
     return docRef.id;
   } catch (error) {
     handleFirestoreError(error, OperationType.CREATE, COLLECTION_NAME);
@@ -93,6 +101,14 @@ export async function updateCriterion(id: string, data: Partial<CriterionFormDat
     if (data.order !== undefined) updatePayload.order = data.order;
 
     await updateDoc(docRef, updatePayload);
+
+    broadcastCollaborationChange({
+      category: 'settings_criteria',
+      title: 'Critère de priorité modifié',
+      message: data.name
+        ? `Un autre utilisateur vient de modifier le critère « ${data.name.trim()} ».`
+        : `Un autre utilisateur vient de modifier un critère de priorité.`,
+    });
   } catch (error) {
     handleFirestoreError(error, OperationType.UPDATE, `${COLLECTION_NAME}/${id}`);
   }
@@ -105,6 +121,12 @@ export async function toggleCriterionActive(id: string, isActive: boolean): Prom
       isActive,
       updatedAt: serverTimestamp(),
     });
+
+    broadcastCollaborationChange({
+      category: 'settings_criteria',
+      title: 'Statut de critère modifié',
+      message: `Un autre utilisateur vient d'${isActive ? 'activer' : 'désactiver'} un critère de priorité.`,
+    });
   } catch (error) {
     handleFirestoreError(error, OperationType.UPDATE, `${COLLECTION_NAME}/${id}`);
   }
@@ -114,6 +136,12 @@ export async function deleteCriterion(id: string): Promise<void> {
   const docRef = doc(db, COLLECTION_NAME, id);
   try {
     await deleteDoc(docRef);
+
+    broadcastCollaborationChange({
+      category: 'settings_criteria',
+      title: 'Critère supprimé',
+      message: `Un autre utilisateur vient de supprimer un critère de priorité.`,
+    });
   } catch (error) {
     handleFirestoreError(error, OperationType.DELETE, `${COLLECTION_NAME}/${id}`);
   }
@@ -130,6 +158,12 @@ export async function reorderCriteria(orderedCriteria: Criterion[]): Promise<voi
       });
     });
     await batch.commit();
+
+    broadcastCollaborationChange({
+      category: 'settings_criteria',
+      title: 'Ordre des critères mis à jour',
+      message: `Un autre utilisateur vient de réordonner les critères de priorité.`,
+    });
   } catch (error) {
     handleFirestoreError(error, OperationType.UPDATE, COLLECTION_NAME);
   }

@@ -37,6 +37,9 @@ import {
   MY_FILTER_BUTTON_INACTIVE_CLASS,
   TABLE_HEADER_TEXT_CLASS,
   TABLE_FROZEN_DIVIDER_CLASS,
+  CHECKBOX_INPUT_CLASS,
+  CHECKBOX_LABEL_CLASS,
+  CHECKBOX_CONTAINER_CLASS,
 } from '../constants/ui';
 import { Tooltip } from './Tooltip';
 import { ProjectModal } from './ProjectModal';
@@ -378,7 +381,7 @@ export const ProjectsCapacityTable: React.FC<ProjectsCapacityTableProps> = ({
     }));
 
     try {
-      await updateProjectStaffing(project.id, nextVal);
+      await updateProjectStaffing(project.id, nextVal, project.name);
     } catch (err) {
       console.error('Erreur mise à jour staffing projet:', err);
     }
@@ -718,7 +721,7 @@ export const ProjectsCapacityTable: React.FC<ProjectsCapacityTableProps> = ({
 
     try {
       const currentDays = localDays[project.id] || project.capacityDaysPerSkill || {};
-      await updateProjectCapacity(project.id, normalizedMonth, currentDays);
+      await updateProjectCapacity(project.id, normalizedMonth, currentDays, project.name);
     } catch (err) {
       console.error('Erreur mise à jour mois capacitaire:', err);
     }
@@ -760,7 +763,7 @@ export const ProjectsCapacityTable: React.FC<ProjectsCapacityTableProps> = ({
 
     saveTimeoutRef.current[timeoutKey] = setTimeout(async () => {
       try {
-        await updateProjectCapacity(project.id, currentMonth, updatedSkillMap);
+        await updateProjectCapacity(project.id, currentMonth, updatedSkillMap, project.name);
       } catch (err) {
         console.error('Erreur sauvegarde jours capacitaire:', err);
       } finally {
@@ -1010,37 +1013,39 @@ export const ProjectsCapacityTable: React.FC<ProjectsCapacityTableProps> = ({
           {/* Cases à cocher pour le Value Management Officer alignées horizontalement à droite */}
           {isValueManagementOfficer && (
             <div className="flex items-center gap-4 flex-wrap">
-              <label
-                htmlFor="vmo-checkbox-show-budget-overruns-capacity"
-                className="flex items-center gap-1.5 cursor-pointer select-none text-xs font-semibold text-slate-700 hover:text-slate-900 px-0.5 shrink-0"
-              >
+              <div className={CHECKBOX_CONTAINER_CLASS}>
                 <input
                   type="checkbox"
                   id="vmo-checkbox-show-budget-overruns-capacity"
                   checked={showBudgetOverruns}
                   onChange={(e) => setShowBudgetOverruns(e.target.checked)}
-                  className="w-3.5 h-3.5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer shrink-0"
+                  className={CHECKBOX_INPUT_CLASS}
                 />
-                <span className="text-xs" title={t('capacity.budget_aspects')}>
+                <label
+                  htmlFor="vmo-checkbox-show-budget-overruns-capacity"
+                  className={CHECKBOX_LABEL_CLASS}
+                  title={t('capacity.budget_aspects')}
+                >
                   {t('capacity.budget_aspects')}
-                </span>
-              </label>
+                </label>
+              </div>
 
-              <label
-                htmlFor="vmo-checkbox-show-confidential-capacity"
-                className="flex items-center gap-1.5 cursor-pointer select-none text-xs font-semibold text-slate-700 hover:text-slate-900 px-0.5 shrink-0"
-              >
+              <div className={CHECKBOX_CONTAINER_CLASS}>
                 <input
                   type="checkbox"
                   id="vmo-checkbox-show-confidential-capacity"
                   checked={showConfidentialProjects}
                   onChange={(e) => setShowConfidentialProjects(e.target.checked)}
-                  className="w-3.5 h-3.5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer shrink-0"
+                  className={CHECKBOX_INPUT_CLASS}
                 />
-                <span className="text-xs" title={t('capacity.confidential')}>
+                <label
+                  htmlFor="vmo-checkbox-show-confidential-capacity"
+                  className={CHECKBOX_LABEL_CLASS}
+                  title={t('capacity.confidential')}
+                >
                   {t('capacity.confidential')}
-                </span>
-              </label>
+                </label>
+              </div>
             </div>
           )}
         </div>

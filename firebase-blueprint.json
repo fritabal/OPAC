@@ -421,6 +421,54 @@
         }
       },
       "required": ["projectNumber", "name", "stateId", "createdByEmail", "projectManagerEmail", "budgetLineId"]
+    },
+    "ActivityEvent": {
+      "title": "ActivityEvent",
+      "description": "Événement de collaboration en temps réel pour notifier les autres utilisateurs",
+      "type": "object",
+      "properties": {
+        "category": {
+          "type": "string",
+          "description": "Catégorie de la modification"
+        },
+        "title": {
+          "type": "string",
+          "description": "Titre du message de notification"
+        },
+        "message": {
+          "type": "string",
+          "description": "Texte explicatif de la modification pour les autres utilisateurs"
+        },
+        "actorEmail": {
+          "type": "string",
+          "description": "Email de l'utilisateur ayant effectué la modification"
+        },
+        "actorName": {
+          "type": "string",
+          "description": "Nom ou prénom de l'utilisateur"
+        },
+        "projectName": {
+          "type": "string",
+          "description": "Nom du projet concerné s'il y a lieu"
+        },
+        "projectId": {
+          "type": "string",
+          "description": "ID du projet concerné s'il y a lieu"
+        },
+        "timestamp": {
+          "type": "number",
+          "description": "Horodatage en millisecondes"
+        },
+        "sessionId": {
+          "type": "string",
+          "description": "Identifiant unique de la session de navigation de l'auteur"
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Horodatage de création Firestore"
+        }
+      },
+      "required": ["category", "message", "timestamp", "sessionId"]
     }
   },
   "firestore": {
@@ -477,6 +525,12 @@
         "$ref": "#/entities/AppSettings"
       },
       "description": "Paramètres globaux et configurations de l'application"
+    },
+    "/activity_events/{eventId}": {
+      "schema": {
+        "$ref": "#/entities/ActivityEvent"
+      },
+      "description": "Notifications en temps réel des modifications collaboratives pour les autres utilisateurs"
     }
   }
 }

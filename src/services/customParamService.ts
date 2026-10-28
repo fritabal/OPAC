@@ -14,6 +14,7 @@ import {
 import { db } from '../lib/firebase';
 import { handleFirestoreError, OperationType } from '../lib/firestoreErrors';
 import { CustomProjectParam, CustomProjectParamFormData } from '../types/customParam';
+import { broadcastCollaborationChange } from './collaborationNotificationService';
 
 const COLLECTION_NAME = 'projectCustomParams';
 
@@ -118,6 +119,13 @@ export async function addCustomParam(formData: CustomProjectParamFormData): Prom
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     });
+
+    broadcastCollaborationChange({
+      category: 'settings_custom_params',
+      title: 'Paramètre personnalisé créé',
+      message: `Un autre utilisateur vient d'ajouter le paramètre personnalisé « ${trimmedName} ».`,
+    });
+
     return docRef.id;
   } catch (error) {
     handleFirestoreError(error, OperationType.CREATE, COLLECTION_NAME);
@@ -165,6 +173,14 @@ export async function updateCustomParam(
     if (formData.showInTable !== undefined) payload.showInTable = Boolean(formData.showInTable);
 
     await updateDoc(docRef, payload);
+
+    broadcastCollaborationChange({
+      category: 'settings_custom_params',
+      title: 'Paramètre personnalisé modifié',
+      message: formData.name
+        ? `Un autre utilisateur vient de modifier le paramètre « ${formData.name.trim()} ».`
+        : `Un autre utilisateur vient de modifier un paramètre personnalisé.`,
+    });
   } catch (error) {
     handleFirestoreError(error, OperationType.UPDATE, `${COLLECTION_NAME}/${id}`);
     throw error;
@@ -180,6 +196,12 @@ export async function toggleCustomParamRequired(id: string, isRequired: boolean)
     await updateDoc(docRef, {
       isRequired,
       updatedAt: serverTimestamp(),
+    });
+
+    broadcastCollaborationChange({
+      category: 'settings_custom_params',
+      title: 'Règle de paramètre modifiée',
+      message: `Un autre utilisateur vient de modifier l'obligation d'un paramètre personnalisé.`,
     });
   } catch (error) {
     handleFirestoreError(error, OperationType.UPDATE, `${COLLECTION_NAME}/${id}`);
@@ -197,6 +219,12 @@ export async function toggleCustomParamShowInTable(id: string, showInTable: bool
       showInTable,
       updatedAt: serverTimestamp(),
     });
+
+    broadcastCollaborationChange({
+      category: 'settings_custom_params',
+      title: 'Affichage de paramètre modifié',
+      message: `Un autre utilisateur vient de modifier la visibilité tableau d'un paramètre personnalisé.`,
+    });
   } catch (error) {
     handleFirestoreError(error, OperationType.UPDATE, `${COLLECTION_NAME}/${id}`);
     throw error;
@@ -209,6 +237,12 @@ export async function toggleCustomParamShowInTable(id: string, showInTable: bool
 export async function deleteCustomParam(id: string): Promise<void> {
   try {
     await deleteDoc(doc(db, COLLECTION_NAME, id));
+
+    broadcastCollaborationChange({
+      category: 'settings_custom_params',
+      title: 'Paramètre supprimé',
+      message: `Un autre utilisateur vient de supprimer un paramètre personnalisé.`,
+    });
   } catch (error) {
     handleFirestoreError(error, OperationType.DELETE, `${COLLECTION_NAME}/${id}`);
     throw error;
@@ -234,6 +268,12 @@ export async function moveCustomParam(params: CustomProjectParam[], index: numbe
     batch.update(targetRef, { order: currentParam.order, updatedAt: serverTimestamp() });
 
     await batch.commit();
+
+    broadcastCollaborationChange({
+      category: 'settings_custom_params',
+      title: 'Ordre des paramètres modifié',
+      message: `Un autre utilisateur vient de modifier l'ordre des paramètres personnalisés.`,
+    });
   } catch (error) {
     handleFirestoreError(error, OperationType.UPDATE, COLLECTION_NAME);
     throw error;

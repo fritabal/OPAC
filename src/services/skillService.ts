@@ -13,6 +13,7 @@ import {
 import { db } from '../lib/firebase';
 import { handleFirestoreError, OperationType } from '../lib/firestoreErrors';
 import { KeySkill, KeySkillFormData, SkillBudgetAllocation } from '../types/skill';
+import { broadcastCollaborationChange } from './collaborationNotificationService';
 
 const COLLECTION_NAME = 'keySkills';
 
@@ -77,6 +78,13 @@ export async function addKeySkill(data: KeySkillFormData): Promise<string> {
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     });
+
+    broadcastCollaborationChange({
+      category: 'settings_skills',
+      title: 'Compétence clé ajoutée',
+      message: `Un autre utilisateur vient d'ajouter la compétence « ${data.name.trim()} ».`,
+    });
+
     return docRef.id;
   } catch (error) {
     handleFirestoreError(error, OperationType.CREATE, COLLECTION_NAME);
@@ -108,6 +116,14 @@ export async function updateKeySkill(
     if (data.order !== undefined) updatePayload.order = data.order;
 
     await updateDoc(docRef, updatePayload);
+
+    broadcastCollaborationChange({
+      category: 'settings_skills',
+      title: 'Compétence clé modifiée',
+      message: data.name
+        ? `Un autre utilisateur vient de modifier la compétence « ${data.name.trim()} ».`
+        : `Un autre utilisateur vient de modifier une compétence clé.`,
+    });
   } catch (error) {
     handleFirestoreError(error, OperationType.UPDATE, `${COLLECTION_NAME}/${id}`);
   }
@@ -117,6 +133,12 @@ export async function deleteKeySkill(id: string): Promise<void> {
   const docRef = doc(db, COLLECTION_NAME, id);
   try {
     await deleteDoc(docRef);
+
+    broadcastCollaborationChange({
+      category: 'settings_skills',
+      title: 'Compétence clé supprimée',
+      message: `Un autre utilisateur vient de supprimer une compétence clé.`,
+    });
   } catch (error) {
     handleFirestoreError(error, OperationType.DELETE, `${COLLECTION_NAME}/${id}`);
   }
@@ -133,6 +155,12 @@ export async function reorderKeySkills(orderedSkills: KeySkill[]): Promise<void>
       });
     });
     await batch.commit();
+
+    broadcastCollaborationChange({
+      category: 'settings_skills',
+      title: 'Compétences clés réordonnées',
+      message: `Un autre utilisateur vient de modifier l'ordre des compétences clés.`,
+    });
   } catch (error) {
     handleFirestoreError(error, OperationType.UPDATE, COLLECTION_NAME);
   }

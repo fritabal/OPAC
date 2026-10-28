@@ -2,6 +2,7 @@ import { doc, onSnapshot, setDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { handleFirestoreError, OperationType } from '../lib/firestoreErrors';
 import { BonusConfig, DEFAULT_BONUS_CONFIG } from '../types/bonus';
+import { broadcastCollaborationChange } from './collaborationNotificationService';
 
 export const SETTINGS_COLLECTION = 'settings';
 export const BONUS_DOC_ID = 'prioritization_bonus';
@@ -102,6 +103,13 @@ export async function saveBonusConfig(
     if (config.maxTotalBonusPoints !== undefined) payload.maxTotalBonusPoints = config.maxTotalBonusPoints;
 
     await setDoc(docRef, payload, { merge: true });
+
+    broadcastCollaborationChange({
+      category: 'settings_bonus',
+      title: 'Paramètres des bonus modifiés',
+      message: 'Un autre utilisateur vient de modifier les paramètres des bonus de priorité.',
+      actorEmail: userEmail,
+    });
 
     // Mise à jour du cache local
     const current = getCachedBonusConfig();

@@ -14,6 +14,7 @@ import {
 import { db } from '../lib/firebase';
 import { handleFirestoreError, OperationType } from '../lib/firestoreErrors';
 import { ProjectState, ProjectStateFormData } from '../types/lifecycle';
+import { broadcastCollaborationChange } from './collaborationNotificationService';
 
 const COLLECTION_NAME = 'projectStates';
 
@@ -86,7 +87,7 @@ export async function addProjectState(data: ProjectStateFormData): Promise<strin
   }
 
   try {
-    const docRef = await addDoc(collection(db, COLLECTION_NAME), {
+    const docRef =    await addDoc(collection(db, COLLECTION_NAME), {
       name: trimmedName,
       description: (data.description || '').trim(),
       needsStaffing: Boolean(data.needsStaffing),
@@ -95,6 +96,13 @@ export async function addProjectState(data: ProjectStateFormData): Promise<strin
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     });
+
+    broadcastCollaborationChange({
+      category: 'settings_lifecycle',
+      title: 'État de cycle de vie ajouté',
+      message: `Un autre utilisateur vient d'ajouter l'état « ${trimmedName} ».`,
+    });
+
     return docRef.id;
   } catch (error) {
     handleFirestoreError(error, OperationType.CREATE, COLLECTION_NAME);
@@ -133,6 +141,14 @@ export async function updateProjectState(
     if (data.order !== undefined) payload.order = data.order;
 
     await updateDoc(docRef, payload);
+
+    broadcastCollaborationChange({
+      category: 'settings_lifecycle',
+      title: 'État de cycle de vie modifié',
+      message: data.name
+        ? `Un autre utilisateur vient de modifier l'état « ${data.name.trim()} ».`
+        : `Un autre utilisateur vient de modifier un état de cycle de vie.`,
+    });
   } catch (error) {
     handleFirestoreError(error, OperationType.UPDATE, `${COLLECTION_NAME}/${id}`);
   }
@@ -147,6 +163,12 @@ export async function toggleStateStaffing(id: string, needsStaffing: boolean): P
     await updateDoc(docRef, {
       needsStaffing,
       updatedAt: serverTimestamp(),
+    });
+
+    broadcastCollaborationChange({
+      category: 'settings_lifecycle',
+      title: 'Attribut "À staffer" modifié',
+      message: `Un autre utilisateur vient de modifier la règle de staffing d'un état du cycle de vie.`,
     });
   } catch (error) {
     handleFirestoreError(error, OperationType.UPDATE, `${COLLECTION_NAME}/${id}`);
@@ -166,6 +188,12 @@ export async function toggleStatePrioritization(
       needsPrioritization,
       updatedAt: serverTimestamp(),
     });
+
+    broadcastCollaborationChange({
+      category: 'settings_lifecycle',
+      title: 'Attribut "À prioriser" modifié',
+      message: `Un autre utilisateur vient de modifier la règle de priorisation d'un état du cycle de vie.`,
+    });
   } catch (error) {
     handleFirestoreError(error, OperationType.UPDATE, `${COLLECTION_NAME}/${id}`);
   }
@@ -178,6 +206,12 @@ export async function deleteProjectState(id: string): Promise<void> {
   const docRef = doc(db, COLLECTION_NAME, id);
   try {
     await deleteDoc(docRef);
+
+    broadcastCollaborationChange({
+      category: 'settings_lifecycle',
+      title: 'État supprimé',
+      message: `Un autre utilisateur vient de supprimer un état de cycle de vie.`,
+    });
   } catch (error) {
     handleFirestoreError(error, OperationType.DELETE, `${COLLECTION_NAME}/${id}`);
   }
@@ -197,6 +231,12 @@ export async function reorderProjectStates(states: ProjectState[]): Promise<void
       });
     });
     await batch.commit();
+
+    broadcastCollaborationChange({
+      category: 'settings_lifecycle',
+      title: 'Cycle de vie réordonné',
+      message: `Un autre utilisateur vient de réordonner les états du cycle de vie.`,
+    });
   } catch (error) {
     handleFirestoreError(error, OperationType.UPDATE, COLLECTION_NAME);
   }

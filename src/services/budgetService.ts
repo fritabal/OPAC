@@ -14,6 +14,7 @@ import { db } from '../lib/firebase';
 import { handleFirestoreError, OperationType } from '../lib/firestoreErrors';
 import { BudgetLine, BudgetLineFormData } from '../types/budget';
 import { BUDGET_PALETTE_32, getFirstAvailableColor } from '../constants/colors';
+import { broadcastCollaborationChange } from './collaborationNotificationService';
 
 const COLLECTION_NAME = 'budgetLines';
 
@@ -72,6 +73,13 @@ export async function addBudgetLine(data: BudgetLineFormData): Promise<string> {
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     });
+
+    broadcastCollaborationChange({
+      category: 'settings_budget',
+      title: 'Ligne budgétaire ajoutée',
+      message: `Un autre utilisateur vient de créer la ligne budgétaire « ${data.name.trim()} ».`,
+    });
+
     return docRef.id;
   } catch (error) {
     handleFirestoreError(error, OperationType.CREATE, COLLECTION_NAME);
@@ -96,6 +104,14 @@ export async function updateBudgetLine(
     if (data.order !== undefined) updatePayload.order = data.order;
 
     await updateDoc(docRef, updatePayload);
+
+    broadcastCollaborationChange({
+      category: 'settings_budget',
+      title: 'Ligne budgétaire modifiée',
+      message: data.name
+        ? `Un autre utilisateur vient de modifier la ligne budgétaire « ${data.name.trim()} ».`
+        : `Un autre utilisateur vient de modifier une ligne budgétaire.`,
+    });
   } catch (error) {
     handleFirestoreError(error, OperationType.UPDATE, `${COLLECTION_NAME}/${id}`);
   }
@@ -107,6 +123,12 @@ export async function updateBudgetLineColor(id: string, color: string): Promise<
     await updateDoc(docRef, {
       color,
       updatedAt: serverTimestamp(),
+    });
+
+    broadcastCollaborationChange({
+      category: 'settings_budget',
+      title: 'Couleur budgétaire modifiée',
+      message: `Un autre utilisateur vient de modifier la couleur d'une ligne budgétaire.`,
     });
   } catch (error) {
     handleFirestoreError(error, OperationType.UPDATE, `${COLLECTION_NAME}/${id}`);
@@ -120,6 +142,12 @@ export async function toggleBudgetLineActive(id: string, isActive: boolean): Pro
       isActive,
       updatedAt: serverTimestamp(),
     });
+
+    broadcastCollaborationChange({
+      category: 'settings_budget',
+      title: 'Statut de ligne budgétaire modifié',
+      message: `Un autre utilisateur vient d'${isActive ? 'activer' : 'désactiver'} une ligne budgétaire.`,
+    });
   } catch (error) {
     handleFirestoreError(error, OperationType.UPDATE, `${COLLECTION_NAME}/${id}`);
   }
@@ -129,6 +157,12 @@ export async function deleteBudgetLine(id: string): Promise<void> {
   const docRef = doc(db, COLLECTION_NAME, id);
   try {
     await deleteDoc(docRef);
+
+    broadcastCollaborationChange({
+      category: 'settings_budget',
+      title: 'Ligne budgétaire supprimée',
+      message: `Un autre utilisateur vient de supprimer une ligne budgétaire.`,
+    });
   } catch (error) {
     handleFirestoreError(error, OperationType.DELETE, `${COLLECTION_NAME}/${id}`);
   }
@@ -145,6 +179,12 @@ export async function reorderBudgetLines(orderedLines: BudgetLine[]): Promise<vo
       });
     });
     await batch.commit();
+
+    broadcastCollaborationChange({
+      category: 'settings_budget',
+      title: 'Ordre budgétaire mis à jour',
+      message: `Un autre utilisateur vient de modifier l'ordre des lignes budgétaires.`,
+    });
   } catch (error) {
     handleFirestoreError(error, OperationType.UPDATE, COLLECTION_NAME);
   }

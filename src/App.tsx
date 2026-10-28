@@ -71,6 +71,12 @@ import { LoginModal } from './components/LoginModal';
 import { UserProfileModal, UserAvatarPictogram } from './components/UserProfileModal';
 import { SuperUserBackupMenu } from './components/SuperUserBackupMenu';
 import { GlobalTooltip } from './components/GlobalTooltip';
+import { CollaborationNotificationToast } from './components/CollaborationNotificationToast';
+import {
+  subscribeToCollaborationNotifications,
+  setCollaborationCurrentUser,
+  CollaborationNotification,
+} from './services/collaborationNotificationService';
 import { BUDGET_PALETTE_32 } from './constants/colors';
 import { getUserInitials } from './utils/userUtils';
 
@@ -123,6 +129,30 @@ function Dashboard() {
   const [lastSettingsTab, setLastSettingsTab] = useState<ActiveTab>('criteria');
   const [profileModalOpen, setProfileModalOpen] = useState(false);
   const [loginModalOpen, setLoginModalOpen] = useState(false);
+
+  // Notifications de collaboration multi-utilisateurs en temps réel
+  const [collabNotifications, setCollabNotifications] = useState<CollaborationNotification[]>([]);
+
+  // Synchronisation de l'utilisateur actif local pour l'attribution des événements collaboratifs
+  useEffect(() => {
+    setCollaborationCurrentUser(activeUser);
+  }, [activeUser]);
+
+  // Écoute des événements collaboratifs publiés par d'autres utilisateurs connectés
+  useEffect(() => {
+    const unsub = subscribeToCollaborationNotifications((notification) => {
+      setCollabNotifications((prev) => [
+        notification,
+        ...prev.filter((n) => n.id !== notification.id),
+      ].slice(0, 5));
+    });
+
+    return () => unsub();
+  }, []);
+
+  const handleDismissCollabNotification = (id: string) => {
+    setCollabNotifications((prev) => prev.filter((n) => n.id !== id));
+  };
 
   // Détection des liens d'activation ou réinitialisation reçus par email
   useEffect(() => {
@@ -1307,6 +1337,11 @@ function Dashboard() {
           loginAsUser(user);
           setLoginModalOpen(false);
         }}
+      />
+      {/* Notifications collaboratives multi-utilisateurs en temps réel */}
+      <CollaborationNotificationToast
+        notifications={collabNotifications}
+        onDismiss={handleDismissCollabNotification}
       />
     </main>
   </div>
