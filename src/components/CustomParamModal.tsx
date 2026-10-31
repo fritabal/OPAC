@@ -26,6 +26,11 @@ import {
   updateCustomParam,
   checkCustomParamNameExists,
 } from '../services/customParamService';
+import {
+  CHECKBOX_INPUT_CLASS,
+  CHECKBOX_TITLE_CLASS,
+  CHECKBOX_DESCRIPTION_CLASS,
+} from '../constants/ui';
 
 interface CustomParamModalProps {
   isOpen: boolean;
@@ -446,21 +451,21 @@ export const CustomParamModal: React.FC<CustomParamModalProps> = ({
 
           {/* Attribut Obligatoire (case à cocher) */}
           <div className="pt-1">
-            <label className={`flex items-start gap-3 p-3 rounded-xl border border-slate-200 transition-colors select-none ${
-              isReadOnly ? 'bg-slate-50 cursor-default' : 'bg-slate-50/70 hover:bg-slate-50 cursor-pointer'
+            <label className={`flex items-start gap-3 p-3 rounded-xl border border-slate-200 transition-colors select-none group ${
+              isReadOnly ? 'bg-slate-50 cursor-default' : 'bg-slate-50/70 hover:bg-slate-100/70 cursor-pointer'
             }`}>
               <input
                 type="checkbox"
                 checked={isRequired}
                 disabled={isReadOnly}
                 onChange={(e) => setIsRequired(e.target.checked)}
-                className="w-4 h-4 mt-0.5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 accent-indigo-600 cursor-pointer disabled:cursor-not-allowed"
+                className={`mt-0.5 ${CHECKBOX_INPUT_CLASS}`}
               />
               <div className="flex-1">
                 <div className="flex items-center gap-1.5">
-                  <span className="text-xs font-bold text-slate-800">{t('modals.custom_param.required_title')}</span>
+                  <span className={CHECKBOX_TITLE_CLASS}>{t('modals.custom_param.required_title')}</span>
                 </div>
-                <p className="text-[11px] text-slate-500 mt-0.5">
+                <p className={`mt-0.5 ${CHECKBOX_DESCRIPTION_CLASS}`}>
                   {t('modals.custom_param.required_desc')}
                 </p>
               </div>
@@ -469,21 +474,21 @@ export const CustomParamModal: React.FC<CustomParamModalProps> = ({
 
           {/* Attribut Affiché dans le tableau (case à cocher) */}
           <div>
-            <label className={`flex items-start gap-3 p-3 rounded-xl border border-slate-200 transition-colors select-none ${
-              isReadOnly ? 'bg-slate-50 cursor-default' : 'bg-slate-50/70 hover:bg-slate-50 cursor-pointer'
+            <label className={`flex items-start gap-3 p-3 rounded-xl border border-slate-200 transition-colors select-none group ${
+              isReadOnly ? 'bg-slate-50 cursor-default' : 'bg-slate-50/70 hover:bg-slate-100/70 cursor-pointer'
             }`}>
               <input
                 type="checkbox"
                 checked={showInTable}
                 disabled={isReadOnly}
                 onChange={(e) => setShowInTable(e.target.checked)}
-                className="w-4 h-4 mt-0.5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 accent-indigo-600 cursor-pointer disabled:cursor-not-allowed"
+                className={`mt-0.5 ${CHECKBOX_INPUT_CLASS}`}
               />
               <div className="flex-1">
                 <div className="flex items-center gap-1.5">
-                  <span className="text-xs font-bold text-slate-800">{t('modals.custom_param.show_in_table_title')}</span>
+                  <span className={CHECKBOX_TITLE_CLASS}>{t('modals.custom_param.show_in_table_title')}</span>
                 </div>
-                <p className="text-[11px] text-slate-500 mt-0.5">
+                <p className={`mt-0.5 ${CHECKBOX_DESCRIPTION_CLASS}`}>
                   {t('modals.custom_param.show_in_table_desc')}
                 </p>
               </div>
@@ -528,7 +533,7 @@ export const CustomParamModal: React.FC<CustomParamModalProps> = ({
                   <button
                     type="submit"
                     disabled={saving || missingRequiredCount > 0 || name.length > 30 || description.length > 500}
-                    className="px-4 py-2 text-xs font-semibold bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors shadow-xs cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="px-4 py-2 text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors shadow-xs cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {saving
                       ? t('modals.common.saving')

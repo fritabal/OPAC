@@ -51,7 +51,20 @@ import {
   isGmailAuthorized,
 } from '../services/emailService';
 import { Tooltip } from './Tooltip';
-import { CREATE_ITEM_BUTTON_CLASS } from '../constants/ui';
+import {
+  CREATE_ITEM_BUTTON_CLASS,
+  CHECKBOX_INPUT_CLASS,
+  CHECKBOX_TITLE_CLASS,
+  CHECKBOX_DESCRIPTION_CLASS,
+  TABLE_HEADER_TEXT_CLASS,
+  TABLE_HEADER_THEAD_CLASS,
+  TABLE_HEADER_TH_HOVER_CLASS,
+  TABLE_HEADER_SORTABLE_BUTTON_CLASS,
+  TABLE_HEADER_SORT_ICON_INACTIVE_CLASS,
+  TABLE_HEADER_SORT_ICON_ACTIVE_CLASS,
+  TABLE_TH_BASE_CLASS,
+  TABLE_TH_SORTABLE_CLASS,
+} from '../constants/ui';
 
 interface UserManagementProps {
   users: AppUser[];
@@ -219,12 +232,12 @@ export const UserManagement: React.FC<UserManagementProps> = ({
 
   const getSortIcon = (field: SortField) => {
     if (sortField !== field) {
-      return <ArrowUpDown className="w-3.5 h-3.5 text-slate-400 group-hover:text-slate-600 transition-colors" />;
+      return <ArrowUpDown className={TABLE_HEADER_SORT_ICON_INACTIVE_CLASS} />;
     }
     return sortDirection === 'asc' ? (
-      <ArrowUp className="w-3.5 h-3.5 text-indigo-600" />
+      <ArrowUp className={TABLE_HEADER_SORT_ICON_ACTIVE_CLASS} />
     ) : (
-      <ArrowDown className="w-3.5 h-3.5 text-indigo-600" />
+      <ArrowDown className={TABLE_HEADER_SORT_ICON_ACTIVE_CLASS} />
     );
   };
 
@@ -945,74 +958,79 @@ export const UserManagement: React.FC<UserManagementProps> = ({
       <div className="bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs border-collapse">
-            <thead className="bg-slate-100/90 text-slate-700 uppercase font-semibold tracking-wider border-b border-slate-200 select-none">
+            <thead className={`sticky top-0 z-30 ${TABLE_HEADER_THEAD_CLASS}`}>
               <tr>
                 {/* Colonne 1 : Nom avec Tri */}
-                <th className="py-3 px-4 min-w-[190px]">
-                  <button
-                    type="button"
-                    onClick={() => handleSort('name')}
-                    className="group inline-flex items-center gap-1.5 font-semibold uppercase tracking-wider text-slate-700 hover:text-indigo-600 cursor-pointer"
-                  >
+                <th
+                  scope="col"
+                  onClick={() => handleSort('name')}
+                  className={`sticky top-0 z-30 px-4 min-w-[190px] ${TABLE_TH_SORTABLE_CLASS}`}
+                >
+                  <div className="flex items-center gap-1.5">
                     <span>{t('users.columns.name')}</span>
                     {getSortIcon('name')}
-                  </button>
+                  </div>
                 </th>
 
                 {/* Colonne 2 : Email avec Tri */}
-                <th className="py-3 px-4 min-w-[170px]">
-                  <button
-                    type="button"
-                    onClick={() => handleSort('email')}
-                    className="group inline-flex items-center gap-1.5 font-semibold uppercase tracking-wider text-slate-700 hover:text-indigo-600 cursor-pointer"
-                  >
+                <th
+                  scope="col"
+                  onClick={() => handleSort('email')}
+                  className={`sticky top-0 z-30 px-4 min-w-[170px] ${TABLE_TH_SORTABLE_CLASS}`}
+                >
+                  <div className="flex items-center gap-1.5">
                     <span>{t('users.columns.email')}</span>
                     {getSortIcon('email')}
-                  </button>
+                  </div>
                 </th>
 
                 {/* Colonne 3 : Rôles associés (avec bascule directe et tri sur les rôles) */}
-                <th className="py-3 px-4 min-w-[200px]">
+                <th
+                  scope="col"
+                  onClick={() => handleSort('roles')}
+                  className={`sticky top-0 z-30 px-4 min-w-[200px] ${TABLE_TH_SORTABLE_CLASS}`}
+                >
                   <Tooltip content={t('users.roles_tooltip')}>
-                    <button
-                      type="button"
-                      onClick={() => handleSort('roles')}
-                      className="group inline-flex items-center gap-1.5 font-semibold uppercase tracking-wider text-slate-700 hover:text-indigo-600 cursor-pointer"
-                    >
+                    <div className="flex items-center gap-1.5">
                       <span>{t('users.columns.roles')}</span>
                       {getSortIcon('roles')}
-                    </button>
+                    </div>
                   </Tooltip>
                 </th>
 
                 {/* Colonne 4 : ACTIF avec Tri (placée juste avant STATUT) */}
-                <th className="py-3 px-4 w-24 text-center">
+                <th
+                  scope="col"
+                  onClick={() => handleSort('active')}
+                  className={`sticky top-0 z-30 px-4 w-24 text-center ${TABLE_TH_SORTABLE_CLASS}`}
+                >
                   <Tooltip content={t('users.active_tooltip')}>
-                    <button
-                      type="button"
-                      onClick={() => handleSort('active')}
-                      className="group inline-flex items-center justify-center gap-1.5 font-semibold uppercase tracking-wider text-slate-700 hover:text-indigo-600 cursor-pointer"
-                    >
+                    <div className="flex items-center justify-center gap-1.5">
                       <span>{t('users.columns.active')}</span>
                       {getSortIcon('active')}
-                    </button>
+                    </div>
                   </Tooltip>
                 </th>
 
                 {/* Colonne 5 : Statut avec Tri */}
-                <th className="py-3 px-4 min-w-[190px]">
-                  <button
-                    type="button"
-                    onClick={() => handleSort('status')}
-                    className="group inline-flex items-center gap-1.5 font-semibold uppercase tracking-wider text-slate-700 hover:text-indigo-600 cursor-pointer"
-                  >
+                <th
+                  scope="col"
+                  onClick={() => handleSort('status')}
+                  className={`sticky top-0 z-30 px-4 min-w-[190px] ${TABLE_TH_SORTABLE_CLASS}`}
+                >
+                  <div className="flex items-center gap-1.5">
                     <span>{t('users.columns.status')}</span>
                     {getSortIcon('status')}
-                  </button>
+                  </div>
                 </th>
 
                 {/* Colonne 6 : Actions */}
-                <th className="py-3 px-4 w-28 text-right uppercase tracking-wider font-semibold">{t('users.columns.actions')}</th>
+                <th
+                  scope="col"
+                  className={`sticky top-0 z-30 px-4 w-28 text-right ${TABLE_TH_BASE_CLASS}`}
+                >
+                  <span>{t('users.columns.actions')}</span>
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200 bg-white">
@@ -1076,17 +1094,17 @@ export const UserManagement: React.FC<UserManagementProps> = ({
                     }`}
                   >
                     {/* Colonne 1 : Nom (sans bulle d'initiale) */}
-                    <td className="py-3 px-4">
+                    <td className="py-3 px-4 border-r border-slate-200">
                       <div className="font-semibold text-slate-900 flex items-center gap-1.5">
                         <span className={!isActive ? 'text-slate-500' : ''}>{u.displayName}</span>
                       </div>
                     </td>
 
                     {/* Colonne 2 : Email */}
-                    <td className="py-3 px-4 font-mono text-slate-600">{u.email}</td>
+                    <td className="py-3 px-4 font-mono text-slate-600 border-r border-slate-200">{u.email}</td>
 
                     {/* Colonne 3 : Rôles associés (boîtes compactes avec pictogrammes sur une même ligne) */}
-                    <td className="py-3 px-4">
+                    <td className="py-3 px-4 border-r border-slate-200">
                       <div className="flex items-center gap-1.5 whitespace-nowrap">
                         {ALL_ROLES.map((r) => {
                           const hasRole = uRoles.includes(r);
@@ -1143,7 +1161,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({
                     </td>
 
                     {/* Colonne 4 : ACTIF (uniquement la boîte à cocher, sans encadrement vert ou gris ni texte) */}
-                    <td className="py-3 px-4 text-center whitespace-nowrap">
+                    <td className="py-3 px-4 text-center whitespace-nowrap border-r border-slate-200">
                       <input
                         type="checkbox"
                         checked={isActive}
@@ -1162,7 +1180,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({
                     </td>
 
                     {/* Colonne 5 : STATUT (uniquement l'explication sans préciser Actif/Non actif ni pictogramme) */}
-                    <td className="py-3 px-4 whitespace-nowrap">
+                    <td className="py-3 px-4 whitespace-nowrap border-r border-slate-200">
                       {isSuperAdminAccount ? (
                         <span className="text-xs text-slate-700 font-medium">
                           {t('users.status_values.password_set', 'Mot de passe défini')}
@@ -1548,10 +1566,10 @@ export const UserManagement: React.FC<UserManagementProps> = ({
                   if (editingUser?.email.toLowerCase() === SUPER_ADMIN_EMAIL.toLowerCase()) return;
                   setModalIsActive(!modalIsActive);
                 }}
-                className={`p-3.5 rounded-xl border flex items-center justify-between cursor-pointer select-none transition-all ${
+                className={`p-3.5 rounded-xl border flex items-center justify-between cursor-pointer select-none transition-all group ${
                   modalIsActive
                     ? 'bg-emerald-50/70 border-emerald-300 ring-1 ring-emerald-400/50'
-                    : 'bg-slate-50 border-slate-200 text-slate-500'
+                    : 'bg-slate-50 hover:bg-slate-100/70 border-slate-200'
                 } ${
                   editingUser?.email.toLowerCase() === SUPER_ADMIN_EMAIL.toLowerCase()
                     ? 'cursor-not-allowed opacity-80'
@@ -1564,13 +1582,13 @@ export const UserManagement: React.FC<UserManagementProps> = ({
                     checked={modalIsActive}
                     disabled={editingUser?.email.toLowerCase() === SUPER_ADMIN_EMAIL.toLowerCase()}
                     onChange={(e) => setModalIsActive(e.target.checked)}
-                    className="w-4 h-4 mt-0.5 text-emerald-600 rounded border-slate-300 focus:ring-emerald-500 cursor-pointer pointer-events-none"
+                    className={`mt-0.5 pointer-events-none ${CHECKBOX_INPUT_CLASS}`}
                   />
                   <div>
-                    <p className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                    <p className={`flex items-center gap-1.5 ${CHECKBOX_TITLE_CLASS}`}>
                       <span>{t('users.modal.active_account_label')}</span>
                     </p>
-                    <p className="text-[11px] text-slate-500 mt-0.5 leading-tight">
+                    <p className={`mt-0.5 leading-tight ${CHECKBOX_DESCRIPTION_CLASS}`}>
                       {modalIsActive
                         ? t('users.modal.active_account_desc_on')
                         : t('users.modal.active_account_desc_off')}
@@ -1743,20 +1761,20 @@ export const UserManagement: React.FC<UserManagementProps> = ({
 
               {/* Boîte à cocher : Envoyer une invitation par email via Gmail */}
               {!editingUser && (
-                <div className="p-3.5 bg-indigo-50/70 border border-indigo-200 rounded-xl space-y-1">
+                <div className="p-3.5 bg-slate-50/70 hover:bg-slate-100/70 border border-slate-200 rounded-xl space-y-1 transition-colors group">
                   <label className="flex items-start gap-2.5 cursor-pointer select-none">
                     <input
                       type="checkbox"
                       checked={sendEmailOnCreation}
                       onChange={(e) => setSendEmailOnCreation(e.target.checked)}
-                      className="w-4 h-4 mt-0.5 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500 cursor-pointer"
+                      className={`mt-0.5 ${CHECKBOX_INPUT_CLASS}`}
                     />
                     <div>
-                      <span className="text-xs font-bold text-indigo-950 flex items-center gap-1.5">
-                        <Mail className="w-3.5 h-3.5 text-indigo-600" />
+                      <span className={`flex items-center gap-1.5 ${CHECKBOX_TITLE_CLASS}`}>
+                        <Mail className="w-3.5 h-3.5 text-slate-500 group-hover:text-slate-700 transition-colors" />
                         <span>{t('users.modal.gmail_invite_checkbox')}</span>
                       </span>
-                      <p className="text-[11px] text-indigo-700/80 mt-0.5 leading-relaxed">
+                      <p className={`mt-0.5 ${CHECKBOX_DESCRIPTION_CLASS}`}>
                         {t('users.modal.gmail_invite_helper', { email: SUPER_ADMIN_EMAIL })}
                       </p>
                     </div>
@@ -1791,7 +1809,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({
                   <button
                     type="submit"
                     disabled={saving || userModalMissingRequiredCount > 0}
-                    className="px-4 py-2 text-sm font-medium bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors shadow-xs disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                    className="px-4 py-2 text-sm font-medium bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors shadow-xs disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
                   >
                     {saving ? t('users.modal.saving') : editingUser ? t('users.modal.submit_edit') : t('users.modal.submit_add')}
                   </button>

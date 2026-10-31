@@ -29,7 +29,7 @@ import {
 } from '../services/lifecycleService';
 import { LifecycleStateModal } from './LifecycleStateModal';
 import { Tooltip } from './Tooltip';
-import { CREATE_ITEM_BUTTON_CLASS } from '../constants/ui';
+import { CREATE_ITEM_BUTTON_CLASS, TABLE_HEADER_THEAD_CLASS, TABLE_TH_BASE_CLASS } from '../constants/ui';
 
 interface LifecycleStatesTableProps {
   states: ProjectState[];
@@ -206,34 +206,30 @@ export const LifecycleStatesTable: React.FC<LifecycleStatesTableProps> = ({
       <div className="bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs border-collapse">
-            <thead className="bg-slate-100/90 text-slate-700 uppercase font-semibold tracking-wider border-b border-slate-200 select-none">
+            <thead className={TABLE_HEADER_THEAD_CLASS}>
               <tr>
-                <th className="py-3 px-4 w-28 text-center">{t('settings.lifecycle.col_order')}</th>
-                <th className="py-3 px-4 min-w-[200px]">{t('settings.lifecycle.col_name')}</th>
-                <th className="py-3 px-4 min-w-[260px]">{t('settings.lifecycle.col_desc')}</th>
-                <th className="py-3 px-4 w-36 text-center">
+                <th className={`px-1.5 w-[72px] min-w-[72px] max-w-[72px] text-center whitespace-nowrap ${TABLE_TH_BASE_CLASS}`}>
+                  {t('settings.lifecycle.col_order')}
+                </th>
+                <th className={`px-4 min-w-[200px] ${TABLE_TH_BASE_CLASS}`}>{t('settings.lifecycle.col_name')}</th>
+                <th className={`px-4 min-w-[260px] ${TABLE_TH_BASE_CLASS}`}>{t('settings.lifecycle.col_desc')}</th>
+                <th className={`px-4 w-32 text-center ${TABLE_TH_BASE_CLASS}`}>
                   <Tooltip
                     content={t('settings.lifecycle.staffed_tooltip')}
                     className="w-full inline-block"
                   >
-                    <div className="flex items-center justify-center gap-1 cursor-help">
-                      <UserCheck className="w-3.5 h-3.5 text-rose-900" />
-                      <span>{t('settings.lifecycle.staffed_header')}</span>
-                    </div>
+                    <span className="cursor-default">{t('settings.lifecycle.staffed_header')}</span>
                   </Tooltip>
                 </th>
-                <th className="py-3 px-4 w-36 text-center">
+                <th className={`px-4 w-32 text-center ${TABLE_TH_BASE_CLASS}`}>
                   <Tooltip
                     content={t('settings.lifecycle.prioritized_tooltip')}
                     className="w-full inline-block"
                   >
-                    <div className="flex items-center justify-center gap-1 cursor-help">
-                      <ListOrdered className="w-3.5 h-3.5 text-blue-600" />
-                      <span>{t('settings.lifecycle.prioritized_header')}</span>
-                    </div>
+                    <span className="cursor-default">{t('settings.lifecycle.prioritized_header')}</span>
                   </Tooltip>
                 </th>
-                <th className="py-3 px-4 w-28 text-right">{t('settings.lifecycle.col_actions')}</th>
+                <th className={`px-4 w-28 text-right ${TABLE_TH_BASE_CLASS}`}>{t('settings.lifecycle.col_actions')}</th>
               </tr>
             </thead>
 
@@ -281,45 +277,44 @@ export const LifecycleStatesTable: React.FC<LifecycleStatesTableProps> = ({
                 states.map((st, idx) => (
                   <tr key={st.id} className="hover:bg-slate-50/80 transition-colors">
                     {/* Colonne 1 : Ordre séquentiel et boutons monter / descendre */}
-                    <td className="py-3 px-4 text-center whitespace-nowrap">
-                      <div className="inline-flex items-center gap-1">
-                        <span className="font-mono text-xs font-bold text-slate-500 w-6 text-center">
+                    <td className="py-2.5 px-1.5 w-[72px] min-w-[72px] max-w-[72px] text-center whitespace-nowrap border-r border-slate-200">
+                      {isAdmin ? (
+                        <div className="flex items-center justify-center gap-0.5">
+                          <button
+                            type="button"
+                            onClick={() => handleMove(idx, 'up')}
+                            disabled={idx === 0}
+                            className="p-0.5 text-slate-400 hover:text-indigo-600 disabled:opacity-20 rounded hover:bg-slate-100 transition-colors cursor-pointer"
+                            title="Monter"
+                          >
+                            <ArrowUp className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleMove(idx, 'down')}
+                            disabled={idx === states.length - 1}
+                            className="p-0.5 text-slate-400 hover:text-indigo-600 disabled:opacity-20 rounded hover:bg-slate-100 transition-colors cursor-pointer"
+                            title="Descendre"
+                          >
+                            <ArrowDown className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      ) : (
+                        <span className="font-mono text-xs font-bold text-slate-500">
                           #{idx + 1}
                         </span>
-                        {isAdmin && (
-                          <div className="inline-flex items-center gap-0.5 ml-1">
-                            <button
-                              type="button"
-                              onClick={() => handleMove(idx, 'up')}
-                              disabled={idx === 0}
-                              className="p-1 text-slate-400 hover:text-indigo-600 disabled:opacity-20 disabled:hover:text-slate-400 rounded hover:bg-slate-100 transition-colors cursor-pointer disabled:cursor-not-allowed"
-                              title="Déplacer vers le haut"
-                            >
-                              <ArrowUp className="w-3.5 h-3.5" />
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleMove(idx, 'down')}
-                              disabled={idx === states.length - 1}
-                              className="p-1 text-slate-400 hover:text-indigo-600 disabled:opacity-20 disabled:hover:text-slate-400 rounded hover:bg-slate-100 transition-colors cursor-pointer disabled:cursor-not-allowed"
-                              title="Déplacer vers le bas"
-                            >
-                              <ArrowDown className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
-                        )}
-                      </div>
+                      )}
                     </td>
 
                     {/* Colonne 2 : Nom de l'état */}
-                    <td className="py-3 px-4 whitespace-nowrap">
+                    <td className="py-3 px-4 whitespace-nowrap border-r border-slate-200">
                       <span className="font-bold text-slate-900 text-xs tracking-tight">
                         {st.name}
                       </span>
                     </td>
 
                     {/* Colonne 3 : Description */}
-                    <td className="py-3 px-4">
+                    <td className="py-3 px-4 border-r border-slate-200">
                       {st.description ? (
                         <p className="text-xs text-slate-600 leading-relaxed max-w-md">
                           {st.description}
@@ -330,7 +325,7 @@ export const LifecycleStatesTable: React.FC<LifecycleStatesTableProps> = ({
                     </td>
 
                     {/* Colonne 4 : Attribut "À staffer" */}
-                    <td className="py-3 px-4 text-center whitespace-nowrap">
+                    <td className="py-3 px-4 text-center whitespace-nowrap border-r border-slate-200">
                       <div className="flex items-center justify-center">
                         <input
                           type="checkbox"
@@ -352,7 +347,7 @@ export const LifecycleStatesTable: React.FC<LifecycleStatesTableProps> = ({
                     </td>
 
                     {/* Colonne 5 : Attribut "À prioriser" */}
-                    <td className="py-3 px-4 text-center whitespace-nowrap">
+                    <td className="py-3 px-4 text-center whitespace-nowrap border-r border-slate-200">
                       <div className="flex items-center justify-center">
                         <input
                           type="checkbox"

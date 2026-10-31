@@ -26,6 +26,10 @@ import {
   MY_FILTER_BUTTON_ACTIVE_CLASS,
   MY_FILTER_BUTTON_INACTIVE_CLASS,
   TABLE_FROZEN_DIVIDER_CLASS,
+  TABLE_HEADER_THEAD_CLASS,
+  TABLE_TH_BASE_CLASS,
+  TABLE_TH_SORTABLE_CLASS,
+  TABLE_HEADER_DOUBLE_BOTTOM_CLASS,
 } from '../constants/ui';
 import {
   addResource,
@@ -426,13 +430,13 @@ export const ResourcesUnavailabilityTable: React.FC<ResourcesUnavailabilityTable
       <div className="bg-white rounded-xl border border-slate-200 shadow-2xs overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-xs text-left border-collapse">
-            <thead>
+            <thead className={`sticky top-0 z-20 ${TABLE_HEADER_THEAD_CLASS}`}>
               {/* Ligne 1 d'en-tête */}
-              <tr className="bg-slate-100/80 border-b border-slate-200 text-slate-700">
+              <tr>
                 <th
                   scope="col"
                   onClick={() => handleSort('name')}
-                  className="px-4 py-3 font-bold sticky left-0 bg-slate-100 z-20 w-[220px] min-w-[220px] max-w-[220px] border-r border-slate-200 cursor-pointer select-none group hover:bg-slate-200/70 transition-colors"
+                  className={`px-4 sticky left-0 z-30 w-[220px] min-w-[220px] max-w-[220px] ${TABLE_TH_SORTABLE_CLASS}`}
                 >
                   <Tooltip content="Cliquer pour trier par ressource" className="w-full inline-block">
                     <div className="flex items-center justify-between gap-1.5">
@@ -444,7 +448,7 @@ export const ResourcesUnavailabilityTable: React.FC<ResourcesUnavailabilityTable
                 <th
                   scope="col"
                   onClick={() => handleSort('skillName')}
-                  className={`px-3 py-3 font-bold sticky left-[220px] bg-slate-100 z-20 w-[160px] min-w-[160px] max-w-[160px] ${TABLE_FROZEN_DIVIDER_CLASS} shadow-[2px_0_4px_-2px_rgba(0,0,0,0.06)] cursor-pointer select-none group hover:bg-slate-200/70 transition-colors`}
+                  className={`px-3 sticky left-[220px] z-30 w-[160px] min-w-[160px] max-w-[160px] ${TABLE_FROZEN_DIVIDER_CLASS} shadow-[2px_0_4px_-2px_rgba(0,0,0,0.06)] ${TABLE_TH_SORTABLE_CLASS}`}
                 >
                   <Tooltip content="Cliquer pour trier par compétence clé" className="w-full inline-block">
                     <div className="flex items-center justify-between gap-1.5">
@@ -455,10 +459,10 @@ export const ResourcesUnavailabilityTable: React.FC<ResourcesUnavailabilityTable
                 </th>
                 <th
                   scope="col"
-                  className="px-2 py-3 font-bold text-center min-w-[65px] border-r border-slate-200"
+                  className={`px-2 text-center min-w-[65px] ${TABLE_TH_BASE_CLASS}`}
                 >
                   <Tooltip content="Équivalent Temps Plein (ETP)" className="w-full inline-block">
-                    <span className="cursor-help">{t('unavailabilities.col_fte')}</span>
+                    <span className="cursor-default">{t('unavailabilities.col_fte')}</span>
                   </Tooltip>
                 </th>
 
@@ -469,10 +473,10 @@ export const ResourcesUnavailabilityTable: React.FC<ResourcesUnavailabilityTable
                     <th
                       key={m.key}
                       scope="col"
-                      className={`px-2 py-2.5 font-bold text-center min-w-[82px] border-r border-slate-200 ${
+                      className={`px-2 text-center min-w-[82px] ${TABLE_TH_BASE_CLASS} ${
                         isCurrentMonth
                           ? 'bg-rose-50 text-rose-900 border-rose-200'
-                          : 'text-slate-700'
+                          : ''
                       }`}
                     >
                       <div className="text-[11px] font-bold leading-tight">
@@ -484,7 +488,7 @@ export const ResourcesUnavailabilityTable: React.FC<ResourcesUnavailabilityTable
 
                 <th
                   scope="col"
-                  className="px-3 py-3 font-bold text-center min-w-[80px]"
+                  className={`px-3 text-center min-w-[80px] ${TABLE_TH_BASE_CLASS}`}
                 >
                   {t('unavailabilities.col_actions')}
                 </th>

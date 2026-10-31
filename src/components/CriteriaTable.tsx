@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import {
   ArrowUp,
   ArrowDown,
@@ -12,6 +12,7 @@ import {
   CheckSquare,
   Eye,
   Sparkles,
+  Settings,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -21,6 +22,17 @@ import {
   CriterionFormData,
   CriterionWeight,
 } from '../types/criteria';
+import {
+  CriteriaAlertConfig,
+  computeCriteriaLevelAlerts,
+  TOTAL_CRITERION_LEVELS_COUNT,
+} from '../types/criteriaAlert';
+import {
+  subscribeToCriteriaAlertConfig,
+  saveCriteriaAlertConfig,
+  getCachedCriteriaAlertConfig,
+} from '../services/criteriaAlertService';
+import { CriteriaAlertSettingsModal } from './CriteriaAlertSettingsModal';
 import { Project } from '../types/project';
 import { BonusConfig, DEFAULT_BONUS_CONFIG } from '../types/bonus';
 import { CriterionModal } from './CriterionModal';
@@ -29,8 +41,11 @@ import { BonusSettingsCard } from './BonusSettingsCard';
 import {
   CREATE_ITEM_BUTTON_CLASS,
   CHECKBOX_INPUT_CLASS,
-  CHECKBOX_LABEL_CLASS,
+  CHECKBOX_TITLE_CLASS,
   CHECKBOX_CONTAINER_CLASS,
+  TABLE_FROZEN_DIVIDER_CLASS,
+  TABLE_HEADER_THEAD_CLASS,
+  TABLE_TH_BASE_CLASS,
 } from '../constants/ui';
 import {
   addCriterion,
@@ -73,6 +88,23 @@ export const CriteriaTable: React.FC<CriteriaTableProps> = ({
   const [actionError, setActionError] = useState<string | null>(null);
   const [processing, setProcessing] = useState(false);
   const [showDistribution, setShowDistribution] = useState(false);
+
+  // Configuration des seuils d'alerte de mauvais étagement des critères
+  const [alertConfig, setAlertConfig] = useState<CriteriaAlertConfig>(getCachedCriteriaAlertConfig());
+  const [alertSettingsModalOpen, setAlertSettingsModalOpen] = useState(false);
+
+  useEffect(() => {
+    const unsub = subscribeToCriteriaAlertConfig((newCfg) => {
+      setAlertConfig(newCfg);
+    });
+    return () => unsub();
+  }, []);
+
+  const handleSaveAlertConfig = async (newCfg: CriteriaAlertConfig) => {
+    if (!isAdmin) return;
+    await saveCriteriaAlertConfig(newCfg, currentUserEmail);
+    setAlertConfig(newCfg);
+  };
 
   // Calcul de la répartition des projets pour chaque valeur de critère (0, 1, 2, 3, 5, 8).
   // La méthode des plus forts restes garantit mathématiquement que la somme des % entiers vaut 100%.
@@ -145,6 +177,29 @@ export const CriteriaTable: React.FC<CriteriaTableProps> = ({
 
     return result;
   }, [criteria, projects]);
+
+  // Calcul des alertes de mauvais étagement pour chaque niveau de chaque critère
+  const alertsByCriterion = useMemo(() => {
+    const totalProjects = (projects || []).length;
+    const result: Record<string, ReturnType<typeof computeCriteriaLevelAlerts>> = {};
+
+    criteria.forEach((c) => {
+      const dist = distributionsByCriterion[c.id] || {};
+      const percentagesByLevel: Record<number, number> = {};
+      CRITERION_POINTS.forEach((pt) => {
+        percentagesByLevel[pt] = dist[pt]?.percentage ?? 0;
+      });
+
+      result[c.id] = computeCriteriaLevelAlerts(
+        percentagesByLevel,
+        alertConfig,
+        TOTAL_CRITERION_LEVELS_COUNT,
+        totalProjects
+      );
+    });
+
+    return result;
+  }, [criteria, distributionsByCriterion, alertConfig, projects]);
 
   const handleOpenAdd = () => {
     if (!isAdmin) return;
@@ -271,27 +326,45 @@ export const CriteriaTable: React.FC<CriteriaTableProps> = ({
             )}
           </div>
 
-          {/* Case à cocher Afficher la répartition */}
-          <Tooltip
-            content={t('settings.criteria.show_distribution_tooltip')}
-            placement="bottom"
-          >
-            <div className={CHECKBOX_CONTAINER_CLASS}>
-              <input
-                type="checkbox"
-                id="checkbox-show-distribution"
-                checked={showDistribution}
-                onChange={(e) => setShowDistribution(e.target.checked)}
-                className={CHECKBOX_INPUT_CLASS}
-              />
-              <label
-                htmlFor="checkbox-show-distribution"
-                className={CHECKBOX_LABEL_CLASS}
+          {/* Case à cocher Afficher la répartition et bouton roue dentée d'alerte pour les administrateurs */}
+          <div className="flex items-center gap-2">
+            <Tooltip
+              content={t('settings.criteria.show_distribution_tooltip')}
+              placement="bottom"
+            >
+              <div className={CHECKBOX_CONTAINER_CLASS}>
+                <input
+                  type="checkbox"
+                  id="checkbox-show-distribution"
+                  checked={showDistribution}
+                  onChange={(e) => setShowDistribution(e.target.checked)}
+                  className={CHECKBOX_INPUT_CLASS}
+                />
+                <label
+                  htmlFor="checkbox-show-distribution"
+                  className={CHECKBOX_TITLE_CLASS}
+                >
+                  {t('settings.criteria.show_distribution')}
+                </label>
+              </div>
+            </Tooltip>
+
+            {isAdmin && (
+              <Tooltip
+                content={t('settings.criteria.alerts.gear_tooltip')}
+                placement="bottom"
               >
-                {t('settings.criteria.show_distribution')}
-              </label>
-            </div>
-          </Tooltip>
+                <button
+                  type="button"
+                  onClick={() => setAlertSettingsModalOpen(true)}
+                  className="p-1 rounded-lg text-slate-500 hover:text-slate-900 hover:bg-slate-100 transition-colors cursor-pointer border border-slate-200 shadow-2xs"
+                  aria-label={t('settings.criteria.alerts.gear_tooltip')}
+                >
+                  <Settings className="w-3.5 h-3.5" />
+                </button>
+              </Tooltip>
+            )}
+          </div>
         </div>
       </div>
 
@@ -316,44 +389,50 @@ export const CriteriaTable: React.FC<CriteriaTableProps> = ({
       <div className="bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden">
         <div className="overflow-x-auto overflow-y-auto max-h-[620px]">
           <table className="w-full text-left border-collapse text-xs">
-            <thead className="sticky top-0 z-10 bg-slate-100/95 backdrop-blur-xs text-slate-700 uppercase tracking-wider font-semibold border-b border-slate-200 shadow-2xs">
+            <thead className={`sticky top-0 z-30 ${TABLE_HEADER_THEAD_CLASS} shadow-2xs`}>
               <tr>
                 {/* Ordre */}
                 {isAdmin && (
-                  <th scope="col" className="py-3 px-3 w-14 text-center">
+                  <th
+                    scope="col"
+                    className={`sticky top-0 left-0 z-40 px-1.5 w-[72px] min-w-[72px] max-w-[72px] text-center whitespace-nowrap ${TABLE_TH_BASE_CLASS}`}
+                  >
                     {t('settings.criteria.col_order')}
                   </th>
                 )}
                 {/* Boîte à cocher Actif */}
-                <th scope="col" className="py-3 px-3 w-16 text-center">
+                <th
+                  scope="col"
+                  className={`sticky top-0 ${isAdmin ? 'left-[72px]' : 'left-0'} z-40 px-1 w-14 min-w-[56px] max-w-[56px] text-center ${TABLE_TH_BASE_CLASS}`}
+                >
                   <Tooltip content={t('settings.criteria.col_active_tooltip')} className="w-full inline-block">
-                    <div className="flex items-center justify-center gap-1 cursor-help">
-                      <CheckSquare className="w-3.5 h-3.5 text-slate-500" />
-                      <span>{t('settings.criteria.col_active')}</span>
-                    </div>
+                    <span className="cursor-default">{t('settings.criteria.col_active')}</span>
                   </Tooltip>
                 </th>
                 {/* Type */}
-                <th scope="col" className="py-3 px-4 w-24">
+                <th
+                  scope="col"
+                  className={`sticky top-0 ${isAdmin ? 'left-[128px]' : 'left-[56px]'} z-40 px-2 w-20 min-w-[80px] max-w-[80px] text-center ${TABLE_TH_BASE_CLASS}`}
+                >
                   {t('settings.criteria.col_type')}
                 </th>
                 {/* Nom du critère */}
-                <th scope="col" className="py-3 px-4 min-w-[170px]">
+                <th
+                  scope="col"
+                  className={`sticky top-0 ${isAdmin ? 'left-[208px]' : 'left-[136px]'} z-40 px-4 min-w-[200px] border-r-4 border-double border-slate-200 ${TABLE_FROZEN_DIVIDER_CLASS} shadow-[2px_0_4px_-1px_rgba(0,0,0,0.06)] ${TABLE_TH_BASE_CLASS}`}
+                >
                   {t('settings.criteria.col_name')}
                 </th>
                 {/* Poids */}
-                <th scope="col" className="py-3 px-3 w-20 text-center bg-slate-50/90">
-                  <div className="flex items-center justify-center gap-1">
-                    <Scale className="w-3.5 h-3.5 text-slate-500" />
-                    <span>{t('settings.criteria.col_weight')}</span>
-                  </div>
+                <th scope="col" className={`px-3 w-20 text-center ${TABLE_TH_BASE_CLASS}`}>
+                  <span>{t('settings.criteria.col_weight')}</span>
                 </th>
                 {/* 6 échelons textuels */}
                 {CRITERION_POINTS.map((pt) => (
                   <th
                     key={pt}
                     scope="col"
-                    className="py-3 px-3 min-w-[140px] border-l border-slate-200/80 bg-slate-50/70"
+                    className={`px-3 min-w-[140px] ${TABLE_TH_BASE_CLASS}`}
                   >
                     <div className="flex items-center gap-1">
                       <span className="font-bold text-slate-900">= {pt}</span>
@@ -361,7 +440,7 @@ export const CriteriaTable: React.FC<CriteriaTableProps> = ({
                   </th>
                 ))}
                 {/* Actions */}
-                <th scope="col" className="py-3 px-4 w-24 text-right sticky right-0 bg-slate-100">
+                <th scope="col" className={`px-4 w-24 text-right sticky right-0 z-40 ${TABLE_TH_BASE_CLASS}`}>
                   {t('settings.criteria.col_actions')}
                 </th>
               </tr>
@@ -416,6 +495,9 @@ export const CriteriaTable: React.FC<CriteriaTableProps> = ({
               ) : (
                 criteria.map((criterion, index) => {
                   const isActive = criterion.isActive !== false;
+                  const stickyBg = !isActive
+                    ? 'bg-slate-50 group-hover:bg-slate-100/60'
+                    : 'bg-white group-hover:bg-slate-50';
 
                   return (
                     <tr
@@ -428,13 +510,13 @@ export const CriteriaTable: React.FC<CriteriaTableProps> = ({
                     >
                       {/* Boutons de réorganisation (admin) */}
                       {isAdmin && (
-                        <td className="py-2.5 px-2 text-center whitespace-nowrap">
-                          <div className="flex items-center justify-center gap-1">
+                        <td className={`py-2.5 px-1.5 w-[72px] min-w-[72px] max-w-[72px] text-center whitespace-nowrap sticky left-0 z-20 ${stickyBg} border-r border-slate-200`}>
+                          <div className="flex items-center justify-center gap-0.5">
                             <button
                               type="button"
                               disabled={index === 0 || processing}
                               onClick={() => handleMove(index, 'up')}
-                              className="p-1 text-slate-400 hover:text-indigo-600 disabled:opacity-20 hover:bg-slate-100 rounded transition-colors cursor-pointer"
+                              className="p-0.5 text-slate-400 hover:text-indigo-600 disabled:opacity-20 hover:bg-slate-100 rounded transition-colors cursor-pointer"
                               title="Monter"
                             >
                               <ArrowUp className="w-3.5 h-3.5" />
@@ -443,7 +525,7 @@ export const CriteriaTable: React.FC<CriteriaTableProps> = ({
                               type="button"
                               disabled={index === criteria.length - 1 || processing}
                               onClick={() => handleMove(index, 'down')}
-                              className="p-1 text-slate-400 hover:text-indigo-600 disabled:opacity-20 hover:bg-slate-100 rounded transition-colors cursor-pointer"
+                              className="p-0.5 text-slate-400 hover:text-indigo-600 disabled:opacity-20 hover:bg-slate-100 rounded transition-colors cursor-pointer"
                               title="Descendre"
                             >
                               <ArrowDown className="w-3.5 h-3.5" />
@@ -453,7 +535,7 @@ export const CriteriaTable: React.FC<CriteriaTableProps> = ({
                       )}
 
                       {/* Boîte à cocher Actif / Inactif */}
-                      <td className="py-2.5 px-3 text-center whitespace-nowrap">
+                      <td className={`py-2.5 px-1 w-14 min-w-[56px] max-w-[56px] text-center whitespace-nowrap sticky ${isAdmin ? 'left-[72px]' : 'left-0'} z-20 ${stickyBg} border-r border-slate-200`}>
                         <div className="flex items-center justify-center">
                           {isAdmin ? (
                             <input
@@ -480,7 +562,7 @@ export const CriteriaTable: React.FC<CriteriaTableProps> = ({
                       </td>
 
                       {/* Type VALEUR ou COÛT */}
-                      <td className="py-2.5 px-4 whitespace-nowrap">
+                      <td className={`py-2.5 px-2 w-20 min-w-[80px] max-w-[80px] text-center whitespace-nowrap sticky ${isAdmin ? 'left-[128px]' : 'left-[56px]'} z-20 ${stickyBg} border-r border-slate-200`}>
                         <span
                           className={`inline-flex items-center px-2 py-0.5 rounded text-[11px] font-bold tracking-wide uppercase ${
                             !isActive
@@ -495,7 +577,7 @@ export const CriteriaTable: React.FC<CriteriaTableProps> = ({
                       </td>
 
                       {/* Nom du critère */}
-                      <td className="py-2.5 px-4 whitespace-nowrap">
+                      <td className={`py-2.5 px-4 min-w-[200px] whitespace-nowrap sticky ${isAdmin ? 'left-[208px]' : 'left-[136px]'} z-20 ${stickyBg} border-r-4 border-double border-slate-200 ${TABLE_FROZEN_DIVIDER_CLASS} shadow-[2px_0_4px_-1px_rgba(0,0,0,0.06)]`}>
                         <span
                           className={`font-semibold ${
                             isActive ? 'text-slate-900' : 'text-slate-400 italic'
@@ -506,7 +588,7 @@ export const CriteriaTable: React.FC<CriteriaTableProps> = ({
                       </td>
 
                       {/* Poids relatif (1, 2, 3, 5, 8, 13) */}
-                      <td className="py-2.5 px-3 text-center whitespace-nowrap bg-slate-50/30">
+                      <td className="py-2.5 px-3 text-center whitespace-nowrap bg-slate-50/30 border-r border-slate-200">
                         {isAdmin ? (
                           <select
                             value={criterion.weight || 1}
@@ -546,8 +628,8 @@ export const CriteriaTable: React.FC<CriteriaTableProps> = ({
                       {CRITERION_POINTS.map((pt, pIdx) => {
                         const dist = distributionsByCriterion[criterion.id]?.[pt] || { count: 0, percentage: 0 };
                         const totalProjects = (projects || []).length;
-                        const projectWord = dist.count <= 1 ? 'projet' : 'projets';
-                        const totalWord = totalProjects <= 1 ? 'projet' : 'projets';
+                        const projectWord = dist.count <= 1 ? t('common.words.project_one') : t('common.words.project_other');
+                        const totalWord = totalProjects <= 1 ? t('common.words.project_one') : t('common.words.project_other');
                         const tooltipText = t('settings.criteria.projects_distribution_tooltip', {
                           count: dist.count,
                           projectWord,
@@ -555,10 +637,42 @@ export const CriteriaTable: React.FC<CriteriaTableProps> = ({
                           totalWord,
                         });
 
+                        const levelAlert = alertsByCriterion[criterion.id]?.[pt];
+                        const isLevelAlert = Boolean(levelAlert?.isAlert);
+
+                        const alertMessages: string[] = [];
+                        if (isLevelAlert && levelAlert) {
+                          if (levelAlert.isSingleAlert) {
+                            alertMessages.push(
+                              t('settings.criteria.alerts.single_threshold_exceeded', {
+                                pct: levelAlert.singlePct ?? dist.percentage,
+                                threshold: levelAlert.singleThreshold ?? alertConfig.singleLevelThreshold,
+                              })
+                            );
+                          }
+                          if (levelAlert.isCumulatedAlert) {
+                            const count = levelAlert.cumulatedCount ?? 0;
+                            const levelsWord = count <= 1 ? t('common.words.level_one') : t('common.words.level_other');
+                            alertMessages.push(
+                              t('settings.criteria.alerts.cumulated_threshold_exceeded', {
+                                sum: levelAlert.cumulatedSum ?? 0,
+                                count,
+                                levelsWord,
+                                levelWords: levelsWord,
+                                levels: levelsWord,
+                                max: levelAlert.maxAllowedLevels ?? 0,
+                              })
+                            );
+                          }
+                          if (alertMessages.length === 0 && levelAlert.detailMessage) {
+                            alertMessages.push(levelAlert.detailMessage);
+                          }
+                        }
+
                         return (
                           <td
                             key={pt}
-                            className={`border-l border-slate-100 text-xs break-words max-w-[200px] align-middle ${
+                            className={`border-r border-slate-200 text-xs break-words max-w-[200px] align-middle ${
                               showDistribution ? 'py-1.5 px-2.5' : 'py-2.5 px-3'
                             } ${isActive ? 'text-slate-700' : 'text-slate-400 italic'}`}
                           >
@@ -571,14 +685,34 @@ export const CriteriaTable: React.FC<CriteriaTableProps> = ({
                                 </div>
                                 <div className="w-full px-0.5">
                                   <Tooltip
-                                    content={tooltipText}
+                                    variant={isLevelAlert ? 'error' : 'default'}
+                                    content={
+                                      <div className="space-y-1 text-left">
+                                        <div>{tooltipText}</div>
+                                        {alertMessages.length > 0 && (
+                                          <div className="pt-1 border-t border-white/20 font-bold text-white text-[11px] leading-tight space-y-0.5">
+                                            {alertMessages.map((msg, mIdx) => (
+                                              <div key={mIdx}>⚠️ {msg}</div>
+                                            ))}
+                                          </div>
+                                        )}
+                                      </div>
+                                    }
                                     placement="top"
                                     className="w-full block"
                                   >
-                                    <div className="relative w-full h-3.5 bg-slate-100 rounded-[3px] border border-slate-300 overflow-hidden cursor-help select-none">
+                                    <div
+                                      className={`relative w-full h-3.5 rounded-[3px] border overflow-hidden cursor-default select-none transition-colors ${
+                                        isLevelAlert
+                                          ? 'bg-red-50 border-red-400 shadow-2xs'
+                                          : 'bg-slate-100 border-slate-300'
+                                      }`}
+                                    >
                                       {dist.percentage > 0 && (
                                         <div
-                                          className="absolute left-0 top-0 bottom-0 bg-slate-600 rounded-l-[2px] transition-all duration-300"
+                                          className={`absolute left-0 top-0 bottom-0 rounded-l-[2px] transition-all duration-300 ${
+                                            isLevelAlert ? 'bg-red-900' : 'bg-slate-600'
+                                          }`}
                                           style={{ width: `${dist.percentage}%` }}
                                         />
                                       )}
@@ -591,7 +725,9 @@ export const CriteriaTable: React.FC<CriteriaTableProps> = ({
                                         </span>
                                       ) : (
                                         <span
-                                          className="absolute top-0 bottom-0 flex items-center pl-1 text-[9px] font-bold text-slate-800 leading-none select-none"
+                                          className={`absolute top-0 bottom-0 flex items-center pl-1 text-[9px] font-bold leading-none select-none ${
+                                            isLevelAlert ? 'text-red-950 font-black' : 'text-slate-800'
+                                          }`}
                                           style={{ left: `${dist.percentage}%` }}
                                         >
                                           {dist.percentage}%
@@ -665,6 +801,17 @@ export const CriteriaTable: React.FC<CriteriaTableProps> = ({
         existingCriteria={criteria}
         isReadOnly={isReadOnlyModal}
       />
+
+      {/* Modal de paramétrage des alertes de mauvais étagement des critères (admin uniquement) */}
+      {isAdmin && (
+        <CriteriaAlertSettingsModal
+          isOpen={alertSettingsModalOpen}
+          onClose={() => setAlertSettingsModalOpen(false)}
+          config={alertConfig}
+          onSave={handleSaveAlertConfig}
+          isAdmin={isAdmin}
+        />
+      )}
 
       {/* Confirmation de suppression (admin) */}
       {isAdmin && deleteCandidate && (

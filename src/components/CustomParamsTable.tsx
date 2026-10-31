@@ -35,7 +35,7 @@ import {
 import { CustomParamModal } from './CustomParamModal';
 import { Tooltip } from './Tooltip';
 import { DEFAULT_CUSTOM_PARAMS_SEED } from '../constants/defaultLpmParams';
-import { CREATE_ITEM_BUTTON_CLASS } from '../constants/ui';
+import { CREATE_ITEM_BUTTON_CLASS, TABLE_HEADER_THEAD_CLASS, TABLE_TH_BASE_CLASS } from '../constants/ui';
 
 interface CustomParamsTableProps {
   params: CustomProjectParam[];
@@ -257,15 +257,23 @@ export const CustomParamsTable: React.FC<CustomParamsTableProps> = ({
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs border-collapse">
-              <thead className="bg-slate-100/90 text-slate-700 uppercase font-semibold tracking-wider border-b border-slate-200 select-none">
+              <thead className={TABLE_HEADER_THEAD_CLASS}>
                 <tr>
-                  {isAdmin && <th className="py-3 px-4 w-16 text-center">{t('settings.custom_params.col_order')}</th>}
-                  <th className="py-3 px-4 min-w-[200px]">{t('settings.custom_params.col_name')}</th>
-                  <th className="py-3 px-4 min-w-[180px]">{t('settings.custom_params.col_type')}</th>
-                  <th className="py-3 px-4 w-28 text-center">{t('settings.custom_params.col_required')}</th>
-                  <th className="py-3 px-4 w-36 text-center">{t('settings.custom_params.col_show_in_table')}</th>
-                  <th className="py-3 px-4 min-w-[280px]">{t('settings.custom_params.col_desc')}</th>
-                  <th className="py-3 px-4 w-28 text-right">{t('settings.custom_params.col_actions')}</th>
+                  {isAdmin && (
+                    <th className={`px-1.5 w-[72px] min-w-[72px] max-w-[72px] text-center whitespace-nowrap ${TABLE_TH_BASE_CLASS}`}>
+                      {t('settings.custom_params.col_order')}
+                    </th>
+                  )}
+                  <th className={`px-4 min-w-[200px] ${TABLE_TH_BASE_CLASS}`}>{t('settings.custom_params.col_name')}</th>
+                  <th className={`px-4 min-w-[180px] ${TABLE_TH_BASE_CLASS}`}>{t('settings.custom_params.col_type')}</th>
+                  <th className={`px-4 w-28 text-center ${TABLE_TH_BASE_CLASS}`}>{t('settings.custom_params.col_required')}</th>
+                  <th className={`px-4 w-28 text-center ${TABLE_TH_BASE_CLASS}`}>
+                    <Tooltip content={t('settings.custom_params.col_show_in_table_tooltip')} className="w-full inline-block">
+                      <span className="cursor-default">{t('settings.custom_params.col_show_in_table')}</span>
+                    </Tooltip>
+                  </th>
+                  <th className={`px-4 min-w-[280px] ${TABLE_TH_BASE_CLASS}`}>{t('settings.custom_params.col_desc')}</th>
+                  <th className={`px-4 w-28 text-right ${TABLE_TH_BASE_CLASS}`}>{t('settings.custom_params.col_actions')}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -273,13 +281,13 @@ export const CustomParamsTable: React.FC<CustomParamsTableProps> = ({
                   <tr key={p.id} className="hover:bg-slate-50/70 transition-colors">
                     {/* Colonne 1 : Ordre séquentiel et boutons fléchés */}
                     {isAdmin && (
-                      <td className="py-2.5 px-4 text-center whitespace-nowrap">
-                        <div className="flex items-center justify-center gap-1">
+                      <td className="py-2.5 px-1.5 w-[72px] min-w-[72px] max-w-[72px] text-center whitespace-nowrap border-r border-slate-200">
+                        <div className="flex items-center justify-center gap-0.5">
                           <button
                             type="button"
                             disabled={index === 0}
                             onClick={() => handleMove(index, 'up')}
-                            className="p-1 text-slate-400 hover:text-indigo-600 disabled:opacity-20 hover:bg-slate-100 rounded transition-colors cursor-pointer"
+                            className="p-0.5 text-slate-400 hover:text-indigo-600 disabled:opacity-20 hover:bg-slate-100 rounded transition-colors cursor-pointer"
                             title="Monter"
                           >
                             <ArrowUp className="w-3.5 h-3.5" />
@@ -288,7 +296,7 @@ export const CustomParamsTable: React.FC<CustomParamsTableProps> = ({
                             type="button"
                             disabled={index === params.length - 1}
                             onClick={() => handleMove(index, 'down')}
-                            className="p-1 text-slate-400 hover:text-indigo-600 disabled:opacity-20 hover:bg-slate-100 rounded transition-colors cursor-pointer"
+                            className="p-0.5 text-slate-400 hover:text-indigo-600 disabled:opacity-20 hover:bg-slate-100 rounded transition-colors cursor-pointer"
                             title="Descendre"
                           >
                             <ArrowDown className="w-3.5 h-3.5" />
@@ -298,25 +306,22 @@ export const CustomParamsTable: React.FC<CustomParamsTableProps> = ({
                     )}
 
                     {/* Colonne 2 : Nom du paramètre */}
-                    <td className="py-3 px-4">
+                    <td className="py-3 px-4 border-r border-slate-200">
                       <div className="font-bold text-slate-900 flex items-center gap-1.5">
                         <span>{p.name}</span>
                         {p.isRequired && (
                           <span className="text-red-500 font-bold text-sm leading-none" title="Paramètre obligatoire">*</span>
                         )}
-                        <span className="text-[10px] font-mono text-slate-400 font-normal">
-                          ({p.name.length}/30 car.)
-                        </span>
                       </div>
                     </td>
 
                     {/* Colonne 3 : Type */}
-                    <td className="py-3 px-4">
+                    <td className="py-3 px-4 border-r border-slate-200">
                       {getTypeBadge(p)}
                     </td>
 
                     {/* Colonne 4 : Obligatoire (case à cocher seule) */}
-                    <td className="py-3 px-4 text-center whitespace-nowrap">
+                    <td className="py-3 px-4 text-center whitespace-nowrap border-r border-slate-200">
                       <div className="flex items-center justify-center">
                         <input
                           type="checkbox"
@@ -347,7 +352,7 @@ export const CustomParamsTable: React.FC<CustomParamsTableProps> = ({
                     </td>
 
                     {/* Colonne 5 : Affiché dans le tableau (case à cocher seule) */}
-                    <td className="py-3 px-4 text-center whitespace-nowrap">
+                    <td className="py-3 px-4 text-center whitespace-nowrap border-r border-slate-200">
                       <div className="flex items-center justify-center">
                         <input
                           type="checkbox"
@@ -378,10 +383,10 @@ export const CustomParamsTable: React.FC<CustomParamsTableProps> = ({
                     </td>
 
                     {/* Colonne 6 : Description */}
-                    <td className="py-3 px-4 text-slate-600 max-w-md truncate">
+                    <td className="py-3 px-4 text-slate-600 max-w-md truncate border-r border-slate-200">
                       {p.description ? (
-                        <Tooltip content={p.description}>
-                          <span className="truncate block cursor-help">{p.description}</span>
+                        <Tooltip title={p.name} content={p.description}>
+                          <span className="truncate block cursor-default">{p.description}</span>
                         </Tooltip>
                       ) : (
                         <span className="text-slate-400 italic text-[11px]">{t('settings.skills.no_description')}</span>

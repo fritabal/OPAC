@@ -23,7 +23,7 @@ import { BudgetLine, BudgetLineFormData } from '../types/budget';
 import { BudgetLineModal } from './BudgetLineModal';
 import { Tooltip } from './Tooltip';
 import { BUDGET_PALETTE_32 } from '../constants/colors';
-import { CREATE_ITEM_BUTTON_CLASS } from '../constants/ui';
+import { CREATE_ITEM_BUTTON_CLASS, TABLE_HEADER_THEAD_CLASS, TABLE_TH_BASE_CLASS } from '../constants/ui';
 import {
   addBudgetLine,
   updateBudgetLine,
@@ -254,55 +254,40 @@ export const BudgetLinesTable: React.FC<BudgetLinesTableProps> = ({
       <div className="bg-white rounded-xl border border-slate-200 shadow-xs">
         <div className="overflow-x-auto overflow-y-auto max-h-[620px]">
           <table className="w-full text-left border-collapse text-xs">
-            <thead className="sticky top-0 z-10 bg-slate-100/95 backdrop-blur-xs text-slate-700 uppercase tracking-wider font-semibold border-b border-slate-200 shadow-2xs">
+            <thead className={`sticky top-0 z-10 ${TABLE_HEADER_THEAD_CLASS} shadow-2xs`}>
               <tr>
                 {/* Ordre */}
                 {isAdmin && (
-                  <th scope="col" className="py-3 px-3 w-14 text-center">
+                  <th scope="col" className={`px-1.5 w-[72px] min-w-[72px] max-w-[72px] text-center whitespace-nowrap ${TABLE_TH_BASE_CLASS}`}>
                     {t('settings.budgets.col_order')}
                   </th>
                 )}
                 {/* Boîte à cocher Actif */}
-                <th scope="col" className="py-3 px-3 w-16 text-center">
+                <th scope="col" className={`px-3 w-16 text-center ${TABLE_TH_BASE_CLASS}`}>
                   <Tooltip content={t('settings.budgets.col_active_tooltip')} className="w-full inline-block">
-                    <div className="flex items-center justify-center gap-1 cursor-help">
-                      <CheckSquare className="w-3.5 h-3.5 text-slate-500" />
-                      <span>{t('settings.budgets.col_active')}</span>
-                    </div>
+                    <span className="cursor-default">{t('settings.budgets.col_active')}</span>
                   </Tooltip>
                 </th>
                 {/* Couleur */}
-                <th scope="col" className="py-3 px-3 w-20 text-center">
+                <th scope="col" className={`px-3 w-20 text-center ${TABLE_TH_BASE_CLASS}`}>
                   <Tooltip content={t('settings.budgets.col_color_tooltip')} className="w-full inline-block">
-                    <div className="flex items-center justify-center gap-1 cursor-help">
-                      <Palette className="w-3.5 h-3.5 text-slate-500" />
-                      <span>{t('settings.budgets.col_color')}</span>
-                    </div>
+                    <span className="cursor-default">{t('settings.budgets.col_color')}</span>
                   </Tooltip>
                 </th>
                 {/* Nom unique */}
-                <th scope="col" className="py-3 px-4 min-w-[220px]">
-                  <div className="flex items-center gap-1.5">
-                    <Tag className="w-3.5 h-3.5 text-slate-500" />
-                    <span>{t('settings.budgets.col_name')}</span>
-                  </div>
+                <th scope="col" className={`px-4 min-w-[220px] ${TABLE_TH_BASE_CLASS}`}>
+                  <span>{t('settings.budgets.col_name')}</span>
                 </th>
                 {/* Budget en K€ */}
-                <th scope="col" className="py-3 px-4 w-36 text-right">
-                  <div className="flex items-center justify-end gap-1.5">
-                    <DollarSign className="w-3.5 h-3.5 text-slate-500" />
-                    <span>{t('settings.budgets.col_budget')}</span>
-                  </div>
+                <th scope="col" className={`px-4 w-36 text-right ${TABLE_TH_BASE_CLASS}`}>
+                  <span>{t('settings.budgets.col_budget')}</span>
                 </th>
                 {/* Responsable */}
-                <th scope="col" className="py-3 px-4 min-w-[180px]">
-                  <div className="flex items-center gap-1.5">
-                    <User className="w-3.5 h-3.5 text-slate-500" />
-                    <span>{t('settings.budgets.col_manager')}</span>
-                  </div>
+                <th scope="col" className={`px-4 min-w-[180px] ${TABLE_TH_BASE_CLASS}`}>
+                  <span>{t('settings.budgets.col_manager')}</span>
                 </th>
                 {/* Actions */}
-                <th scope="col" className="py-3 px-4 w-24 text-right sticky right-0 bg-slate-100">
+                <th scope="col" className={`px-4 w-24 text-right sticky right-0 ${TABLE_TH_BASE_CLASS}`}>
                   {t('settings.budgets.col_actions')}
                 </th>
               </tr>
@@ -373,13 +358,13 @@ export const BudgetLinesTable: React.FC<BudgetLinesTableProps> = ({
                     >
                       {/* Boutons de réorganisation (admin) */}
                       {isAdmin && (
-                        <td className="py-2.5 px-2 text-center whitespace-nowrap">
-                          <div className="flex items-center justify-center gap-1">
+                        <td className="py-2.5 px-1.5 w-[72px] min-w-[72px] max-w-[72px] text-center whitespace-nowrap border-r border-slate-200">
+                          <div className="flex items-center justify-center gap-0.5">
                             <button
                               type="button"
                               disabled={index === 0 || processing}
                               onClick={() => handleMove(index, 'up')}
-                              className="p-1 text-slate-400 hover:text-indigo-600 disabled:opacity-20 hover:bg-slate-100 rounded transition-colors cursor-pointer"
+                              className="p-0.5 text-slate-400 hover:text-indigo-600 disabled:opacity-20 hover:bg-slate-100 rounded transition-colors cursor-pointer"
                               title="Monter"
                             >
                               <ArrowUp className="w-3.5 h-3.5" />
@@ -388,7 +373,7 @@ export const BudgetLinesTable: React.FC<BudgetLinesTableProps> = ({
                               type="button"
                               disabled={index === budgetLines.length - 1 || processing}
                               onClick={() => handleMove(index, 'down')}
-                              className="p-1 text-slate-400 hover:text-indigo-600 disabled:opacity-20 hover:bg-slate-100 rounded transition-colors cursor-pointer"
+                              className="p-0.5 text-slate-400 hover:text-indigo-600 disabled:opacity-20 hover:bg-slate-100 rounded transition-colors cursor-pointer"
                               title="Descendre"
                             >
                               <ArrowDown className="w-3.5 h-3.5" />
@@ -398,7 +383,7 @@ export const BudgetLinesTable: React.FC<BudgetLinesTableProps> = ({
                       )}
 
                       {/* Boîte à cocher Actif / Inactif */}
-                      <td className="py-2.5 px-3 text-center whitespace-nowrap">
+                      <td className="py-2.5 px-3 text-center whitespace-nowrap border-r border-slate-200">
                         <div className="flex items-center justify-center">
                           {isAdmin ? (
                             <input
@@ -425,7 +410,7 @@ export const BudgetLinesTable: React.FC<BudgetLinesTableProps> = ({
                       </td>
 
                       {/* Couleur distinctive avec sélecteur */}
-                      <td className="py-2.5 px-3 text-center whitespace-nowrap">
+                      <td className="py-2.5 px-3 text-center whitespace-nowrap border-r border-slate-200">
                         <div className="flex items-center justify-center">
                           {isAdmin ? (
                             <button
@@ -448,7 +433,7 @@ export const BudgetLinesTable: React.FC<BudgetLinesTableProps> = ({
                       </td>
 
                       {/* Nom unique */}
-                      <td className="py-2.5 px-4 whitespace-nowrap font-medium">
+                      <td className="py-2.5 px-4 whitespace-nowrap font-medium border-r border-slate-200">
                         <span
                           className={
                             isActive ? 'text-slate-900 font-semibold' : 'text-slate-400 italic'
@@ -459,7 +444,7 @@ export const BudgetLinesTable: React.FC<BudgetLinesTableProps> = ({
                       </td>
 
                       {/* Budget en K€ */}
-                      <td className="py-2.5 px-4 text-right whitespace-nowrap">
+                      <td className="py-2.5 px-4 text-right whitespace-nowrap border-r border-slate-200">
                         <span
                           className={`font-bold tabular-nums ${
                             isActive ? 'text-indigo-700 font-mono text-sm' : 'text-slate-400 italic font-mono'
@@ -470,7 +455,7 @@ export const BudgetLinesTable: React.FC<BudgetLinesTableProps> = ({
                       </td>
 
                       {/* Responsable */}
-                      <td className="py-2.5 px-4 whitespace-nowrap">
+                      <td className="py-2.5 px-4 whitespace-nowrap border-r border-slate-200">
                         <span className={isActive ? 'text-slate-700' : 'text-slate-400 italic'}>
                           {line.manager}
                         </span>

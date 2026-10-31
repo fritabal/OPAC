@@ -12,6 +12,8 @@ import {
   TOOLTIP_TEXT_CLASS,
   TOOLTIP_MAX_WIDTH_CLASS,
   TOOLTIP_BORDER_CLASS,
+  TOOLTIP_TITLE_CLASS,
+  TOOLTIP_DIVIDER_CLASS,
   TOOLTIP_ERROR_BG_CLASS,
   TOOLTIP_ERROR_TEXT_CLASS,
   TOOLTIP_ERROR_BORDER_CLASS,
@@ -19,8 +21,64 @@ import {
 
 export type TooltipPlacement = 'auto' | 'top' | 'bottom' | 'right' | 'left';
 
+export interface TooltipContentProps {
+  title?: ReactNode;
+  icon?: ReactNode;
+  content?: ReactNode;
+  children?: ReactNode;
+  className?: string;
+}
+
+/**
+ * Contenu générique et homogène pour toutes les bulles d'information de l'application :
+ * - Pictogramme optionnel avec sa couleur
+ * - Titre en caractères gras sur la même ligne
+ * - Léger filet séparateur (affiché uniquement si le titre ET le contenu sont présents)
+ * - Contenu textuel avec la police standardisée
+ */
+export const TooltipContent: React.FC<TooltipContentProps> = ({
+  title,
+  icon,
+  content,
+  children,
+  className = '',
+}) => {
+  const body = content !== undefined && content !== null ? content : children;
+
+  const isStringOrEmpty = (val: ReactNode) => {
+    if (val === undefined || val === null || val === false) return true;
+    if (typeof val === 'string') return val.trim().length === 0;
+    return false;
+  };
+
+  const hasTitle = !isStringOrEmpty(title);
+  const hasIcon = Boolean(icon);
+  const hasHeader = hasTitle || hasIcon;
+  const hasBody = !isStringOrEmpty(body);
+  // Ne trace pas le filet si le titre est vide ou si le contenu est vide
+  const hasDivider = hasTitle && hasBody;
+
+  return (
+    <div className={`text-left ${className}`}>
+      {hasHeader && (
+        <div className={`flex items-center gap-2 ${hasDivider ? TOOLTIP_DIVIDER_CLASS : ''}`}>
+          {icon && <span className="shrink-0 flex items-center leading-none">{icon}</span>}
+          {hasTitle && <span className={TOOLTIP_TITLE_CLASS}>{title}</span>}
+        </div>
+      )}
+      {hasBody && (
+        <div className={`${TOOLTIP_TEXT_CLASS} whitespace-pre-line leading-relaxed`}>
+          {body}
+        </div>
+      )}
+    </div>
+  );
+};
+
 export interface TooltipProps {
-  content: ReactNode;
+  content?: ReactNode;
+  title?: ReactNode;
+  icon?: ReactNode;
   children: ReactNode;
   className?: string;
   placement?: TooltipPlacement;
@@ -45,6 +103,8 @@ interface Coords {
  */
 export const Tooltip: React.FC<TooltipProps> = ({
   content,
+  title,
+  icon,
   children,
   className = 'inline-flex items-center',
   placement = 'auto',
@@ -177,7 +237,7 @@ export const Tooltip: React.FC<TooltipProps> = ({
     if (isOpen) {
       updatePosition();
     }
-  }, [isOpen, updatePosition, content]);
+  }, [isOpen, updatePosition, content, title, icon]);
 
   // Écoute des scrolls et resizes pour suivre le pictogramme même pendant un défilement
   useEffect(() => {
@@ -196,7 +256,8 @@ export const Tooltip: React.FC<TooltipProps> = ({
     };
   }, [isOpen, updatePosition]);
 
-  if (disabled || !content) {
+  const hasContent = Boolean(content || title || icon);
+  if (disabled || !hasContent) {
     return <div className={className}>{children}</div>;
   }
 
@@ -236,11 +297,21 @@ export const Tooltip: React.FC<TooltipProps> = ({
               const textClass = isError ? TOOLTIP_ERROR_TEXT_CLASS : TOOLTIP_TEXT_CLASS;
               const borderClass = isError ? TOOLTIP_ERROR_BORDER_CLASS : TOOLTIP_BORDER_CLASS;
 
+              const bodyToRender = isError ? (
+                content
+              ) : title || icon ? (
+                <TooltipContent title={title} icon={icon} content={content} />
+              ) : typeof content === 'string' || typeof content === 'number' ? (
+                <TooltipContent content={content} />
+              ) : (
+                content
+              );
+
               return (
                 <div
                   className={`${bgClass} ${textClass} p-3 rounded-xl shadow-xl border ${borderClass} leading-relaxed whitespace-normal break-words text-left relative`}
                 >
-                  {content}
+                  {bodyToRender}
 
                   {/* Flèche orientée vers le pictogramme avec la même couleur de fond */}
                   {coords && (

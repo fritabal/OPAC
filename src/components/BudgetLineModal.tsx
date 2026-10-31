@@ -3,6 +3,11 @@ import { useTranslation } from 'react-i18next';
 import { X, AlertCircle, DollarSign, User, Tag, Palette, Check, Coins } from 'lucide-react';
 import { BudgetLine, BudgetLineFormData } from '../types/budget';
 import { BUDGET_PALETTE_32, getFirstAvailableColor } from '../constants/colors';
+import {
+  CHECKBOX_INPUT_CLASS,
+  CHECKBOX_TITLE_CLASS,
+  CHECKBOX_DESCRIPTION_CLASS,
+} from '../constants/ui';
 
 interface BudgetLineModalProps {
   isOpen: boolean;
@@ -345,21 +350,21 @@ export const BudgetLineModal: React.FC<BudgetLineModalProps> = ({
             </div>
 
             {/* Boîte à cocher Activation */}
-            <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg flex items-center">
-              <label htmlFor="budget-is-active" className={`flex items-center gap-2.5 ${isReadOnly ? 'cursor-default' : 'cursor-pointer'}`}>
+            <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg flex items-center group">
+              <label htmlFor="budget-is-active" className={`flex items-start gap-2.5 ${isReadOnly ? 'cursor-default' : 'cursor-pointer'}`}>
                 <input
                   type="checkbox"
                   id="budget-is-active"
                   checked={isActive}
                   disabled={isReadOnly}
                   onChange={(e) => setIsActive(e.target.checked)}
-                  className="w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500 cursor-pointer disabled:cursor-not-allowed"
+                  className={`mt-0.5 ${CHECKBOX_INPUT_CLASS}`}
                 />
                 <div>
-                  <span className="text-xs font-bold text-slate-900 block">
+                  <span className={`block ${CHECKBOX_TITLE_CLASS}`}>
                     {t('modals.budget_line.active_title')}
                   </span>
-                  <span className="text-[11px] text-slate-500 block">
+                  <span className={`block mt-0.5 ${CHECKBOX_DESCRIPTION_CLASS}`}>
                     {t('modals.budget_line.active_desc')}
                   </span>
                 </div>
@@ -402,7 +407,7 @@ export const BudgetLineModal: React.FC<BudgetLineModalProps> = ({
                   <button
                     type="submit"
                     disabled={saving || missingRequiredCount > 0}
-                    className="px-4 py-2 text-sm font-medium bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors shadow-xs disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-2 cursor-pointer"
+                    className="px-4 py-2 text-sm font-medium bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors shadow-xs disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-2 cursor-pointer"
                   >
                     {saving
                       ? t('modals.common.saving')

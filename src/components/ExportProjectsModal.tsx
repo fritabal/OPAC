@@ -191,8 +191,8 @@ export const ExportProjectsModal: React.FC<ExportProjectsModalProps> = ({
             disabled={count === 0 || isExporting}
             className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold text-white transition-all shadow-xs ${
               count === 0 || isExporting
-                ? 'bg-indigo-300 cursor-not-allowed opacity-60'
-                : 'bg-indigo-600 hover:bg-indigo-700 cursor-pointer'
+                ? 'bg-blue-300 cursor-not-allowed opacity-60'
+                : 'bg-blue-600 hover:bg-blue-700 cursor-pointer'
             }`}
           >
             {isExporting ? (

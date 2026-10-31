@@ -297,8 +297,8 @@ export const ProjectsImportModal: React.FC<ProjectsImportModalProps> = ({
             disabled={!fileContent || isProcessing}
             className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold text-white transition-all shadow-xs ${
               !fileContent || isProcessing
-                ? 'bg-indigo-400 cursor-not-allowed opacity-70'
-                : 'bg-indigo-600 hover:bg-indigo-700 cursor-pointer'
+                ? 'bg-blue-400 cursor-not-allowed opacity-70'
+                : 'bg-blue-600 hover:bg-blue-700 cursor-pointer'
             }`}
           >
             {isProcessing ? (

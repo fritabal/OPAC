@@ -29,12 +29,18 @@ import { BudgetLine } from '../types/budget';
 import { Criterion, CRITERION_POINTS } from '../types/criteria';
 import { CustomProjectParam } from '../types/customParam';
 import { AppUser } from '../types/user';
-import { BonusConfig } from '../types/bonus';
+import { BonusConfig, DEFAULT_BONUS_CONFIG } from '../types/bonus';
 import { createProject, updateProject } from '../services/projectService';
 import { calculateProjectRoi, formatRoi } from '../utils/roiCalculator';
 import { UserAutocompleteSelect } from './UserAutocompleteSelect';
 import { getUserRoles } from '../utils/userUtils';
 import { Tooltip } from './Tooltip';
+import {
+  CHECKBOX_INPUT_CLASS,
+  CHECKBOX_TITLE_CLASS,
+  CHECKBOX_DESCRIPTION_CLASS,
+  TOOLTIP_MAX_WIDTH_CLASS,
+} from '../constants/ui';
 
 /**
  * Pictogramme volant de direction (Pilotage)
@@ -533,33 +539,23 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
 
                 {/* Case à cocher CONFIDENTIEL sous la boîte "Créé par" */}
                 <div className="pt-0.5">
-                  <div className="flex items-start gap-2.5 select-none">
+                  <div className="flex items-start gap-2.5 select-none group">
                     <input
                       type="checkbox"
                       id="project-is-confidential"
                       checked={isConfidential}
                       disabled={isReadOnly}
                       onChange={(e) => setIsConfidential(e.target.checked)}
-                      className={`mt-0.5 h-4 w-4 rounded cursor-pointer disabled:cursor-not-allowed shrink-0 transition-colors ${
-                        isConfidential
-                          ? 'accent-red-600 text-red-600 border-red-500 focus:ring-red-500'
-                          : 'text-slate-600 border-slate-300 focus:ring-indigo-500'
-                      }`}
+                      className={`mt-0.5 ${CHECKBOX_INPUT_CLASS}`}
                     />
                     <div>
                       <label
                         htmlFor="project-is-confidential"
-                        className={`text-xs font-bold uppercase tracking-wider block leading-tight cursor-pointer ${
-                          isConfidential ? 'text-red-600' : 'text-slate-700'
-                        }`}
+                        className={`block ${CHECKBOX_TITLE_CLASS}`}
                       >
                         {t('modals.project.confidential_badge')}
                       </label>
-                      <p
-                        className={`text-[11px] mt-0.5 leading-snug ${
-                          isConfidential ? 'text-red-600 font-medium' : 'text-slate-500'
-                        }`}
-                      >
+                      <p className={`mt-0.5 ${CHECKBOX_DESCRIPTION_CLASS}`}>
                         {isConfidential
                           ? t('modals.project.confidential_on')
                           : t('modals.project.confidential_off')}
@@ -749,31 +745,54 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-white p-4 rounded-xl border border-slate-200 shadow-2xs">
                   {/* Bonus (points entiers) */}
                   <div>
-                    <div className="flex items-center justify-between mb-1">
-                      <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider">
-                        {t('modals.project.bonus_label')}
-                      </label>
-                      {bonusConfig && (
-                        <span className={`text-[10px] font-semibold ${bonusConfig.isBonusActive ? 'text-teal-700' : 'text-slate-400'}`}>
-                          {bonusConfig.isBonusActive ? t('modals.project.bonus_active_label') : t('modals.project.bonus_inactive_label')}
-                        </span>
-                      )}
-                    </div>
-                    <input
-                      type="number"
-                      step="1"
-                      disabled={isReadOnly}
-                      value={bonus}
-                      onChange={(e) => setBonus(e.target.value === '' ? '' : Number(e.target.value))}
-                      placeholder={t('modals.project.bonus_placeholder')}
-                      className={`w-full px-3 py-2 border rounded-lg text-sm font-mono focus:ring-2 focus:ring-indigo-500 disabled:bg-slate-100 ${
-                        bonusConfig?.checkQuotas &&
-                        bonusConfig?.maxBonusPointsPerProject !== null &&
-                        Number(bonus) > (bonusConfig.maxBonusPointsPerProject || 0)
-                          ? 'border-amber-400 bg-amber-50/50'
-                          : 'border-slate-300'
-                      }`}
-                    />
+                    {(() => {
+                      const maxBonusPerProject = bonusConfig?.maxBonusPointsPerProject ?? DEFAULT_BONUS_CONFIG.maxBonusPointsPerProject;
+                      const maxBonusedProjects = bonusConfig?.maxBonusedProjects ?? DEFAULT_BONUS_CONFIG.maxBonusedProjects;
+                      const maxTotalBonus = bonusConfig?.maxTotalBonusPoints ?? DEFAULT_BONUS_CONFIG.maxTotalBonusPoints;
+                      const bonusTooltipText = `• ${maxBonusPerProject} points max par projet\n• sur ${maxBonusedProjects} projets au plus\n• pour un total de ${maxTotalBonus} points au total.`;
+
+                      return (
+                        <>
+                          <div className="flex items-center justify-between mb-1">
+                            <div className="flex items-center gap-1.5">
+                              <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider">
+                                {t('modals.project.bonus_label')}
+                              </label>
+                              <Tooltip
+                                title="Quotas de bonus"
+                                content={bonusTooltipText}
+                                placement="right"
+                                maxWidthClass={TOOLTIP_MAX_WIDTH_CLASS}
+                                className="inline-flex items-center cursor-default"
+                              >
+                                <HelpCircle className="w-3.5 h-3.5 text-slate-400 hover:text-slate-600 transition-colors" />
+                              </Tooltip>
+                            </div>
+                            {bonusConfig && (
+                              <span className={`text-[10px] font-semibold ${bonusConfig.isBonusActive ? 'text-teal-700' : 'text-slate-400'}`}>
+                                {bonusConfig.isBonusActive ? t('modals.project.bonus_active_label') : t('modals.project.bonus_inactive_label')}
+                              </span>
+                            )}
+                          </div>
+                          <input
+                            type="number"
+                            step="1"
+                            disabled={isReadOnly}
+                            value={bonus}
+                            onChange={(e) => setBonus(e.target.value === '' ? '' : Number(e.target.value))}
+                            placeholder={t('modals.project.bonus_placeholder')}
+                            title={bonusTooltipText}
+                            className={`w-full px-3 py-2 border rounded-lg text-sm font-mono focus:ring-2 focus:ring-indigo-500 disabled:bg-slate-100 ${
+                              bonusConfig?.checkQuotas &&
+                              bonusConfig?.maxBonusPointsPerProject !== null &&
+                              Number(bonus) > (bonusConfig.maxBonusPointsPerProject || 0)
+                                ? 'border-amber-400 bg-amber-50/50'
+                                : 'border-slate-300'
+                            }`}
+                          />
+                        </>
+                      );
+                    })()}
                     <div className="mt-1 space-y-0.5">
                       <p className="text-[10px] text-slate-400">
                         {bonusConfig && !bonusConfig.isBonusActive
@@ -864,10 +883,11 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
                           </span>
                         )}
                         <Tooltip
-                          content={param.description && param.description.trim() ? param.description.trim() : param.name}
+                          title={param.name}
+                          content={param.description?.trim()}
                           placement="right"
-                          maxWidthClass="w-64"
-                          className="inline-flex items-center cursor-help ml-1"
+                          maxWidthClass={TOOLTIP_MAX_WIDTH_CLASS}
+                          className="inline-flex items-center cursor-default ml-1"
                         >
                           <HelpCircle className="w-4 h-4 text-indigo-500 hover:text-indigo-600 transition-colors shrink-0" />
                         </Tooltip>
@@ -1131,7 +1151,7 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
               <button
                 type="submit"
                 disabled={saving || missingRequiredCount > 0}
-                className="px-5 py-2 text-xs font-semibold bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors shadow-xs cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
+                className="px-5 py-2 text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors shadow-xs cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
               >
                 <Check className="w-4 h-4" />
                 <span>{saving ? t('modals.common.saving') : projectToEdit ? t('modals.project.btn_save') : t('modals.project.btn_create')}</span>
@@ -1205,7 +1225,7 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
                   <button
                     type="button"
                     onClick={handleSaveLongTextModal}
-                    className="px-4 py-1.5 text-xs font-semibold bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors cursor-pointer shadow-xs"
+                    className="px-4 py-1.5 text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors cursor-pointer shadow-xs"
                   >
                     {t('modals.common.validate')}
                   </button>

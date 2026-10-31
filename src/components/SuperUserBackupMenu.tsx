@@ -24,6 +24,11 @@ import {
   ImportResult,
   EraseResult,
 } from '../services/backupService';
+import {
+  CHECKBOX_INPUT_CLASS,
+  CHECKBOX_TITLE_CLASS,
+  CHECKBOX_DESCRIPTION_CLASS,
+} from '../constants/ui';
 
 interface SuperUserBackupMenuProps {
   isSuperUser: boolean;
@@ -427,20 +432,20 @@ export const SuperUserBackupMenu: React.FC<SuperUserBackupMenuProps> = ({
                   </div>
 
                   {/* Option : Nettoyage préalable */}
-                  <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
-                    <label className="flex items-start gap-2.5 cursor-pointer">
+                  <div className="p-3 bg-slate-50 hover:bg-slate-100/70 rounded-xl border border-slate-200 transition-colors group">
+                    <label className="flex items-start gap-2.5 cursor-pointer select-none">
                       <input
                         type="checkbox"
                         checked={clearExisting}
                         onChange={(e) => setClearExisting(e.target.checked)}
                         disabled={importing}
-                        className="mt-0.5 h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                        className={`mt-0.5 ${CHECKBOX_INPUT_CLASS}`}
                       />
-                      <div className="text-xs">
-                        <span className="font-bold text-slate-800 block">
+                      <div className="flex-1">
+                        <span className={`block ${CHECKBOX_TITLE_CLASS}`}>
                           {t('superuser_backup.import.replace_all_label')}
                         </span>
-                        <span className="text-[11px] text-slate-500 block mt-0.5 leading-relaxed">
+                        <span className={`block mt-0.5 ${CHECKBOX_DESCRIPTION_CLASS}`}>
                           {t('superuser_backup.import.replace_all_desc')}
                         </span>
                       </div>

@@ -64,8 +64,17 @@ import { BudgetLineFilter } from './BudgetLineFilter';
 import {
   CREATE_ITEM_BUTTON_CLASS,
   CHECKBOX_INPUT_CLASS,
-  CHECKBOX_LABEL_CLASS,
+  CHECKBOX_TITLE_CLASS,
   CHECKBOX_CONTAINER_CLASS,
+  TOOLTIP_TEXT_SIZE_CLASS,
+  TOOLTIP_TEXT_WEIGHT_CLASS,
+  TOOLTIP_MAX_WIDTH_CLASS,
+  TABLE_HEADER_THEAD_CLASS,
+  TABLE_HEADER_TH_HOVER_CLASS,
+  TABLE_HEADER_SORT_ICON_INACTIVE_CLASS,
+  TABLE_HEADER_SORT_ICON_ACTIVE_CLASS,
+  TABLE_TH_BASE_CLASS,
+  TABLE_TH_SORTABLE_CLASS,
 } from '../constants/ui';
 
 export type SortColumn = 'id' | 'roi' | 'name' | 'state' | 'pm' | 'budgetLine' | 'bonus' | string;
@@ -747,7 +756,7 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
         if (isTruncated) {
           return (
             <Tooltip content={str}>
-              <span className="text-xs text-slate-800 font-medium whitespace-nowrap cursor-help underline decoration-dotted decoration-slate-300 underline-offset-2">
+              <span className="text-xs text-slate-800 font-medium whitespace-nowrap cursor-default underline decoration-dotted decoration-slate-300 underline-offset-2">
                 {displayed}
               </span>
             </Tooltip>
@@ -778,13 +787,13 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
   const renderSortIcon = (col: SortColumn) => {
     if (sortColumn !== col) {
       return (
-        <ArrowUpDown className="w-3.5 h-3.5 text-slate-400 opacity-50 group-hover:opacity-100 transition-opacity shrink-0" />
+        <ArrowUpDown className={TABLE_HEADER_SORT_ICON_INACTIVE_CLASS} />
       );
     }
     return sortDirection === 'asc' ? (
-      <ArrowUp className="w-3.5 h-3.5 text-indigo-600 font-bold shrink-0" />
+      <ArrowUp className={TABLE_HEADER_SORT_ICON_ACTIVE_CLASS} />
     ) : (
-      <ArrowDown className="w-3.5 h-3.5 text-indigo-600 font-bold shrink-0" />
+      <ArrowDown className={TABLE_HEADER_SORT_ICON_ACTIVE_CLASS} />
     );
   };
 
@@ -1264,22 +1273,16 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
           {/* Bouton bascule Sélection manuelle */}
           <div className="lg:col-span-2 flex items-center">
             <Tooltip
-              content={
-                <div className="space-y-2 text-left">
-                  <div className="font-bold text-white text-sm sm:text-base border-b border-white/20 pb-1">
-                    {manualSelectionActive
-                      ? `${t('projects.manual_selection')} — ${selectedProjectIds.length} ${
-                          selectedProjectIds.length > 1
-                            ? t('common.words.project_other')
-                            : t('common.words.project_one')
-                        }`
-                      : t('projects.manual_selection')}
-                  </div>
-                  <p className="text-white/95 font-medium leading-relaxed text-[13px] sm:text-sm">
-                    {t('projects.manual_selection_tooltip')}
-                  </p>
-                </div>
+              title={
+                manualSelectionActive
+                  ? `${t('projects.manual_selection')} — ${selectedProjectIds.length} ${
+                      selectedProjectIds.length > 1
+                        ? t('common.words.project_other')
+                        : t('common.words.project_one')
+                    }`
+                  : t('projects.manual_selection')
               }
+              content={t('projects.manual_selection_tooltip')}
               placement="bottom"
               maxWidthClass="max-w-sm sm:max-w-md"
               className="w-full flex"
@@ -1352,7 +1355,7 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
                   setManualSelectionActive(false);
                   setSelectedProjectIds([]);
                 }}
-                className="text-indigo-600 hover:text-indigo-800 hover:underline flex items-center gap-1.5 cursor-pointer text-xs font-semibold"
+                className="text-blue-600 hover:text-blue-800 hover:underline flex items-center gap-1.5 cursor-pointer text-xs font-semibold"
               >
                 <RotateCcw className="w-3.5 h-3.5" />
                 <span>{t('projects.clear_filters')}</span>
@@ -1372,7 +1375,7 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
               />
               <label
                 htmlFor="vmo-checkbox-show-confidential-priorities"
-                className={CHECKBOX_LABEL_CLASS}
+                className={CHECKBOX_TITLE_CLASS}
                 title={t('projects.show_confidential')}
               >
                 {t('projects.show_confidential')}
@@ -1438,7 +1441,7 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
                   >
                     <label
                       htmlFor="projects-checkbox-bonus-active"
-                      className={`${CHECKBOX_LABEL_CLASS} ${
+                      className={`${CHECKBOX_TITLE_CLASS} ${
                         !canToggleBonus ? 'cursor-default' : ''
                       }`}
                     >
@@ -1471,7 +1474,7 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
                   >
                     <label
                       htmlFor="projects-checkbox-bonus-quotas"
-                      className={`${CHECKBOX_LABEL_CLASS} ${
+                      className={`${CHECKBOX_TITLE_CLASS} ${
                         !canToggleBonus ? 'cursor-default' : ''
                       }`}
                     >
@@ -1499,7 +1502,7 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
                   >
                     <label
                       htmlFor="projects-checkbox-bonused-only"
-                      className={CHECKBOX_LABEL_CLASS}
+                      className={CHECKBOX_TITLE_CLASS}
                     >
                       {t('projects.bonus_panel.only_bonused_label')}
                     </label>
@@ -1561,7 +1564,7 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
         ) : (
           <div className="flex-1 min-h-0 overflow-auto [scrollbar-width:thin]">
             <table className="w-full text-left text-xs border-collapse">
-              <thead className="sticky top-0 z-30 bg-slate-100 uppercase font-semibold tracking-wider select-none">
+              <thead className={`sticky top-0 z-30 ${TABLE_HEADER_THEAD_CLASS}`}>
                 <tr>
                   {/* Case à cocher de sélection groupée (affichée uniquement lorsque la sélection manuelle est activée) */}
                   {manualSelectionActive && (
@@ -1587,7 +1590,7 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
                   <th
                     scope="col"
                     onClick={() => handleSort('id')}
-                    className="sticky top-0 bg-slate-100 z-30 py-2.5 px-1.5 w-14 min-w-[56px] max-w-[56px] text-center cursor-pointer select-none group hover:bg-slate-200/60 transition-colors border-r border-slate-200 table-header-double-bottom"
+                    className={`sticky top-0 z-30 px-1.5 w-14 min-w-[56px] max-w-[56px] text-center ${TABLE_TH_SORTABLE_CLASS}`}
                   >
                     <div className="flex items-center justify-center gap-1">
                       <span>{t('projects.columns.id')}</span>
@@ -1599,10 +1602,10 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
                   <th
                     scope="col"
                     onClick={() => handleSort('roi')}
-                    className="sticky top-0 bg-slate-100 z-30 py-2.5 px-1.5 w-24 min-w-[96px] max-w-[96px] text-center cursor-pointer select-none group hover:bg-slate-200/60 transition-colors border-r border-slate-200 table-header-double-bottom"
+                    className={`sticky top-0 z-30 px-1.5 w-24 min-w-[96px] max-w-[96px] text-center ${TABLE_TH_SORTABLE_CLASS}`}
                   >
-                    <Tooltip content={t('projects.tooltips.sort_priority')} className="w-full inline-block">
-                      <div className="flex items-center justify-center gap-1 cursor-help">
+                    <Tooltip content={t('projects.tooltips.sort_priority')} className="w-full inline-block cursor-pointer">
+                      <div className="flex items-center justify-center gap-1 cursor-pointer">
                         <span>{t('projects.columns.roi')}</span>
                         {renderSortIcon('roi')}
                       </div>
@@ -1613,7 +1616,7 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
                   <th
                     scope="col"
                     onClick={() => handleSort('name')}
-                    className="sticky top-0 bg-slate-100 z-30 py-2.5 px-4 min-w-[200px] cursor-pointer select-none group hover:bg-slate-200/60 transition-colors border-r border-slate-200 table-header-double-bottom"
+                    className={`sticky top-0 z-30 px-4 min-w-[200px] ${TABLE_TH_SORTABLE_CLASS}`}
                   >
                     <div className="flex items-center gap-1.5">
                       <span>{t('projects.columns.name')}</span>
@@ -1625,7 +1628,7 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
                   <th
                     scope="col"
                     onClick={() => handleSort('state')}
-                    className="sticky top-0 bg-slate-100 z-30 py-2.5 px-4 min-w-[140px] cursor-pointer select-none group hover:bg-slate-200/60 transition-colors border-r border-slate-200 table-header-double-bottom"
+                    className={`sticky top-0 z-30 px-4 min-w-[140px] ${TABLE_TH_SORTABLE_CLASS}`}
                   >
                     <div className="flex items-center gap-1.5">
                       <span>{t('projects.columns.state')}</span>
@@ -1637,7 +1640,7 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
                   <th
                     scope="col"
                     onClick={() => handleSort('pm')}
-                    className="sticky top-0 bg-slate-100 z-30 py-2.5 px-4 min-w-[180px] cursor-pointer select-none group hover:bg-slate-200/60 transition-colors border-r border-slate-200 table-header-double-bottom"
+                    className={`sticky top-0 z-30 px-4 min-w-[180px] ${TABLE_TH_SORTABLE_CLASS}`}
                   >
                     <div className="flex items-center gap-1.5">
                       <span>{t('projects.columns.pm')}</span>
@@ -1649,7 +1652,7 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
                   <th
                     scope="col"
                     onClick={() => handleSort('budgetLine')}
-                    className="sticky top-0 bg-slate-100 z-30 py-2.5 px-4 min-w-[150px] cursor-pointer select-none group hover:bg-slate-200/60 transition-colors border-r border-slate-200 table-header-double-bottom"
+                    className={`sticky top-0 z-30 px-4 min-w-[150px] ${TABLE_TH_SORTABLE_CLASS}`}
                   >
                     <div className="flex items-center gap-1.5">
                       <span>{t('projects.columns.budget_line')}</span>
@@ -1661,11 +1664,20 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
                   <th
                     scope="col"
                     onClick={() => handleSort('bonus')}
-                    className="sticky top-0 bg-slate-100 z-30 py-2.5 px-3 min-w-[85px] text-center cursor-pointer select-none group hover:bg-slate-200/60 transition-colors border-r border-slate-200 table-header-double-bottom"
+                    className={`sticky top-0 z-30 px-3 min-w-[85px] text-center ${TABLE_TH_SORTABLE_CLASS}`}
                   >
                     <div className="flex items-center justify-center gap-1.5">
                       <span>{t('projects.columns.bonus')}</span>
                       {renderSortIcon('bonus')}
+                      <Tooltip
+                        title="Quotas de bonus"
+                        content={`• ${bonusConfig?.maxBonusPointsPerProject ?? DEFAULT_BONUS_CONFIG.maxBonusPointsPerProject} points max par projet\n• sur ${bonusConfig?.maxBonusedProjects ?? DEFAULT_BONUS_CONFIG.maxBonusedProjects} projets au plus\n• pour un total de ${bonusConfig?.maxTotalBonusPoints ?? DEFAULT_BONUS_CONFIG.maxTotalBonusPoints} points au total.`}
+                        placement="bottom"
+                        maxWidthClass={TOOLTIP_MAX_WIDTH_CLASS}
+                        className="inline-flex items-center cursor-default"
+                      >
+                        <HelpCircle className="w-3.5 h-3.5 text-slate-400 hover:text-slate-600 transition-colors ml-0.5" />
+                      </Tooltip>
                     </div>
                   </th>
 
@@ -1692,31 +1704,21 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
                       ? 'max-w-[75px]'
                       : 'max-w-[150px]';
 
-                    const tooltipContent = (
-                      <div className="space-y-1">
-                        <div className="font-bold text-white text-sm">{cp.name}</div>
-                        {cp.description ? (
-                          <div className="text-white/90 text-xs font-normal leading-relaxed">
-                            {cp.description}
-                          </div>
-                        ) : (
-                          <div className="text-white/70 text-[11px] font-normal italic">
-                            Paramètre personnalisé ({cp.type})
-                          </div>
-                        )}
-                      </div>
-                    );
-
                     return (
                       <th
                         key={cp.id}
                         scope="col"
                         onClick={() => handleSort(colKey)}
-                        className={`sticky top-0 bg-slate-100 z-30 py-2.5 ${widthClass} cursor-pointer select-none group hover:bg-slate-200/60 transition-colors border-r border-slate-200 table-header-double-bottom ${
+                        className={`sticky top-0 z-30 ${widthClass} ${TABLE_TH_SORTABLE_CLASS} ${
                           isCentered ? 'text-center' : isRightAligned ? 'text-right' : 'text-left'
                         }`}
                       >
-                        <Tooltip content={tooltipContent} className="w-full inline-block" placement="bottom">
+                        <Tooltip
+                          title={cp.name}
+                          content={cp.description?.trim() || `Paramètre personnalisé (${cp.type})`}
+                          className="w-full inline-block"
+                          placement="bottom"
+                        >
                           <div
                             className={`flex items-center gap-1 ${
                               isCentered ? 'justify-center' : isRightAligned ? 'justify-end' : 'justify-start'
@@ -1731,7 +1733,7 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
                   })}
 
                   {/* Actions */}
-                  <th scope="col" className="sticky top-0 bg-slate-100 z-30 py-2.5 px-4 w-24 text-right table-header-double-bottom">
+                  <th scope="col" className={`sticky top-0 z-30 px-4 w-24 text-right ${TABLE_TH_BASE_CLASS}`}>
                     {t('projects.columns.actions')}
                   </th>
                 </tr>
@@ -1788,24 +1790,15 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
                         {projectRoi !== null ? (
                           isProjectStatePrioritized(p.stateId) && projectRoiRanks.has(p.id) ? (
                             <div className="inline-flex items-center justify-center gap-1">
-                              <span
-                                className="font-mono font-bold text-xs px-1.5 py-0.5 rounded-md bg-indigo-50 text-indigo-700 border border-indigo-200 shadow-2xs min-w-[20px] text-center"
-                                title={t('projects.tooltips.priority_badge', { rank: projectRoiRanks.get(p.id) })}
-                              >
+                              <span className="font-mono font-bold text-xs px-1.5 py-0.5 rounded-md bg-indigo-50 text-indigo-700 border border-indigo-200 shadow-2xs min-w-[20px] text-center">
                                 {projectRoiRanks.get(p.id)}
                               </span>
-                              <span
-                                className="font-mono text-xs text-slate-500 font-medium"
-                                title={`ROI : ${formatRoi(projectRoi)}`}
-                              >
+                              <span className="font-mono text-xs text-slate-500 font-medium">
                                 ({formatRoi(projectRoi)})
                               </span>
                             </div>
                           ) : (
-                            <div
-                              className="inline-flex items-center justify-center"
-                              title={t('projects.tooltips.not_prioritized_state')}
-                            >
+                            <div className="inline-flex items-center justify-center">
                               <span className="font-mono text-xs text-slate-500 font-medium">
                                 ({formatRoi(projectRoi)})
                               </span>
@@ -1827,48 +1820,36 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
                             <span>{t('common.confidential').toUpperCase()}</span>
                           </span>
                         ) : (
-                          <div>
-                            <div className="font-bold text-slate-900 flex items-center gap-2 flex-wrap">
-                              <span>{p.name}</span>
-                              {p.isConfidential && (
-                                <span
-                                  className="inline-flex items-center justify-center p-1 rounded-md bg-rose-50 border border-red-300 text-red-600 shadow-2xs shrink-0"
-                                  title={t('projects.tooltips.confidential_badge')}
-                                >
-                                  <Lock className="w-3.5 h-3.5 text-red-600" />
-                                </span>
-                              )}
-                              {/* Petit pictogramme gris en forme de point d'interrogation dans un cercle */}
-                              <Tooltip
-                                content={
-                                  <div>
-                                    <div className="text-[10px] font-semibold text-slate-200 uppercase tracking-wider mb-1 flex items-center justify-between gap-4">
-                                      <span>{t('projects.tooltips.description_title')}</span>
-                                      {p.isConfidential && (
-                                        <span className="text-rose-200 flex items-center gap-1 font-medium normal-case">
-                                          <Lock className="w-2.5 h-2.5" />
-                                          {t('common.confidential')}
-                                        </span>
-                                      )}
-                                    </div>
-                                    <div className="text-white text-xs">
-                                      {p.description?.trim() || (
-                                        <span className="italic text-slate-300">{t('projects.tooltips.no_description')}</span>
-                                      )}
-                                    </div>
-                                  </div>
-                                }
-                                placement="right"
-                                maxWidthClass="w-72"
-                                className="relative inline-flex items-center shrink-0 cursor-help"
+                          <div className="font-bold text-slate-900 flex items-center gap-2 flex-wrap">
+                            {(() => {
+                              const hasDesc = Boolean(p.description && p.description.trim());
+                              const canView = !isConfidentialHidden;
+                              const showTooltip = hasDesc && canView;
+
+                              if (showTooltip) {
+                                return (
+                                  <Tooltip
+                                    icon={p.isConfidential ? <Lock className="w-3.5 h-3.5 text-rose-400 shrink-0" /> : undefined}
+                                    title={p.name}
+                                    content={p.description!.trim()}
+                                    placement="right"
+                                    maxWidthClass={TOOLTIP_MAX_WIDTH_CLASS}
+                                    className="relative inline-flex items-center shrink-0 cursor-default"
+                                  >
+                                    <span className="cursor-default">{p.name}</span>
+                                  </Tooltip>
+                                );
+                              }
+
+                              return <span className="cursor-default">{p.name}</span>;
+                            })()}
+                            {p.isConfidential && (
+                              <span
+                                className="inline-flex items-center justify-center p-1 rounded-md bg-rose-50 border border-red-300 text-red-600 shadow-2xs shrink-0 cursor-default"
+                                title={t('projects.tooltips.confidential_badge', 'Projet confidentiel (accès restreint)')}
                               >
-                                <HelpCircle className="w-3.5 h-3.5 text-slate-400 hover:text-slate-600 cursor-help transition-colors" />
-                              </Tooltip>
-                            </div>
-                            {p.description && (
-                              <p className="text-[11px] text-slate-500 line-clamp-1 mt-0.5 max-w-sm">
-                                {p.description}
-                              </p>
+                                <Lock className="w-3.5 h-3.5 text-red-600" />
+                              </span>
                             )}
                           </div>
                         )}
@@ -1909,12 +1890,12 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
                       <td className="py-2.5 px-4 border-r border-slate-200">
                         <div className="flex flex-col gap-0.5">
                           <div className="font-semibold text-slate-800 flex items-center gap-1">
-                            <span className="truncate max-w-[170px]" title={p.projectManagerEmail}>
+                            <span className="truncate max-w-[170px]">
                               {getUserName(p.projectManagerEmail)}
                             </span>
                           </div>
                           {p.deputyEmail && (
-                            <div className="text-[10px] text-slate-500 flex items-center gap-1 truncate max-w-[170px]" title={`Adjoint : ${p.deputyEmail}`}>
+                            <div className="text-[10px] text-slate-500 flex items-center gap-1 truncate max-w-[170px]">
                               <span className="text-slate-400">Adj:</span>
                               <span>{getUserName(p.deputyEmail)}</span>
                             </div>
@@ -1935,14 +1916,12 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
                         ) : (() => {
                           const bl = budgetLines.find((b) => b.id === p.budgetLineId);
                           return (
-                            <Tooltip content={bl ? `${bl.name} (${bl.budgetKe} K€)` : 'Ligne budgétaire non renseignée'}>
-                              <span
-                                className="truncate block max-w-[160px] text-xs font-semibold cursor-help"
-                                style={bl?.color ? { color: bl.color } : undefined}
-                              >
-                                {bl ? bl.name : <span className="text-slate-400 italic font-normal">Non renseignée</span>}
-                              </span>
-                            </Tooltip>
+                            <span
+                              className="truncate block max-w-[160px] text-xs font-semibold cursor-default"
+                              style={bl?.color ? { color: bl.color } : undefined}
+                            >
+                              {bl ? bl.name : <span className="text-slate-400 italic font-normal">Non renseignée</span>}
+                            </span>
                           );
                         })()}
                       </td>
@@ -1974,11 +1953,11 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
                                     ? 'bg-amber-100 text-amber-950 border-amber-400 focus:ring-2 focus:ring-amber-500'
                                     : 'bg-white text-slate-900 border-slate-300 hover:border-slate-400 focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20'
                                 }`}
-                                title="Saisir manuellement le bonus du projet (Value Management Officer)"
+                                title={`• ${bonusConfig?.maxBonusPointsPerProject ?? DEFAULT_BONUS_CONFIG.maxBonusPointsPerProject} points max par projet\n• sur ${bonusConfig?.maxBonusedProjects ?? DEFAULT_BONUS_CONFIG.maxBonusedProjects} projets au plus\n• pour un total de ${bonusConfig?.maxTotalBonusPoints ?? DEFAULT_BONUS_CONFIG.maxTotalBonusPoints} points au total.`}
                               />
                               {isBreaching && (
                                 <span
-                                  className="text-xs shrink-0 cursor-help"
+                                  className="text-xs shrink-0 cursor-default"
                                   title={`⚠️ Dépassement : ${breachInfo?.reason}`}
                                 >
                                   ⚠️
@@ -2002,11 +1981,7 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
                           typeof p.bonus === 'number' && p.bonus > 0 ? (
                             <div className="inline-flex flex-col items-center">
                               <span
-                                className={`px-2 py-0.5 rounded text-[11px] font-bold ${
-                                  isBreaching
-                                    ? 'bg-amber-200 text-amber-950 border border-amber-400 shadow-2xs'
-                                    : 'bg-amber-100 text-amber-900 border border-amber-300'
-                                }`}
+                                className="text-xs font-bold text-slate-900"
                                 title={
                                   isBreaching
                                     ? `⚠️ Dépassement : ${breachInfo?.reason}`

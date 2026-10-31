@@ -24,7 +24,7 @@ import { AppUser } from '../types/user';
 import { resolveUserDisplayName } from '../utils/userUtils';
 import { SkillModal } from './SkillModal';
 import { Tooltip } from './Tooltip';
-import { CREATE_ITEM_BUTTON_CLASS } from '../constants/ui';
+import { CREATE_ITEM_BUTTON_CLASS, TABLE_HEADER_THEAD_CLASS, TABLE_TH_BASE_CLASS } from '../constants/ui';
 import {
   addKeySkill,
   updateKeySkill,
@@ -200,53 +200,38 @@ export const SkillsTable: React.FC<SkillsTableProps> = ({
       <div className="bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden">
         <div className="overflow-x-auto overflow-y-auto max-h-[620px]">
           <table className="w-full text-left border-collapse text-xs">
-            <thead className="sticky top-0 z-10 bg-slate-100/95 backdrop-blur-xs text-slate-700 uppercase tracking-wider font-semibold border-b border-slate-200 shadow-2xs">
+            <thead className={`sticky top-0 z-10 ${TABLE_HEADER_THEAD_CLASS} shadow-2xs`}>
               <tr>
                 {/* Ordre */}
                 {canManage && (
-                  <th scope="col" className="py-3 px-3 w-14 text-center border-r border-slate-200">
+                  <th scope="col" className={`px-1.5 w-[72px] min-w-[72px] max-w-[72px] text-center whitespace-nowrap ${TABLE_TH_BASE_CLASS}`}>
                     {t('settings.skills.col_order')}
                   </th>
                 )}
                 {/* Nom unique */}
-                <th scope="col" className="py-3 px-4 min-w-[200px] border-r border-slate-200">
-                  <div className="flex items-center gap-1.5">
-                    <Tag className="w-3.5 h-3.5 text-slate-500" />
-                    <span>{t('settings.skills.col_name')}</span>
-                  </div>
+                <th scope="col" className={`px-4 min-w-[200px] ${TABLE_TH_BASE_CLASS}`}>
+                  <span>{t('settings.skills.col_name')}</span>
                 </th>
                 {/* Resource Manager */}
-                <th scope="col" className="py-3 px-4 min-w-[180px] border-r border-slate-200">
-                  <div className="flex items-center gap-1.5">
-                    <User className="w-3.5 h-3.5 text-slate-500" />
-                    <span>{t('settings.skills.col_manager')}</span>
-                  </div>
+                <th scope="col" className={`px-4 min-w-[180px] ${TABLE_TH_BASE_CLASS}`}>
+                  <span>{t('settings.skills.col_manager')}</span>
                 </th>
                 {/* Description */}
-                <th scope="col" className="py-3 px-4 min-w-[240px] border-r border-slate-200">
-                  <div className="flex items-center gap-1.5">
-                    <FileText className="w-3.5 h-3.5 text-slate-500" />
-                    <span>{t('settings.skills.col_desc')}</span>
-                  </div>
+                <th scope="col" className={`px-4 min-w-[240px] ${TABLE_TH_BASE_CLASS}`}>
+                  <span>{t('settings.skills.col_desc')}</span>
                 </th>
                 {/* Alerte dépassement */}
-                <th scope="col" className="py-3 px-3 w-36 text-center border-r border-slate-200">
+                <th scope="col" className={`px-3 w-36 text-center ${TABLE_TH_BASE_CLASS}`}>
                   <Tooltip content="Alerter en cas de dépassement des demandes dans l'onglet Capacitaire" className="w-full inline-block">
-                    <div className="flex items-center justify-center gap-1.5 cursor-help">
-                      <Bell className="w-3.5 h-3.5 text-slate-500" />
-                      <span>{t('settings.skills.col_alert')}</span>
-                    </div>
+                    <span className="cursor-default">{t('settings.skills.col_alert')}</span>
                   </Tooltip>
                 </th>
                 {/* Indicateur de répartition */}
-                <th scope="col" className="py-3 px-4 w-44 text-center border-r border-slate-200">
-                  <div className="flex items-center justify-center gap-1.5">
-                    <Layers className="w-3.5 h-3.5 text-slate-500" />
-                    <span>{t('settings.skills.col_distribution')}</span>
-                  </div>
+                <th scope="col" className={`px-4 w-44 text-center ${TABLE_TH_BASE_CLASS}`}>
+                  <span>{t('settings.skills.col_distribution')}</span>
                 </th>
                 {/* Actions */}
-                <th scope="col" className="py-3 px-4 w-24 text-right sticky right-0 bg-slate-100">
+                <th scope="col" className={`px-4 w-24 text-right sticky right-0 ${TABLE_TH_BASE_CLASS}`}>
                   {t('settings.skills.col_actions')}
                 </th>
               </tr>
@@ -307,13 +292,13 @@ export const SkillsTable: React.FC<SkillsTableProps> = ({
                     >
                       {/* Boutons de réorganisation */}
                       {canManage && (
-                        <td className="py-2.5 px-2 text-center whitespace-nowrap border-r border-slate-200">
-                          <div className="flex items-center justify-center gap-1">
+                        <td className="py-2.5 px-1.5 w-[72px] min-w-[72px] max-w-[72px] text-center whitespace-nowrap border-r border-slate-200">
+                          <div className="flex items-center justify-center gap-0.5">
                             <button
                               type="button"
                               disabled={index === 0 || processing}
                               onClick={() => handleMove(index, 'up')}
-                              className="p-1 text-slate-400 hover:text-indigo-600 disabled:opacity-20 hover:bg-slate-100 rounded transition-colors cursor-pointer"
+                              className="p-0.5 text-slate-400 hover:text-indigo-600 disabled:opacity-20 hover:bg-slate-100 rounded transition-colors cursor-pointer"
                               title="Monter"
                             >
                               <ArrowUp className="w-3.5 h-3.5" />
@@ -322,7 +307,7 @@ export const SkillsTable: React.FC<SkillsTableProps> = ({
                               type="button"
                               disabled={index === skills.length - 1 || processing}
                               onClick={() => handleMove(index, 'down')}
-                              className="p-1 text-slate-400 hover:text-indigo-600 disabled:opacity-20 hover:bg-slate-100 rounded transition-colors cursor-pointer"
+                              className="p-0.5 text-slate-400 hover:text-indigo-600 disabled:opacity-20 hover:bg-slate-100 rounded transition-colors cursor-pointer"
                               title="Descendre"
                             >
                               <ArrowDown className="w-3.5 h-3.5" />

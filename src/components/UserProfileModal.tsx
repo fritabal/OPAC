@@ -28,6 +28,10 @@ import { sendPasswordResetNotification } from '../services/emailService';
 import { validatePassword, hashPassword } from '../utils/passwordSecurity';
 import { getUserInitials } from '../utils/userUtils';
 import { LanguageFlag } from './Flags';
+import {
+  UNSAVED_CHANGES_TEXT_CLASS,
+  getSaveButtonStateClass,
+} from '../constants/ui';
 
 export const UserAvatarPictogram: React.FC<{
   className?: string;
@@ -374,19 +378,12 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
 
             {/* Champ 1 : Nom et Langue d'interface (Modifiables et enregistrés ensemble) */}
             <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider">
-                  {t('profile.display_name', "Nom d'affichage")}{' '}
-                  <span className="text-indigo-600 font-normal">
-                    ({t('profile.modifiable', 'Modifiable')})
-                  </span>
-                </label>
-                {isModified && (
-                  <span className="text-[11px] text-amber-600 font-medium">
-                    {t('profile.unsaved_changes', 'Modifications non enregistrées')}
-                  </span>
-                )}
-              </div>
+              <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider">
+                {t('profile.display_name', "Nom d'affichage")}{' '}
+                <span className="text-indigo-600 font-normal">
+                  ({t('profile.modifiable', 'Modifiable')})
+                </span>
+              </label>
               <div className="flex items-center gap-2">
                 <input
                   type="text"
@@ -769,6 +766,12 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
             </button>
 
             <div className="flex items-center gap-3 shrink-0">
+              {isModified && (
+                <span className={UNSAVED_CHANGES_TEXT_CLASS}>
+                  {t('profile.unsaved_changes', 'Modifications non enregistrées')}
+                </span>
+              )}
+
               <button
                 type="button"
                 onClick={handleCancel}
@@ -780,13 +783,13 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
               <button
                 type="submit"
                 disabled={saving || !displayName.trim() || !canSave}
-                className="px-4 py-2 text-xs font-semibold bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors shadow-xs disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-1.5 cursor-pointer"
+                className={`px-4 py-2 text-xs inline-flex items-center gap-1.5 ${getSaveButtonStateClass(canSave, saving)}`}
               >
                 <Check className="w-4 h-4" />
                 <span>
                   {saving
                     ? t('modals.common.saving', 'Enregistrement...')
-                    : t('modals.common.save_changes', 'Enregistrer les modifications')}
+                    : t('common.actions.save', 'Enregistrer')}
                 </span>
               </button>
             </div>

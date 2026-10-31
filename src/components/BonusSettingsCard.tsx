@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Coins,
   AlertCircle,
@@ -9,6 +9,13 @@ import {
 import { useTranslation } from 'react-i18next';
 import { BonusConfig, DEFAULT_BONUS_CONFIG } from '../types/bonus';
 import { saveBonusConfig } from '../services/bonusService';
+import {
+  CHECKBOX_INPUT_CLASS,
+  CHECKBOX_TITLE_CLASS,
+  CHECKBOX_DESCRIPTION_CLASS,
+  UNSAVED_CHANGES_TEXT_CLASS,
+  getSaveButtonStateClass,
+} from '../constants/ui';
 
 interface BonusSettingsCardProps {
   bonusConfig: BonusConfig;
@@ -24,9 +31,28 @@ export const BonusSettingsCard: React.FC<BonusSettingsCardProps> = ({
   roleLabel = 'Value Management Officer ou Administrateur',
 }) => {
   const { t } = useTranslation();
+
+  // Valeurs initiales sauvegardées comme référence
+  const [savedBaseline, setSavedBaseline] = useState({
+    isBonusActive: Boolean(bonusConfig.isBonusActive),
+    checkQuotas: Boolean(bonusConfig.checkQuotas),
+    maxBonusedProjects:
+      bonusConfig.maxBonusedProjects !== null && bonusConfig.maxBonusedProjects !== undefined
+        ? String(bonusConfig.maxBonusedProjects)
+        : '10',
+    maxBonusPointsPerProject:
+      bonusConfig.maxBonusPointsPerProject !== null && bonusConfig.maxBonusPointsPerProject !== undefined
+        ? String(bonusConfig.maxBonusPointsPerProject)
+        : '5',
+    maxTotalBonusPoints:
+      bonusConfig.maxTotalBonusPoints !== null && bonusConfig.maxTotalBonusPoints !== undefined
+        ? String(bonusConfig.maxTotalBonusPoints)
+        : '30',
+  });
+
   // État local du formulaire
-  const [isBonusActive, setIsBonusActive] = useState<boolean>(bonusConfig.isBonusActive);
-  const [checkQuotas, setCheckQuotas] = useState<boolean>(bonusConfig.checkQuotas);
+  const [isBonusActive, setIsBonusActive] = useState<boolean>(Boolean(bonusConfig.isBonusActive));
+  const [checkQuotas, setCheckQuotas] = useState<boolean>(Boolean(bonusConfig.checkQuotas));
   const [maxBonusedProjects, setMaxBonusedProjects] = useState<string>(
     bonusConfig.maxBonusedProjects !== null && bonusConfig.maxBonusedProjects !== undefined
       ? String(bonusConfig.maxBonusedProjects)
@@ -48,22 +74,50 @@ export const BonusSettingsCard: React.FC<BonusSettingsCardProps> = ({
 
   // Synchronisation avec les modifications distantes de Firestore
   useEffect(() => {
-    setIsBonusActive(bonusConfig.isBonusActive);
-    setCheckQuotas(bonusConfig.checkQuotas);
-    if (bonusConfig.maxBonusedProjects !== null && bonusConfig.maxBonusedProjects !== undefined) {
-      setMaxBonusedProjects(String(bonusConfig.maxBonusedProjects));
-    }
-    if (bonusConfig.maxBonusPointsPerProject !== null && bonusConfig.maxBonusPointsPerProject !== undefined) {
-      setMaxBonusPointsPerProject(String(bonusConfig.maxBonusPointsPerProject));
-    }
-    if (bonusConfig.maxTotalBonusPoints !== null && bonusConfig.maxTotalBonusPoints !== undefined) {
-      setMaxTotalBonusPoints(String(bonusConfig.maxTotalBonusPoints));
-    }
+    const newBaseline = {
+      isBonusActive: Boolean(bonusConfig.isBonusActive),
+      checkQuotas: Boolean(bonusConfig.checkQuotas),
+      maxBonusedProjects:
+        bonusConfig.maxBonusedProjects !== null && bonusConfig.maxBonusedProjects !== undefined
+          ? String(bonusConfig.maxBonusedProjects)
+          : '10',
+      maxBonusPointsPerProject:
+        bonusConfig.maxBonusPointsPerProject !== null && bonusConfig.maxBonusPointsPerProject !== undefined
+          ? String(bonusConfig.maxBonusPointsPerProject)
+          : '5',
+      maxTotalBonusPoints:
+        bonusConfig.maxTotalBonusPoints !== null && bonusConfig.maxTotalBonusPoints !== undefined
+          ? String(bonusConfig.maxTotalBonusPoints)
+          : '30',
+    };
+    setSavedBaseline(newBaseline);
+    setIsBonusActive(newBaseline.isBonusActive);
+    setCheckQuotas(newBaseline.checkQuotas);
+    setMaxBonusedProjects(newBaseline.maxBonusedProjects);
+    setMaxBonusPointsPerProject(newBaseline.maxBonusPointsPerProject);
+    setMaxTotalBonusPoints(newBaseline.maxTotalBonusPoints);
   }, [bonusConfig]);
 
-  // Sauvegarde globale des paramètres
-  const handleSave = async (override?: Partial<BonusConfig>) => {
-    if (!canManage) return;
+  // Détection des modifications non enregistrées
+  const isModified = useMemo(() => {
+    if (isBonusActive !== savedBaseline.isBonusActive) return true;
+    if (checkQuotas !== savedBaseline.checkQuotas) return true;
+    if (maxBonusedProjects !== savedBaseline.maxBonusedProjects) return true;
+    if (maxBonusPointsPerProject !== savedBaseline.maxBonusPointsPerProject) return true;
+    if (maxTotalBonusPoints !== savedBaseline.maxTotalBonusPoints) return true;
+    return false;
+  }, [
+    isBonusActive,
+    checkQuotas,
+    maxBonusedProjects,
+    maxBonusPointsPerProject,
+    maxTotalBonusPoints,
+    savedBaseline,
+  ]);
+
+  // Sauvegarde globale des paramètres au clic sur le bouton
+  const handleSave = async () => {
+    if (!canManage || !isModified || saving) return;
     setSaving(true);
     setSaveError(null);
 
@@ -72,20 +126,23 @@ export const BonusSettingsCard: React.FC<BonusSettingsCardProps> = ({
     const parsedMaxTotal = maxTotalBonusPoints === '' ? null : parseInt(maxTotalBonusPoints, 10);
 
     const newConfig: BonusConfig = {
-      isBonusActive: override?.isBonusActive !== undefined ? override.isBonusActive : isBonusActive,
-      checkQuotas: override?.checkQuotas !== undefined ? override.checkQuotas : checkQuotas,
-      maxBonusedProjects:
-        override?.maxBonusedProjects !== undefined ? override.maxBonusedProjects : parsedMaxProjects,
-      maxBonusPointsPerProject:
-        override?.maxBonusPointsPerProject !== undefined
-          ? override.maxBonusPointsPerProject
-          : parsedMaxPointsPerProject,
-      maxTotalBonusPoints:
-        override?.maxTotalBonusPoints !== undefined ? override.maxTotalBonusPoints : parsedMaxTotal,
+      isBonusActive,
+      checkQuotas,
+      maxBonusedProjects: parsedMaxProjects,
+      maxBonusPointsPerProject: parsedMaxPointsPerProject,
+      maxTotalBonusPoints: parsedMaxTotal,
     };
 
     try {
       await saveBonusConfig(newConfig, currentUserEmail);
+      // Met à jour la baseline immédiatement pour repasser en non modifié
+      setSavedBaseline({
+        isBonusActive,
+        checkQuotas,
+        maxBonusedProjects,
+        maxBonusPointsPerProject,
+        maxTotalBonusPoints,
+      });
     } catch (err: any) {
       setSaveError(err?.message || "Erreur lors de l'enregistrement des paramètres de bonus.");
     } finally {
@@ -93,20 +150,16 @@ export const BonusSettingsCard: React.FC<BonusSettingsCardProps> = ({
     }
   };
 
-  // Basculement immédiat de "Bonus actifs"
-  const handleToggleBonusActive = async () => {
+  // Basculement de "Bonus actifs" sans sauvegarde automatique
+  const handleToggleBonusActive = () => {
     if (!canManage) return;
-    const nextVal = !isBonusActive;
-    setIsBonusActive(nextVal);
-    await handleSave({ isBonusActive: nextVal });
+    setIsBonusActive((prev) => !prev);
   };
 
-  // Basculement immédiat de "Vérification des quotas de bonus"
-  const handleToggleCheckQuotas = async () => {
+  // Basculement de "Vérification des quotas de bonus" sans sauvegarde automatique
+  const handleToggleCheckQuotas = () => {
     if (!canManage) return;
-    const nextVal = !checkQuotas;
-    setCheckQuotas(nextVal);
-    await handleSave({ checkQuotas: nextVal });
+    setCheckQuotas((prev) => !prev);
   };
 
   return (
@@ -136,15 +189,20 @@ export const BonusSettingsCard: React.FC<BonusSettingsCardProps> = ({
         </div>
 
         {canManage && (
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
+            {isModified && (
+              <span className={UNSAVED_CHANGES_TEXT_CLASS}>
+                {t('profile.unsaved_changes', 'Modifications non enregistrées')}
+              </span>
+            )}
             <button
               type="button"
-              onClick={() => handleSave()}
-              disabled={saving}
-              className="px-3.5 py-1.5 text-xs font-semibold bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white rounded-lg transition-colors shadow-2xs flex items-center gap-1.5 cursor-pointer"
+              onClick={handleSave}
+              disabled={!isModified || saving}
+              className={`px-3.5 py-1.5 text-xs flex items-center gap-1.5 ${getSaveButtonStateClass(isModified, saving)}`}
             >
               <Save className="w-3.5 h-3.5" />
-              <span>{saving ? t('settings.common.saving') : t('settings.common.save')}</span>
+              <span>{saving ? t('settings.common.saving', 'Enregistrement...') : t('settings.common.save', 'Enregistrer')}</span>
             </button>
           </div>
         )}
@@ -162,7 +220,7 @@ export const BonusSettingsCard: React.FC<BonusSettingsCardProps> = ({
         {/* Case à cocher "Bonus actifs" directement dans la frame Gestion des bonus */}
         <div
           onClick={canManage ? handleToggleBonusActive : undefined}
-          className={`select-none ${canManage ? 'cursor-pointer' : 'cursor-default opacity-85'}`}
+          className={`select-none group ${canManage ? 'cursor-pointer' : 'cursor-default opacity-85'}`}
         >
           <div className="flex items-start gap-3">
             <input
@@ -174,25 +232,17 @@ export const BonusSettingsCard: React.FC<BonusSettingsCardProps> = ({
                 e.stopPropagation();
                 handleToggleBonusActive();
               }}
-              className="mt-0.5 h-4 w-4 rounded border-slate-300 text-teal-600 focus:ring-teal-500 cursor-pointer disabled:cursor-not-allowed shrink-0"
+              className={`mt-0.5 ${CHECKBOX_INPUT_CLASS}`}
             />
             <div className="flex-1">
               <label
                 htmlFor="checkbox-bonus-active"
-                className="text-sm font-bold text-slate-900 block cursor-pointer"
+                className={`block ${CHECKBOX_TITLE_CLASS}`}
               >
                 {t('settings.bonus.active_switch')}
               </label>
-              <p className="text-xs text-slate-600 mt-0.5 leading-relaxed">
-                {isBonusActive ? (
-                  <span className="text-teal-900 font-medium">
-                    {t('settings.bonus.active_desc')}
-                  </span>
-                ) : (
-                  <span className="text-slate-500">
-                    {t('settings.bonus.active_desc')}
-                  </span>
-                )}
+              <p className={`mt-0.5 ${CHECKBOX_DESCRIPTION_CLASS}`}>
+                {t('settings.bonus.active_desc')}
               </p>
             </div>
           </div>
@@ -208,7 +258,7 @@ export const BonusSettingsCard: React.FC<BonusSettingsCardProps> = ({
         >
           <div
             onClick={canManage ? handleToggleCheckQuotas : undefined}
-            className={`select-none ${canManage ? 'cursor-pointer' : 'cursor-default opacity-85'}`}
+            className={`select-none group ${canManage ? 'cursor-pointer' : 'cursor-default opacity-85'}`}
           >
             <div className="flex items-start gap-3">
               <input
@@ -220,25 +270,17 @@ export const BonusSettingsCard: React.FC<BonusSettingsCardProps> = ({
                   e.stopPropagation();
                   handleToggleCheckQuotas();
                 }}
-                className="mt-0.5 h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer disabled:cursor-not-allowed shrink-0"
+                className={`mt-0.5 ${CHECKBOX_INPUT_CLASS}`}
               />
               <div className="flex-1">
                 <label
                   htmlFor="checkbox-bonus-quotas"
-                  className="text-sm font-bold text-slate-900 block cursor-pointer"
+                  className={`block ${CHECKBOX_TITLE_CLASS}`}
                 >
                   {t('settings.bonus.quotas_switch')}
                 </label>
-                <p className="text-xs text-slate-600 mt-0.5 leading-relaxed">
-                  {checkQuotas ? (
-                    <span className="text-indigo-900 font-medium">
-                      {t('settings.bonus.quotas_desc')}
-                    </span>
-                  ) : (
-                    <span className="text-slate-500">
-                      {t('settings.bonus.quotas_desc')}
-                    </span>
-                  )}
+                <p className={`mt-0.5 ${CHECKBOX_DESCRIPTION_CLASS}`}>
+                  {t('settings.bonus.quotas_desc')}
                 </p>
               </div>
             </div>
@@ -258,7 +300,12 @@ export const BonusSettingsCard: React.FC<BonusSettingsCardProps> = ({
                   disabled={!checkQuotas || !canManage}
                   value={maxBonusedProjects}
                   onChange={(e) => setMaxBonusedProjects(e.target.value)}
-                  onBlur={() => handleSave()}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && isModified && !saving) {
+                      e.preventDefault();
+                      handleSave();
+                    }
+                  }}
                   placeholder="Ex : 10"
                   className={`w-full px-3 py-2 text-sm rounded-lg border font-mono transition-colors focus:outline-none focus:ring-2 focus:ring-teal-500 ${
                     !checkQuotas || !canManage
@@ -285,7 +332,12 @@ export const BonusSettingsCard: React.FC<BonusSettingsCardProps> = ({
                   disabled={!checkQuotas || !canManage}
                   value={maxBonusPointsPerProject}
                   onChange={(e) => setMaxBonusPointsPerProject(e.target.value)}
-                  onBlur={() => handleSave()}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && isModified && !saving) {
+                      e.preventDefault();
+                      handleSave();
+                    }
+                  }}
                   placeholder="Ex : 5"
                   className={`w-full px-3 py-2 text-sm rounded-lg border font-mono transition-colors focus:outline-none focus:ring-2 focus:ring-teal-500 ${
                     !checkQuotas || !canManage
@@ -312,7 +364,12 @@ export const BonusSettingsCard: React.FC<BonusSettingsCardProps> = ({
                   disabled={!checkQuotas || !canManage}
                   value={maxTotalBonusPoints}
                   onChange={(e) => setMaxTotalBonusPoints(e.target.value)}
-                  onBlur={() => handleSave()}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && isModified && !saving) {
+                      e.preventDefault();
+                      handleSave();
+                    }
+                  }}
                   placeholder="Ex : 30"
                   className={`w-full px-3 py-2 text-sm rounded-lg border font-mono transition-colors focus:outline-none focus:ring-2 focus:ring-teal-500 ${
                     !checkQuotas || !canManage

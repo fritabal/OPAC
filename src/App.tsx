@@ -908,7 +908,7 @@ function Dashboard() {
                 <span>{t('navigation.tabs.priorities')}</span>
               </button>
 
-              {/* 2. Capacitaire (en indigo) */}
+              {/* 2. Capacitaire (identique à l'onglet Indisponibilités : rose-900) */}
               <button
                 onClick={() => {
                   setActiveTab('projects_capacity');
@@ -916,11 +916,11 @@ function Dashboard() {
                 }}
                 className={`px-3 py-1.5 rounded-t-xl border-t-2 border-x-2 border-b-0 text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer whitespace-nowrap ${
                   activeTab === 'projects_capacity'
-                    ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs -mb-[1px] pb-[7px]'
-                    : 'bg-indigo-50/80 hover:bg-indigo-100 text-indigo-800 border-indigo-200 hover:border-indigo-300'
+                    ? 'bg-rose-900 text-white border-rose-900 shadow-xs -mb-[1px] pb-[7px]'
+                    : 'bg-rose-50/70 hover:bg-rose-100 text-rose-900 border-rose-200 hover:border-rose-300'
                 }`}
               >
-                <Gauge className="w-3.5 h-3.5" />
+                <Gauge className={`w-3.5 h-3.5 ${activeTab === 'projects_capacity' ? 'text-white' : 'text-rose-900'}`} />
                 <span>{t('navigation.tabs.capacity')}</span>
               </button>
 

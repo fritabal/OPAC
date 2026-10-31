@@ -1379,24 +1379,14 @@ Le PMO / Value Management Office`;
                           {item.blockedProjectsCount > 0 ? (
                             <Tooltip
                               placement="top"
-                              content={
-                                <div className="text-left text-xs space-y-1">
-                                  <div className="font-bold border-b border-white/20 pb-0.5">
-                                    {item.blockedProjectsCount > 1
-                                      ? t('reports.bottlenecks.blocked_projects_other', { count: item.blockedProjectsCount })
-                                      : t('reports.bottlenecks.blocked_projects_one', { count: item.blockedProjectsCount })} :
-                                  </div>
-                                  <div className="space-y-0.5 font-normal">
-                                    {item.blockedProjects.map((bp) => (
-                                      <div key={bp.id}>
-                                        • #{bp.projectNumber} {bp.name}
-                                      </div>
-                                    ))}
-                                  </div>
-                                </div>
+                              title={
+                                item.blockedProjectsCount > 1
+                                  ? t('reports.bottlenecks.blocked_projects_other', { count: item.blockedProjectsCount })
+                                  : t('reports.bottlenecks.blocked_projects_one', { count: item.blockedProjectsCount })
                               }
+                              content={item.blockedProjects.map((bp) => `• #${bp.projectNumber} ${bp.name}`).join('\n')}
                             >
-                              <span className="font-mono font-bold text-xs text-red-600 cursor-help underline decoration-dotted decoration-red-300">
+                              <span className="font-mono font-bold text-xs text-red-600 cursor-default underline decoration-dotted decoration-red-300">
                                 {item.blockedProjectsCount} {t('capacity.badges.proj_short')}
                               </span>
                             </Tooltip>
@@ -1444,14 +1434,14 @@ Le PMO / Value Management Office`;
             </div>
 
             {/* Sélecteur de périmètre : Tous les projets vs Projets staffés uniquement */}
-            <div className="flex items-center gap-1 p-1 bg-slate-100 rounded-xl border border-slate-200 self-start sm:self-auto shrink-0">
+            <div className="flex items-center gap-1 p-1 bg-blue-50 rounded-xl border border-blue-200 self-start sm:self-auto shrink-0">
               <button
                 type="button"
                 onClick={() => setBudgetScopeStaffedOnly(false)}
                 className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
                   !budgetScopeStaffedOnly
-                    ? 'bg-white text-slate-900 shadow-2xs font-bold'
-                    : 'text-slate-600 hover:text-slate-900'
+                    ? 'bg-blue-600 text-white shadow-2xs font-bold'
+                    : 'text-blue-700 hover:text-blue-900'
                 }`}
               >
                 {t('reports.budget_distribution.all_scope', { count: projects.length })}
@@ -1461,8 +1451,8 @@ Le PMO / Value Management Office`;
                 onClick={() => setBudgetScopeStaffedOnly(true)}
                 className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
                   budgetScopeStaffedOnly
-                    ? 'bg-white text-indigo-700 shadow-2xs font-bold'
-                    : 'text-slate-600 hover:text-slate-900'
+                    ? 'bg-blue-600 text-white shadow-2xs font-bold'
+                    : 'text-blue-700 hover:text-blue-900'
                 }`}
               >
                 {t('reports.budget_distribution.staffed_scope', { count: staffedProjects.length })}
@@ -1851,14 +1841,14 @@ Le PMO / Value Management Office`;
             </div>
 
             {/* Périmètre */}
-            <div className="flex items-center gap-1 p-1 bg-slate-100 rounded-xl border border-slate-200">
+            <div className="flex items-center gap-1 p-1 bg-blue-50 rounded-xl border border-blue-200">
               <button
                 type="button"
                 onClick={() => setMatrixScopeStaffedOnly(false)}
                 className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
                   !matrixScopeStaffedOnly
-                    ? 'bg-white text-slate-900 shadow-2xs font-bold'
-                    : 'text-slate-600 hover:text-slate-900'
+                    ? 'bg-blue-600 text-white shadow-2xs font-bold'
+                    : 'text-blue-700 hover:text-blue-900'
                 }`}
               >
                 {t('reports.matrix.all_scope', { count: projects.length })}
@@ -1868,8 +1858,8 @@ Le PMO / Value Management Office`;
                 onClick={() => setMatrixScopeStaffedOnly(true)}
                 className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
                   matrixScopeStaffedOnly
-                    ? 'bg-white text-slate-900 shadow-2xs font-bold'
-                    : 'text-slate-600 hover:text-slate-900'
+                    ? 'bg-blue-600 text-white shadow-2xs font-bold'
+                    : 'text-blue-700 hover:text-blue-900'
                 }`}
               >
                 {t('reports.matrix.staffed_scope', { count: staffedProjects.length })}

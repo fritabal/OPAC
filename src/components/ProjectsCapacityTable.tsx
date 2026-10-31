@@ -38,8 +38,11 @@ import {
   TABLE_HEADER_TEXT_CLASS,
   TABLE_FROZEN_DIVIDER_CLASS,
   CHECKBOX_INPUT_CLASS,
-  CHECKBOX_LABEL_CLASS,
+  CHECKBOX_TITLE_CLASS,
   CHECKBOX_CONTAINER_CLASS,
+  TOOLTIP_TEXT_SIZE_CLASS,
+  TOOLTIP_TEXT_WEIGHT_CLASS,
+  TOOLTIP_MAX_WIDTH_CLASS,
 } from '../constants/ui';
 import { Tooltip } from './Tooltip';
 import { ProjectModal } from './ProjectModal';
@@ -886,8 +889,8 @@ export const ProjectsCapacityTable: React.FC<ProjectsCapacityTableProps> = ({
       {/* En-tête de section sur le fond de page */}
       <div className="shrink-0 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
         <div>
-          <h2 className="text-xl font-bold text-indigo-600 flex items-center gap-2.5">
-            <Gauge className="w-5 h-5 text-indigo-600 shrink-0" />
+          <h2 className="text-xl font-bold text-rose-900 flex items-center gap-2.5">
+            <Gauge className="w-5 h-5 text-rose-900 shrink-0" />
             <span>{t('capacity.title')}</span>
           </h2>
           <div className="text-xs text-slate-600 mt-0.5 max-w-3xl leading-relaxed space-y-0.5">
@@ -915,7 +918,7 @@ export const ProjectsCapacityTable: React.FC<ProjectsCapacityTableProps> = ({
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder={t('capacity.search_placeholder')}
-              className="w-full pl-9 pr-3 py-2 border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-indigo-600 bg-white"
+              className="w-full pl-9 pr-3 py-2 border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-rose-900 bg-white"
             />
           </div>
 
@@ -981,7 +984,7 @@ export const ProjectsCapacityTable: React.FC<ProjectsCapacityTableProps> = ({
             <span
               className={`inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${
                 hasActiveFilters
-                  ? 'bg-indigo-50 border border-indigo-200 text-indigo-900'
+                  ? 'bg-blue-50 border border-blue-200 text-blue-900'
                   : 'bg-slate-100 border border-slate-200 text-slate-600'
               }`}
             >
@@ -1002,7 +1005,7 @@ export const ProjectsCapacityTable: React.FC<ProjectsCapacityTableProps> = ({
               <button
                 type="button"
                 onClick={handleResetFilters}
-                className="text-indigo-600 hover:text-indigo-800 hover:underline flex items-center gap-1.5 cursor-pointer text-xs font-semibold"
+                className="text-blue-600 hover:text-blue-800 hover:underline flex items-center gap-1.5 cursor-pointer text-xs font-semibold"
               >
                 <RotateCcw className="w-3.5 h-3.5" />
                 <span>{t('projects.clear_filters')}</span>
@@ -1023,7 +1026,7 @@ export const ProjectsCapacityTable: React.FC<ProjectsCapacityTableProps> = ({
                 />
                 <label
                   htmlFor="vmo-checkbox-show-budget-overruns-capacity"
-                  className={CHECKBOX_LABEL_CLASS}
+                  className={CHECKBOX_TITLE_CLASS}
                   title={t('capacity.budget_aspects')}
                 >
                   {t('capacity.budget_aspects')}
@@ -1040,7 +1043,7 @@ export const ProjectsCapacityTable: React.FC<ProjectsCapacityTableProps> = ({
                 />
                 <label
                   htmlFor="vmo-checkbox-show-confidential-capacity"
-                  className={CHECKBOX_LABEL_CLASS}
+                  className={CHECKBOX_TITLE_CLASS}
                   title={t('capacity.confidential')}
                 >
                   {t('capacity.confidential')}
@@ -1071,7 +1074,7 @@ export const ProjectsCapacityTable: React.FC<ProjectsCapacityTableProps> = ({
                   className={`sticky left-[50px] top-0 bg-slate-100 z-50 px-1 py-2 text-center align-top w-[52px] min-w-[52px] max-w-[52px] border-r border-slate-200 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.06)] table-header-double-bottom ${TABLE_HEADER_TEXT_CLASS}`}
                 >
                   <Tooltip content={t('capacity.tooltips.prio')} className="w-full inline-block">
-                    <span className="cursor-help">{t('capacity.columns.prio')}</span>
+                    <span className="cursor-default">{t('capacity.columns.prio')}</span>
                   </Tooltip>
                 </th>
 
@@ -1121,7 +1124,7 @@ export const ProjectsCapacityTable: React.FC<ProjectsCapacityTableProps> = ({
                               }
                             >
                               <span
-                                className="inline-flex items-center justify-center text-[10px] font-bold text-amber-100 bg-amber-900 border border-amber-950 px-2 py-0.5 rounded-full shadow-2xs whitespace-nowrap normal-case tracking-normal min-w-[18px] cursor-help"
+                                className="inline-flex items-center justify-center text-[10px] font-bold text-amber-100 bg-amber-900 border border-amber-950 px-2 py-0.5 rounded-full shadow-2xs whitespace-nowrap normal-case tracking-normal min-w-[18px] cursor-default"
                               >
                                 {budgetOverrunData.overrunProjects.size} {t('capacity.badges.proj_short')}
                               </span>
@@ -1140,7 +1143,7 @@ export const ProjectsCapacityTable: React.FC<ProjectsCapacityTableProps> = ({
                 >
                   <div className="flex flex-col items-center justify-start leading-tight">
                     <Tooltip content={t('capacity.tooltips.staffed')}>
-                      <span className="cursor-help">{t('capacity.columns.staffed')}</span>
+                      <span className="cursor-default">{t('capacity.columns.staffed')}</span>
                     </Tooltip>
                     {bottleneckData.bottleneckProjects.size > 0 && (
                       <div className="mt-4">
@@ -1154,7 +1157,7 @@ export const ProjectsCapacityTable: React.FC<ProjectsCapacityTableProps> = ({
                           }
                         >
                           <span
-                            className="inline-flex items-center justify-center text-[10px] font-bold text-white bg-red-600 px-2 py-0.5 rounded-full shadow-2xs whitespace-nowrap normal-case tracking-normal min-w-[18px] cursor-help"
+                            className="inline-flex items-center justify-center text-[10px] font-bold text-white bg-red-600 px-2 py-0.5 rounded-full shadow-2xs whitespace-nowrap normal-case tracking-normal min-w-[18px] cursor-default"
                           >
                             {bottleneckData.bottleneckProjects.size} {t('capacity.badges.proj_short')}
                           </span>
@@ -1171,7 +1174,7 @@ export const ProjectsCapacityTable: React.FC<ProjectsCapacityTableProps> = ({
                 >
                   <div className="flex flex-col items-center justify-start leading-tight">
                     <Tooltip content={t('capacity.tooltips.month_update')}>
-                      <span className="cursor-help">{t('capacity.columns.month_update')}</span>
+                      <span className="cursor-default">{t('capacity.columns.month_update')}</span>
                     </Tooltip>
                     {outdatedProjectsCount > 0 && (
                       <div className="mt-4">
@@ -1185,7 +1188,7 @@ export const ProjectsCapacityTable: React.FC<ProjectsCapacityTableProps> = ({
                           }
                         >
                           <span
-                            className="inline-flex items-center justify-center text-[10px] font-bold text-white bg-red-600 px-2 py-0.5 rounded-full shadow-2xs whitespace-nowrap normal-case tracking-normal min-w-[18px] cursor-help"
+                            className="inline-flex items-center justify-center text-[10px] font-bold text-white bg-red-600 px-2 py-0.5 rounded-full shadow-2xs whitespace-nowrap normal-case tracking-normal min-w-[18px] cursor-default"
                           >
                             {outdatedProjectsCount} {t('capacity.badges.proj_to_update_short')}
                           </span>
@@ -1220,18 +1223,11 @@ export const ProjectsCapacityTable: React.FC<ProjectsCapacityTableProps> = ({
                         <div className="flex flex-col items-center justify-start gap-1 leading-tight">
                           {/* Nom de la compétence : en gras et rouge uniquement en cas d'alerte dépassement */}
                           <Tooltip
-                            content={
-                              skill.description?.trim() ? (
-                                <div className="whitespace-pre-line text-left">
-                                  {skill.description.trim()}
-                                </div>
-                              ) : (
-                                skill.name
-                              )
-                            }
+                            title={skill.name}
+                            content={skill.description?.trim()}
                           >
                             <span
-                              className={`text-xs font-bold truncate max-w-[140px] text-center cursor-help ${
+                              className={`text-xs font-bold truncate max-w-[140px] text-center cursor-default ${
                                 isAlerting ? 'text-red-700' : 'text-slate-800'
                               }`}
                             >
@@ -1300,7 +1296,7 @@ export const ProjectsCapacityTable: React.FC<ProjectsCapacityTableProps> = ({
                               )
                             }
                           >
-                            <div className="flex flex-col items-center justify-start cursor-help">
+                            <div className="flex flex-col items-center justify-start cursor-default">
                               {/* 1ère ligne : "D j / P proj." en police normale (non grasse) et en gris */}
                               <div className="text-xs font-normal text-slate-500 whitespace-nowrap">
                                 {formatDaysVal(cap.D)} {t('capacity.units.day_short')} / {cap.P} {t('capacity.badges.proj_short')}
@@ -1382,7 +1378,7 @@ export const ProjectsCapacityTable: React.FC<ProjectsCapacityTableProps> = ({
                       } ${
                         isStaffed
                           ? 'bg-white hover:bg-slate-50/80 text-slate-900'
-                          : 'bg-slate-100/70 hover:bg-slate-100/90 text-slate-400'
+                          : 'bg-slate-50 hover:bg-slate-100/70 text-slate-400'
                       }`}
                       style={
                         openMonthDropdownId === project.id
@@ -1392,7 +1388,7 @@ export const ProjectsCapacityTable: React.FC<ProjectsCapacityTableProps> = ({
                     >
                       {/* Colonne 1 : Identifiant (figée à gauche : 0px) */}
                       <td className={`sticky left-0 z-20 px-1 py-2 text-center whitespace-nowrap w-[50px] min-w-[50px] max-w-[50px] border-r border-slate-200 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.06)] ${
-                        isStaffed ? 'bg-white group-hover:bg-slate-50/80' : 'bg-slate-100 group-hover:bg-slate-200/90'
+                        isStaffed ? 'bg-white group-hover:bg-slate-50/80' : 'bg-slate-50 group-hover:bg-slate-100/70'
                       }`}>
                         <span className={`font-mono font-bold text-[11px] px-1.5 py-0.5 rounded-full shadow-2xs ${
                           isStaffed ? 'bg-slate-900 text-white' : 'bg-slate-400 text-white'
@@ -1403,7 +1399,7 @@ export const ProjectsCapacityTable: React.FC<ProjectsCapacityTableProps> = ({
 
                       {/* Colonne 2 : Priorité (figée à gauche : 50px) */}
                       <td className={`sticky left-[50px] z-20 px-1 py-2 text-center whitespace-nowrap w-[52px] min-w-[52px] max-w-[52px] border-r border-slate-200 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.06)] ${
-                        isStaffed ? 'bg-white group-hover:bg-slate-50/80' : 'bg-slate-100 group-hover:bg-slate-200/90'
+                        isStaffed ? 'bg-white group-hover:bg-slate-50/80' : 'bg-slate-50 group-hover:bg-slate-100/70'
                       }`}>
                         {isProjectStatePrioritized(project.stateId) && rank !== undefined ? (
                           <span
@@ -1424,77 +1420,40 @@ export const ProjectsCapacityTable: React.FC<ProjectsCapacityTableProps> = ({
 
                       {/* Colonne 3 : Nom du projet (figée à gauche : 102px) */}
                       <td className={`sticky left-[102px] z-20 hover:z-30 px-3 py-2 w-[200px] min-w-[200px] max-w-[200px] border-r border-slate-200 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.06)] ${
-                        isStaffed ? 'bg-white group-hover:bg-slate-50/80' : 'bg-slate-100 group-hover:bg-slate-200/90'
+                        isStaffed ? 'bg-white group-hover:bg-slate-50/80' : 'bg-slate-50 group-hover:bg-slate-100/70'
                       }`}>
                         {isConfidentialHidden ? (
                           <span
                             className="inline-flex items-center gap-1.5 text-xs font-bold bg-rose-100 text-red-600 border border-red-300 px-2.5 py-1 rounded-md shadow-2xs select-none"
-                            title="Projet confidentiel (accès restreint)"
+                            title={t('projects.tooltips.confidential_locked', 'Projet confidentiel — Visualisation et modification interdites')}
                           >
                             <Lock className="w-3.5 h-3.5 text-red-600 shrink-0" />
-                            <span>CONFIDENTIEL</span>
+                            <span>{t('common.confidential', 'Confidentiel').toUpperCase()}</span>
                           </span>
                         ) : (
-                          <div className="flex flex-col">
-                            <div className="flex items-center gap-1.5 flex-wrap">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <Tooltip
+                              icon={project.isConfidential ? <Lock className="w-3.5 h-3.5 text-rose-400 shrink-0" /> : undefined}
+                              title={project.name}
+                              content={`${currentStateName} (${stateNeedsStaffing ? t('capacity.status.normally_staffable', 'normalement staffable') : t('capacity.status.not_staffable', 'non staffable')})`}
+                              placement="right"
+                              maxWidthClass={TOOLTIP_MAX_WIDTH_CLASS}
+                              className="relative inline-flex items-center shrink-0 cursor-default"
+                            >
                               <span
-                                onClick={() => {
-                                  setSelectedProject(project);
-                                  setIsReadOnlyModal(!canEditProject(project, permissionContext));
-                                  setModalOpen(true);
-                                }}
-                                className={`font-bold text-xs truncate max-w-[150px] cursor-pointer hover:text-indigo-600 hover:underline ${
+                                className={`font-bold text-xs truncate max-w-[150px] cursor-default ${
                                   isStaffed ? 'text-slate-900' : 'text-slate-500'
                                 }`}
-                                title={
-                                  canEditProject(project, permissionContext)
-                                    ? t('projects.tooltips.edit_project')
-                                    : t('projects.tooltips.view_project')
-                                }
                               >
                                 {project.name}
                               </span>
-                              {project.isConfidential && (
-                                <span
-                                  className="inline-flex items-center justify-center p-1 rounded-md bg-rose-50 border border-red-300 text-red-600 shadow-2xs shrink-0"
-                                  title={t('projects.tooltips.confidential_badge')}
-                                >
-                                  <Lock className="w-3.5 h-3.5 text-red-600" />
-                                </span>
-                              )}
-                              {/* Petit pictogramme gris en forme de point d'interrogation dans un cercle */}
-                              <Tooltip
-                                content={
-                                  <div>
-                                    <div className="text-[10px] font-semibold text-slate-200 uppercase tracking-wider mb-1 flex items-center justify-between gap-4">
-                                      <span>{t('projects.tooltips.description_title')}</span>
-                                      {project.isConfidential && (
-                                        <span className="text-rose-200 flex items-center gap-1 font-medium normal-case">
-                                          <Lock className="w-2.5 h-2.5" />
-                                          {t('projects.confidential_badge')}
-                                        </span>
-                                      )}
-                                    </div>
-                                    <div className="text-white text-xs">
-                                      {project.description?.trim() || (
-                                        <span className="italic text-slate-300">{t('projects.tooltips.no_description')}</span>
-                                      )}
-                                    </div>
-                                  </div>
-                                }
-                                placement="right"
-                                maxWidthClass="w-72"
-                                className="relative inline-flex items-center shrink-0 cursor-help"
+                            </Tooltip>
+                            {project.isConfidential && (
+                              <span
+                                className="inline-flex items-center justify-center p-1 rounded-md bg-rose-50 border border-red-300 text-red-600 shadow-2xs shrink-0 cursor-default"
+                                title={t('projects.tooltips.confidential_badge', 'Projet confidentiel (accès restreint)')}
                               >
-                                <HelpCircle className="w-3.5 h-3.5 text-slate-400 hover:text-slate-600 cursor-help transition-colors" />
-                              </Tooltip>
-                            </div>
-                            {currentStateName && (
-                              <span className={`text-[10px] truncate max-w-[190px] ${
-                                isStaffed ? 'text-slate-500' : 'text-slate-400'
-                              }`}>
-                                {currentStateName}
-                                {!stateNeedsStaffing && !isStaffed && t('capacity.tooltips.not_staffable_tag')}
+                                <Lock className="w-3.5 h-3.5 text-red-600" />
                               </span>
                             )}
                           </div>
@@ -1504,7 +1463,7 @@ export const ProjectsCapacityTable: React.FC<ProjectsCapacityTableProps> = ({
                       {/* Colonne : Action (figée à gauche : 302px) */}
                       <td
                         className={`sticky left-[302px] z-20 px-1 py-2 text-center whitespace-nowrap w-[50px] min-w-[50px] max-w-[50px] border-r border-slate-200 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.06)] transition-colors ${
-                          isStaffed ? 'bg-white group-hover:bg-slate-50/80' : 'bg-slate-100 group-hover:bg-slate-200/90'
+                          isStaffed ? 'bg-white group-hover:bg-slate-50/80' : 'bg-slate-50 group-hover:bg-slate-100/70'
                         }`}
                       >
                         <ProjectActionButton
@@ -1530,18 +1489,18 @@ export const ProjectsCapacityTable: React.FC<ProjectsCapacityTableProps> = ({
                             {/* Colonne : Ligne budgétaire (figée à gauche : 352px) */}
                             <td
                               className={`sticky left-[352px] z-20 px-2.5 py-2 whitespace-nowrap w-[140px] min-w-[140px] max-w-[140px] border-r border-slate-200 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.06)] text-xs ${
-                                isStaffed ? 'bg-white group-hover:bg-slate-50/80' : 'bg-slate-100 group-hover:bg-slate-200/90'
+                                isStaffed ? 'bg-white group-hover:bg-slate-50/80' : 'bg-slate-50 group-hover:bg-slate-100/70'
                               }`}
                             >
                               {isConfidentialHidden ? (
                                 <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-rose-500 bg-rose-50 px-1.5 py-0.5 rounded border border-rose-200">
                                   <Lock className="w-2.5 h-2.5 text-red-600 shrink-0" />
-                                  <span>{t('projects.confidential_badge')}</span>
+                                  <span>{t('common.confidential', 'Confidentiel')}</span>
                                 </span>
                               ) : (
                                 <Tooltip content={bl ? `${bl.name} (${bl.budgetKe} K€)` : t('capacity.status.no_budget_line')}>
                                   <span
-                                    className={`truncate block max-w-[130px] text-xs font-semibold cursor-help ${
+                                    className={`truncate block max-w-[130px] text-xs font-semibold cursor-default ${
                                       !isStaffed ? 'opacity-70' : ''
                                     }`}
                                     style={bl?.color ? { color: bl.color } : undefined}
@@ -1557,7 +1516,7 @@ export const ProjectsCapacityTable: React.FC<ProjectsCapacityTableProps> = ({
                               className={`sticky left-[492px] z-20 px-2 py-2 text-center whitespace-nowrap w-[90px] min-w-[90px] max-w-[90px] border-r border-slate-200 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.06)] transition-colors ${
                                 isStaffed
                                   ? 'bg-white group-hover:bg-slate-50/80'
-                                  : 'bg-slate-100 group-hover:bg-slate-200/90'
+                                  : 'bg-slate-50 group-hover:bg-slate-100/70'
                               }`}
                             >
                               {isConfidentialHidden ? (
@@ -1580,7 +1539,7 @@ export const ProjectsCapacityTable: React.FC<ProjectsCapacityTableProps> = ({
                                   }
                                 >
                                   <div
-                                    className="inline-flex items-center justify-center font-bold text-amber-950 bg-yellow-200 border border-amber-600 rounded px-2 py-0.5 text-xs shadow-2xs cursor-help select-none"
+                                    className="inline-flex items-center justify-center font-bold text-amber-950 bg-yellow-200 border border-amber-600 rounded px-2 py-0.5 text-xs shadow-2xs cursor-default select-none"
                                   >
                                     <span>{project.estimatedBudget ?? 0} K€</span>
                                   </div>
@@ -1599,7 +1558,7 @@ export const ProjectsCapacityTable: React.FC<ProjectsCapacityTableProps> = ({
                       <td
                         className={`sticky ${showBudgetOverruns ? 'left-[582px]' : 'left-[352px]'} z-20 px-1 py-2 text-center whitespace-nowrap w-[60px] min-w-[60px] max-w-[60px] border-r border-slate-200 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.06)] transition-colors ${
                           !isStaffed
-                            ? 'bg-slate-100 group-hover:bg-slate-200/90'
+                            ? 'bg-slate-50 group-hover:bg-slate-100/70'
                             : isProjectBottlenecked
                             ? 'bg-rose-100 group-hover:bg-rose-200/80'
                             : 'bg-white group-hover:bg-slate-50/80'
@@ -1610,11 +1569,7 @@ export const ProjectsCapacityTable: React.FC<ProjectsCapacityTableProps> = ({
                             <Tooltip
                               variant="default"
                               placement="top"
-                              content={
-                                <div className="text-left text-xs whitespace-normal max-w-xs font-medium leading-snug">
-                                  {t('capacity.tooltips.not_prioritized_project')}
-                                </div>
-                              }
+                              content={t('capacity.tooltips.not_prioritized_project')}
                             >
                               <div
                                 className="w-4 h-4 rounded-[4px] opacity-30 cursor-not-allowed bg-slate-200 border border-slate-300"
@@ -1735,7 +1690,7 @@ export const ProjectsCapacityTable: React.FC<ProjectsCapacityTableProps> = ({
                         className={`sticky ${showBudgetOverruns ? 'left-[642px]' : 'left-[412px]'} ${
                           openMonthDropdownId === project.id ? 'z-50' : 'z-20'
                         } px-1.5 py-2 text-center whitespace-nowrap w-[130px] min-w-[130px] max-w-[130px] ${TABLE_FROZEN_DIVIDER_CLASS} shadow-[2px_0_4px_-2px_rgba(0,0,0,0.06)] ${
-                          isStaffed ? 'bg-white group-hover:bg-slate-50/80' : 'bg-slate-100 group-hover:bg-slate-200/90'
+                          isStaffed ? 'bg-white group-hover:bg-slate-50/80' : 'bg-slate-50 group-hover:bg-slate-100/70'
                         }`}
                         style={
                           openMonthDropdownId === project.id
@@ -1898,7 +1853,7 @@ export const ProjectsCapacityTable: React.FC<ProjectsCapacityTableProps> = ({
                           <td
                             key={skill.id}
                             className={`p-1 text-center border-r border-slate-200 transition-colors ${
-                              !isStaffed ? 'bg-slate-50/60' : ''
+                              !isStaffed ? 'bg-slate-50 group-hover:bg-slate-100/70' : ''
                             }`}
                           >
                             {isCellBottleneck ? (

@@ -129,7 +129,7 @@ export const GlobalTooltip: React.FC = () => {
       className={`transition-opacity duration-150 ${TOOLTIP_MAX_WIDTH_CLASS}`}
     >
       <div
-        className={`${TOOLTIP_BG_CLASS} ${TOOLTIP_TEXT_CLASS} p-3 rounded-xl shadow-2xl border ${TOOLTIP_BORDER_CLASS} leading-relaxed whitespace-normal break-words text-left relative animate-in fade-in zoom-in-95 duration-100`}
+        className={`${TOOLTIP_BG_CLASS} ${TOOLTIP_TEXT_CLASS} p-3 rounded-xl shadow-2xl border ${TOOLTIP_BORDER_CLASS} leading-relaxed whitespace-pre-line break-words text-left relative animate-in fade-in zoom-in-95 duration-100`}
       >
         {tooltipState.text}
       </div>

@@ -17,6 +17,11 @@ import { AppUser } from '../types/user';
 import { BUDGET_PALETTE_32 } from '../constants/colors';
 import { UserAutocompleteSelect } from './UserAutocompleteSelect';
 import { getUserRoles } from '../utils/userUtils';
+import {
+  CHECKBOX_INPUT_CLASS,
+  CHECKBOX_TITLE_CLASS,
+  CHECKBOX_DESCRIPTION_CLASS,
+} from '../constants/ui';
 
 interface SkillModalProps {
   isOpen: boolean;
@@ -307,15 +312,15 @@ export const SkillModal: React.FC<SkillModalProps> = ({
 
             {/* Boîte à cocher : alerter en cas de dépassement des demandes */}
             <div className="pt-0.5">
-              <label className="flex items-center gap-2 cursor-pointer select-none text-xs font-semibold text-slate-700 hover:text-slate-900">
+              <label className={`flex items-center gap-2 select-none group ${isReadOnly ? 'cursor-default' : 'cursor-pointer'}`}>
                 <input
                   type="checkbox"
                   disabled={isReadOnly}
                   checked={alertOnDemandOverrun}
                   onChange={(e) => setAlertOnDemandOverrun(e.target.checked)}
-                  className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer disabled:cursor-not-allowed"
+                  className={CHECKBOX_INPUT_CLASS}
                 />
-                <span>{t('modals.skill.alert_title')}</span>
+                <span className={CHECKBOX_TITLE_CLASS}>{t('modals.skill.alert_title')}</span>
               </label>
             </div>
 
@@ -554,7 +559,7 @@ export const SkillModal: React.FC<SkillModalProps> = ({
                   <button
                     type="submit"
                     disabled={saving || missingRequiredCount > 0}
-                    className="px-4 py-2 text-sm font-medium bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors shadow-xs disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-2 cursor-pointer"
+                    className="px-4 py-2 text-sm font-medium bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors shadow-xs disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-2 cursor-pointer"
                   >
                     {saving
                       ? t('modals.common.saving')

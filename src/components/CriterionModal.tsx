@@ -9,6 +9,11 @@ import {
   CRITERION_POINTS,
   CRITERION_WEIGHTS,
 } from '../types/criteria';
+import {
+  CHECKBOX_INPUT_CLASS,
+  CHECKBOX_TITLE_CLASS,
+  CHECKBOX_DESCRIPTION_CLASS,
+} from '../constants/ui';
 
 interface CriterionModalProps {
   isOpen: boolean;
@@ -280,21 +285,21 @@ export const CriterionModal: React.FC<CriterionModalProps> = ({
             </div>
 
             {/* Statut Actif / Inactif */}
-            <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg flex items-center">
-              <label htmlFor="criterion-is-active" className={`flex items-center gap-2.5 ${isReadOnly ? 'cursor-default' : 'cursor-pointer'}`}>
+            <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg flex items-center group">
+              <label htmlFor="criterion-is-active" className={`flex items-start gap-2.5 ${isReadOnly ? 'cursor-default' : 'cursor-pointer'}`}>
                 <input
                   type="checkbox"
                   id="criterion-is-active"
                   checked={isActive}
                   disabled={isReadOnly}
                   onChange={(e) => setIsActive(e.target.checked)}
-                  className="w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500 cursor-pointer disabled:cursor-not-allowed"
+                  className={`mt-0.5 ${CHECKBOX_INPUT_CLASS}`}
                 />
                 <div>
-                  <span className="text-xs font-bold text-slate-900 block">
+                  <span className={`block ${CHECKBOX_TITLE_CLASS}`}>
                     {t('modals.criterion.active_title')}
                   </span>
-                  <span className="text-[11px] text-slate-500 block">
+                  <span className={`block mt-0.5 ${CHECKBOX_DESCRIPTION_CLASS}`}>
                     {t('modals.criterion.active_desc')}
                   </span>
                 </div>
@@ -365,7 +370,7 @@ export const CriterionModal: React.FC<CriterionModalProps> = ({
                   <button
                     type="submit"
                     disabled={saving || missingRequiredCount > 0}
-                    className="px-4 py-2 text-sm font-medium bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors shadow-xs disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-2 cursor-pointer"
+                    className="px-4 py-2 text-sm font-medium bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors shadow-xs disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-2 cursor-pointer"
                   >
                     {saving
                       ? t('modals.common.saving')

@@ -1,5 +1,67 @@
 @import "tailwindcss";
 
+/* =========================================================================
+   HOMOGÉNÉISATION GLOBALE DES CURSEURS DE LA SOURIS
+   - Curseur normal (flèche / cursor: default) PARTOUT par défaut (textes, tableaux, cellules, étiquettes...)
+   - Curseur barre verticale (I-beam / cursor: text) UNIQUEMENT sur les zones de saisie textuelle ou numérique
+   - Curseur main pointée (cursor: pointer) sur tous les boutons, liens et éléments cliquables
+   ========================================================================= */
+
+/* 1. Règle fondamentale : curseur normal (flèche) partout sur tout le contenu et les tableaux */
+*, *::before, *::after {
+  cursor: default;
+}
+
+/* 2. Éléments cliquables et interactifs : main avec doigt pointé */
+button,
+button *,
+a,
+a *,
+select,
+summary,
+input[type="checkbox"],
+input[type="radio"],
+input[type="button"],
+input[type="submit"],
+input[type="reset"],
+input[type="file"],
+input[type="range"],
+[role="button"],
+[role="button"] *,
+.cursor-pointer,
+.cursor-pointer * {
+  cursor: pointer;
+}
+
+/* 3. Zones de saisie textuelle ou numérique : barre verticale avec pattes (I-beam) UNIQUEMENT ici */
+input[type="text"],
+input[type="password"],
+input[type="email"],
+input[type="number"],
+input[type="search"],
+input[type="tel"],
+input[type="url"],
+input:not([type]),
+textarea,
+[contenteditable="true"],
+.cursor-text,
+.cursor-text * {
+  cursor: text !important;
+}
+
+/* 4. Éléments désactivés */
+:disabled,
+[disabled],
+.cursor-not-allowed,
+.cursor-not-allowed * {
+  cursor: not-allowed !important;
+}
+
+/* 5. Forçage explicite du curseur par défaut */
+.cursor-default {
+  cursor: default !important;
+}
+
 /* Double filet vertical pour séparer les colonnes figées des colonnes défilantes dans les tableaux */
 .table-frozen-divider {
   position: sticky !important;
@@ -42,3 +104,4 @@
   pointer-events: none;
   z-index: 60;
 }
+
