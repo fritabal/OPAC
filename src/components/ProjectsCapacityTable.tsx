@@ -36,6 +36,10 @@ import {
   MY_FILTER_BUTTON_ACTIVE_CLASS,
   MY_FILTER_BUTTON_INACTIVE_CLASS,
   TABLE_HEADER_TEXT_CLASS,
+  TABLE_HEADER_FONT_SIZE_CLASS,
+  TABLE_HEADER_FONT_WEIGHT_CLASS,
+  TABLE_HEADER_TEXT_COLOR_CLASS,
+  CAPACITY_SKILL_COL_WIDTH_CLASS,
   TABLE_FROZEN_DIVIDER_CLASS,
   CHECKBOX_INPUT_CLASS,
   CHECKBOX_TITLE_CLASS,
@@ -1216,20 +1220,22 @@ export const ProjectsCapacityTable: React.FC<ProjectsCapacityTableProps> = ({
                       <th
                         key={skill.id}
                         scope="col"
-                        className={`sticky top-0 z-40 relative px-2 py-2 text-center align-top border-r border-slate-200 min-w-[135px] transition-colors table-header-double-bottom ${
+                        className={`sticky top-0 z-40 relative px-1 py-2 text-center align-top border-r border-slate-200 ${CAPACITY_SKILL_COL_WIDTH_CLASS} transition-colors table-header-double-bottom ${
                           isAlerting ? 'bg-rose-100' : 'bg-slate-100'
                         }`}
                       >
-                        <div className="flex flex-col items-center justify-start gap-1 leading-tight">
-                          {/* Nom de la compétence : en gras et rouge uniquement en cas d'alerte dépassement */}
+                        <div className="flex flex-col items-center justify-start gap-1 leading-tight w-full overflow-hidden">
+                          {/* Nom de la compétence : même police que les autres titres, sans majuscules, tronqué avec points de suspension */}
                           <Tooltip
                             title={skill.name}
                             content={skill.description?.trim()}
+                            className="w-full flex justify-center overflow-hidden"
                           >
                             <span
-                              className={`text-xs font-bold truncate max-w-[140px] text-center cursor-default ${
-                                isAlerting ? 'text-red-700' : 'text-slate-800'
+                              className={`${TABLE_HEADER_FONT_SIZE_CLASS} ${TABLE_HEADER_FONT_WEIGHT_CLASS} truncate block w-full text-center cursor-default ${
+                                isAlerting ? 'text-red-700' : TABLE_HEADER_TEXT_COLOR_CLASS
                               }`}
+                              title={skill.name}
                             >
                               {skill.name}
                             </span>
@@ -1296,23 +1302,23 @@ export const ProjectsCapacityTable: React.FC<ProjectsCapacityTableProps> = ({
                               )
                             }
                           >
-                            <div className="flex flex-col items-center justify-start cursor-default">
+                            <div className="flex flex-col items-center justify-start cursor-default w-full">
                               {/* 1ère ligne : "D j / P proj." en police normale (non grasse) et en gris */}
-                              <div className="text-xs font-normal text-slate-500 whitespace-nowrap">
+                              <div className="text-xs font-normal text-slate-500 whitespace-nowrap text-center">
                                 {formatDaysVal(cap.D)} {t('capacity.units.day_short')} / {cap.P} {t('capacity.badges.proj_short')}
                               </div>
 
                               {/* 2ème ligne : "( R j / C j )" en police normale et en gris, sauf R en gras blanc sur fond rouge en cas d'alerte dépassement */}
-                              <div className="flex items-center justify-center gap-1 text-xs font-normal text-slate-500 whitespace-nowrap">
-                                <span>( </span>
+                              <div className="flex items-center justify-center gap-0.5 text-xs font-normal text-slate-500 whitespace-nowrap">
+                                <span>(</span>
                                 {isAlerting ? (
-                                  <span className="inline-flex items-center justify-center bg-red-600 text-white font-bold text-[11px] px-1.5 py-0.5 rounded-full shadow-2xs leading-none">
+                                  <span className="inline-flex items-center justify-center bg-red-600 text-white font-bold text-[11px] px-1 py-0.5 rounded-full shadow-2xs leading-none">
                                     {rFormatted} {t('capacity.units.day_short')}
                                   </span>
                                 ) : (
                                   <span>{rFormatted} {t('capacity.units.day_short')}</span>
                                 )}
-                                <span> / {formatDaysVal(cap.C)} {t('capacity.units.day_short')} )</span>
+                                <span>/ {formatDaysVal(cap.C)} {t('capacity.units.day_short')})</span>
                               </div>
                             </div>
                           </Tooltip>
@@ -1852,7 +1858,7 @@ export const ProjectsCapacityTable: React.FC<ProjectsCapacityTableProps> = ({
                         return (
                           <td
                             key={skill.id}
-                            className={`p-1 text-center border-r border-slate-200 transition-colors ${
+                            className={`p-1 text-center border-r border-slate-200 transition-colors ${CAPACITY_SKILL_COL_WIDTH_CLASS} ${
                               !isStaffed ? 'bg-slate-50 group-hover:bg-slate-100/70' : ''
                             }`}
                           >

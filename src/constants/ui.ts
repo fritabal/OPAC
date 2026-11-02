@@ -136,6 +136,9 @@ export const TABLE_TH_BASE_CLASS =
 export const TABLE_TH_SORTABLE_CLASS =
   `${TABLE_TH_BASE_CLASS} cursor-pointer group hover:bg-slate-200/60 transition-colors`;
 
+// 11. Largeur optimisée pour les colonnes de compétences clés dans le tableau capacitaire
+export const CAPACITY_SKILL_COL_WIDTH_CLASS = 'w-[104px] min-w-[104px] max-w-[104px]';
+
 // =========================================================================
 // CASES À COCHER GLOBALES (CHECKBOXES, LEURS TITRES ET TEXTES EXPLICATIFS)
 // =========================================================================
