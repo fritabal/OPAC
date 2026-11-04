@@ -81,3 +81,34 @@ export function getWorkingDaysInMonth(year: number, month: number): number {
 
   return workingDays;
 }
+
+/**
+ * Arrondit systématiquement une valeur en jours à 0,5 près (au demi-jour le plus proche).
+ * Exemples :
+ * - 16.8 -> 17
+ * - 16.2 -> 16
+ * - 16.3 -> 16.5
+ * - 16.7 -> 16.5
+ */
+export function roundToHalfDay(val: number): number {
+  return Math.round(val * 2) / 2;
+}
+
+/**
+ * Calcule la disponibilité réelle d'une ressource pour un mois donné,
+ * arrondie systématiquement à 0,5 près.
+ * Disponibilité = max(0, arrondir_à_0.5(jours_ouvrés * ETP - indisponibilité))
+ */
+export function calculateResourceAvailability(
+  workingDays: number,
+  fte: number = 1.0,
+  unavailability: number = 0
+): number {
+  const effectiveFte = typeof fte === 'number' && !isNaN(fte) && fte >= 0 ? fte : 1.0;
+  const effectiveUnavail =
+    typeof unavailability === 'number' && !isNaN(unavailability) && unavailability >= 0
+      ? unavailability
+      : 0;
+  const rawAvail = workingDays * effectiveFte - effectiveUnavail;
+  return Math.max(0, roundToHalfDay(rawAvail));
+}

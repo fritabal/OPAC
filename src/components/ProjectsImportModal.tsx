@@ -16,6 +16,7 @@ import {
   generateProjectsCsvTemplate,
   downloadFile,
 } from '../services/projectCsvService';
+import { MODAL_CANCEL_BUTTON_CLASS, MODAL_TITLE_CLASS } from '../constants/ui';
 
 interface ProjectsImportModalProps {
   isOpen: boolean;
@@ -138,7 +139,7 @@ export const ProjectsImportModal: React.FC<ProjectsImportModalProps> = ({
               <Upload className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="text-base font-bold text-slate-900">
+              <h3 className={`${MODAL_TITLE_CLASS} text-slate-900`}>
                 Importer des projets (CSV)
               </h3>
               <p className="text-xs text-slate-500">
@@ -287,7 +288,7 @@ export const ProjectsImportModal: React.FC<ProjectsImportModalProps> = ({
             type="button"
             onClick={onClose}
             disabled={isProcessing}
-            className="px-4 py-2 border border-slate-200 hover:bg-slate-100 text-slate-700 rounded-lg text-xs font-semibold transition-colors cursor-pointer disabled:opacity-50"
+            className={MODAL_CANCEL_BUTTON_CLASS}
           >
             Annuler
           </button>

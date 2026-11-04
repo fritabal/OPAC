@@ -26,6 +26,7 @@ import {
   ListOrdered,
   Gauge,
   BarChart3,
+  Globe,
 } from 'lucide-react';
 import { Criterion } from './types/criteria';
 import { BudgetLine } from './types/budget';
@@ -69,6 +70,7 @@ import { ResourcesUnavailabilityTable } from './components/ResourcesUnavailabili
 import { UserManagement } from './components/UserManagement';
 import { LoginModal } from './components/LoginModal';
 import { UserProfileModal, UserAvatarPictogram } from './components/UserProfileModal';
+import { InternationalizationTable } from './components/InternationalizationTable';
 import { SuperUserBackupMenu } from './components/SuperUserBackupMenu';
 import { GlobalTooltip } from './components/GlobalTooltip';
 import { CollaborationNotificationToast } from './components/CollaborationNotificationToast';
@@ -90,6 +92,7 @@ type ActiveTab =
   | 'skills'
   | 'lifecycle'
   | 'custom_params'
+  | 'internationalization'
   | 'users';
 
 function Dashboard() {
@@ -165,7 +168,7 @@ function Dashboard() {
 
   const isProjectsActive = ['projects', 'projects_capacity', 'projects_reports'].includes(activeTab);
   const isProjectsTableTab = activeTab === 'projects' || activeTab === 'projects_capacity';
-  const isSettingsActive = ['criteria', 'budgets', 'lifecycle', 'custom_params', 'skills'].includes(activeTab);
+  const isSettingsActive = ['criteria', 'budgets', 'lifecycle', 'custom_params', 'skills', 'internationalization'].includes(activeTab);
 
   // Logo personnalisé de l'application (administrable)
   const [customLogo, setCustomLogo] = useState<string | null>(getCachedAppLogo());
@@ -1068,6 +1071,23 @@ function Dashboard() {
                 </span>
                 {!canManageSkills && <Lock className="w-3 h-3 ml-0.5" />}
               </button>
+
+              {/* 6. Internationalisation (en marron) */}
+              <button
+                onClick={() => {
+                  setActiveTab('internationalization');
+                  setLastSettingsTab('internationalization');
+                }}
+                className={`px-3 py-1.5 rounded-t-xl border-t-2 border-x-2 border-b-0 text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer whitespace-nowrap ${
+                  activeTab === 'internationalization'
+                    ? 'bg-[#5d4037] text-white border-[#5d4037] shadow-xs -mb-[1px] pb-[7px]'
+                    : 'bg-[#efebe9]/90 hover:bg-[#d7ccc8] text-[#4e342e] border-[#bcaaa4] hover:border-[#8d6e63]'
+                }`}
+              >
+                <Globe className="w-3.5 h-3.5" />
+                <span>{t('navigation.settings_subtabs.internationalization', 'Internationalisation')}</span>
+                {!isAdmin && <Lock className="w-3 h-3 ml-0.5" />}
+              </button>
             </div>
           </div>
         )}
@@ -1263,6 +1283,16 @@ function Dashboard() {
               params={customParams}
               loading={loadingCustomParams}
               isAdmin={isAdmin}
+            />
+          </div>
+        )}
+
+        {/* Onglet 7 : Internationalisation & Traductions (sous-onglet marron de Paramètres) */}
+        {activeTab === 'internationalization' && (
+          <div className="space-y-6">
+            <InternationalizationTable
+              isAdmin={isAdmin}
+              currentUserEmail={activeUser?.email || ''}
             />
           </div>
         )}

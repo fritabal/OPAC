@@ -6,9 +6,13 @@
 // BOUTONS GLOBAUX DE CRÉATION D'UN NOUVEL ITEM ("Créer un nouveau...", "Créer une nouvelle...")
 // =========================================================================
 
+// Variables globales de couleur et de police pour tous les boutons d'action et filtres actifs (Bleu standardisé)
+export const PRIMARY_ACTION_BLUE_BG = 'bg-blue-600 hover:bg-blue-700';
+export const PRIMARY_ACTION_BLUE_TEXT = 'text-white text-xs font-semibold';
+
 // Variables globales de couleur et de police pour tous les boutons de création de l'application
-export const CREATE_ITEM_BUTTON_BG = 'bg-blue-600 hover:bg-blue-700';
-export const CREATE_ITEM_BUTTON_TEXT = 'text-white text-xs font-semibold';
+export const CREATE_ITEM_BUTTON_BG = PRIMARY_ACTION_BLUE_BG;
+export const CREATE_ITEM_BUTTON_TEXT = PRIMARY_ACTION_BLUE_TEXT;
 
 // Style global unifié pour TOUS les boutons de création d'un nouvel item dans tous les onglets
 export const CREATE_ITEM_BUTTON_CLASS =
@@ -16,7 +20,7 @@ export const CREATE_ITEM_BUTTON_CLASS =
 
 // Couleur standard bleue pour tous les boutons d'action principale : création et validation de modification
 export const PRIMARY_ACTION_BUTTON_CLASS =
-  'bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg shadow-xs transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed';
+  `${PRIMARY_ACTION_BLUE_BG} text-white font-semibold rounded-lg shadow-xs transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed`;
 
 // Style compact pour les boutons d'ajout dans les en-têtes d'onglets (Nouveau projet, Nouvelle ressource, etc.)
 export const PRIMARY_ACTION_HEADER_BUTTON_CLASS = CREATE_ITEM_BUTTON_CLASS;
@@ -24,6 +28,23 @@ export const PRIMARY_ACTION_HEADER_BUTTON_CLASS = CREATE_ITEM_BUTTON_CLASS;
 // Style pour les boutons de validation dans les fenêtres modales (Enregistrer, Créer, Valider)
 export const PRIMARY_ACTION_MODAL_BUTTON_CLASS =
   `px-4 py-2 ${PRIMARY_ACTION_BUTTON_CLASS} text-xs flex items-center gap-2`;
+
+// =========================================================================
+// BOUTONS GLOBAUX SECONDAIRES DANS LES FENÊTRES MODALES ("Annuler", "Fermer")
+// =========================================================================
+
+// Variables globales de couleur et de police pour les boutons Annuler et Fermer des fenêtres modales
+// (Gris légèrement plus soutenu que l'arrière-plan : fond bg-slate-200, survol bg-slate-300, texte text-slate-800)
+export const MODAL_SECONDARY_BUTTON_BG = 'bg-slate-200 hover:bg-slate-300 active:bg-slate-300/80';
+export const MODAL_SECONDARY_BUTTON_TEXT = 'text-slate-800 text-xs font-semibold';
+export const MODAL_SECONDARY_BUTTON_BORDER = 'border border-slate-300';
+
+// Style global unifié pour les boutons "Annuler" et "Fermer" dans TOUTES les fenêtres modales
+export const MODAL_CANCEL_BUTTON_CLASS =
+  `px-4 py-2 ${MODAL_SECONDARY_BUTTON_BG} ${MODAL_SECONDARY_BUTTON_TEXT} ${MODAL_SECONDARY_BUTTON_BORDER} rounded-lg shadow-2xs transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed`;
+
+export const MODAL_CLOSE_BUTTON_CLASS = MODAL_CANCEL_BUTTON_CLASS;
+export const MODAL_SECONDARY_BUTTON_CLASS = MODAL_CANCEL_BUTTON_CLASS;
 
 // =========================================================================
 // BOUTON "ENREGISTRER" CONDITIONNEL (ACTIF QUAND MODIFIÉ / GRISÉ QUAND INACTIF)
@@ -46,11 +67,34 @@ export const SAVE_BUTTON_INACTIVE_CLASS =
 export const getSaveButtonStateClass = (isEligibleToSave: boolean, isSaving: boolean = false): string =>
   isEligibleToSave && !isSaving ? SAVE_BUTTON_ACTIVE_CLASS : SAVE_BUTTON_INACTIVE_CLASS;
 
-// Style pour le bouton filtre "Mes ..." (Mes projets, Mes ressources)
-export const MY_FILTER_BUTTON_ACTIVE_CLASS =
-  'bg-blue-600 text-white border-blue-600 shadow-2xs';
-export const MY_FILTER_BUTTON_INACTIVE_CLASS =
+// =========================================================================
+// BOUTONS FILTRES GLOBAUX ("Mes projets", "Mes ressources", "Sélection manuelle", etc.)
+// =========================================================================
+
+// Style global pour les boutons filtres actifs et inactifs (utilise la même couleur bleue standard que le bouton Créer)
+export const FILTER_BUTTON_ACTIVE_CLASS =
+  `${CREATE_ITEM_BUTTON_BG} text-white border-blue-600 shadow-2xs`;
+export const FILTER_BUTTON_INACTIVE_CLASS =
   'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200';
+
+// Alias pour compatibilité ascendante
+export const MY_FILTER_BUTTON_ACTIVE_CLASS = FILTER_BUTTON_ACTIVE_CLASS;
+export const MY_FILTER_BUTTON_INACTIVE_CLASS = FILTER_BUTTON_INACTIVE_CLASS;
+
+// =========================================================================
+// SÉLECTEURS SEGMENTÉS GLOBAUX (Périmètres "Tous / Staffés", Périodes "6 mois / 12 mois", etc.)
+// =========================================================================
+export const SEGMENT_SELECTOR_CONTAINER_CLASS =
+  'flex items-center gap-1 p-1 bg-blue-50 rounded-xl border border-blue-200 shrink-0';
+
+export const SEGMENT_SELECTOR_BUTTON_ACTIVE_CLASS =
+  'px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer bg-blue-600 text-white shadow-2xs font-bold';
+
+export const SEGMENT_SELECTOR_BUTTON_INACTIVE_CLASS =
+  'px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer text-blue-700 hover:text-blue-900';
+
+export const getSegmentSelectorButtonClass = (isActive: boolean): string =>
+  isActive ? SEGMENT_SELECTOR_BUTTON_ACTIVE_CLASS : SEGMENT_SELECTOR_BUTTON_INACTIVE_CLASS;
 
 // =========================================================================
 // PARAMÈTRES GLOBAUX CONFIGURABLES DES BULLES D'INFORMATION (TOOLTIPS)
@@ -122,8 +166,11 @@ export const TABLE_HEADER_SORT_ICON_INACTIVE_CLASS =
 export const TABLE_HEADER_SORT_ICON_ACTIVE_CLASS =
   'w-3.5 h-3.5 text-indigo-600 font-bold shrink-0';
 
-// Double filet vertical marquant la séparation à droite de la dernière colonne figée dans les tableaux à défilement horizontal
+// Double filet vertical marquant la séparation à droite de la colonne figée à gauche
 export const TABLE_FROZEN_DIVIDER_CLASS = 'table-frozen-divider';
+
+// Double filet vertical marquant la séparation à gauche de la colonne figée à droite (dernière colonne)
+export const TABLE_FROZEN_DIVIDER_LEFT_CLASS = 'table-frozen-divider-left';
 
 // Double filet horizontal sous la ligne de titre des tableaux (toujours visible, même lors du défilement)
 export const TABLE_HEADER_DOUBLE_BOTTOM_CLASS = 'table-header-double-bottom';
@@ -164,4 +211,20 @@ export const CHECKBOX_CONTAINER_CLASS =
 // Conteneur complet sous forme de carte pour une case à cocher avec titre et texte explicatif
 export const CHECKBOX_CARD_CONTAINER_CLASS =
   'p-3 sm:p-3.5 bg-slate-50/70 hover:bg-slate-100/70 border border-slate-200 rounded-xl transition-all select-none cursor-pointer group';
+
+// =========================================================================
+// TYPOGRAPHIE STANDARDISÉE DES TITRES (ONGLETS ET FENÊTRES MODALES)
+// =========================================================================
+
+// Taille et graisse standardisées pour tous les titres principaux (titres d'onglets et de fenêtres modales)
+export const MAIN_TITLE_FONT_SIZE_CLASS = 'text-xl';
+export const MAIN_TITLE_FONT_WEIGHT_CLASS = 'font-bold';
+export const MAIN_TITLE_CLASS = `${MAIN_TITLE_FONT_SIZE_CLASS} ${MAIN_TITLE_FONT_WEIGHT_CLASS}`;
+export const TAB_TITLE_CLASS = MAIN_TITLE_CLASS;
+export const MODAL_TITLE_CLASS = MAIN_TITLE_CLASS;
+
+// Typographie standardisée pour le nom et l'identifiant du projet (notamment dans les fenêtres modales)
+export const PROJECT_TITLE_FONT_SIZE_CLASS = 'text-xl';
+export const PROJECT_TITLE_FONT_WEIGHT_CLASS = 'font-bold';
+export const PROJECT_TITLE_CLASS = `${PROJECT_TITLE_FONT_SIZE_CLASS} ${PROJECT_TITLE_FONT_WEIGHT_CLASS} text-black`;
 

@@ -2,7 +2,6 @@ import React, { useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   BarChart3,
-  Clock,
   CheckCircle2,
   Mail,
   Copy,
@@ -27,14 +26,18 @@ import { CustomProjectParam } from '../types/customParam';
 import { AppUser } from '../types/user';
 import { BonusConfig } from '../types/bonus';
 import { BUDGET_PALETTE_32 } from '../constants/colors';
-import { getWorkingDaysInMonth } from '../utils/workingDays';
+import { getWorkingDaysInMonth, roundToHalfDay, calculateResourceAvailability } from '../utils/workingDays';
 import { calculateProjectRoi, formatRoi } from '../utils/roiCalculator';
 import { getNextPeriodInfo, normalizePeriodKey } from '../utils/dateUtils';
 import { Tooltip } from './Tooltip';
 import { ProjectModal } from './ProjectModal';
+import { ConsolidatedCapacityHistoryCard } from './ConsolidatedCapacityHistoryCard';
 import {
   TABLE_HEADER_DOUBLE_BOTTOM_CLASS,
   TABLE_HEADER_THEAD_CLASS,
+  SEGMENT_SELECTOR_CONTAINER_CLASS,
+  getSegmentSelectorButtonClass,
+  TAB_TITLE_CLASS,
 } from '../constants/ui';
 
 // Détection de contraste de couleur pour garantir la lisibilité du texte sur les étiquettes
@@ -270,22 +273,23 @@ export const ProjectsReportsView: React.FC<ProjectsReportsViewProps> = ({
   // Calcul des goulets d'étranglement parmi les compétences clés :
   // Nombre de compétences clés en déficit de capacité par rapport aux demandes (Demande > Capacité)
   const bottleneckSkills = useMemo(() => {
-    // 1. Capacité C par compétence sur le mois prochain
+    // 1. Capacité C par compétence sur le mois prochain (arrondie à 0,5 près)
     const capacityMap: Record<string, number> = {};
     skills.forEach((skill) => {
       let c = 0;
       resources.forEach((res) => {
         if (res.skillId === skill.id) {
-          const fte = typeof res.fte === 'number' && !isNaN(res.fte) ? res.fte : 1.0;
-          const unavail =
+          const avail = calculateResourceAvailability(
+            workingDaysNextMonth,
+            res.fte,
             res.unavailability && typeof res.unavailability[nextMonthKey] === 'number'
               ? res.unavailability[nextMonthKey]
-              : 0;
-          const avail = workingDaysNextMonth * fte - unavail;
-          c += Math.max(0, avail);
+              : 0
+          );
+          c += avail;
         }
       });
-      capacityMap[skill.id] = Math.round(c * 10) / 10;
+      capacityMap[skill.id] = roundToHalfDay(c);
     });
 
     // 2. Pour chaque compétence clé, demande cumulée dans l'ordre strict de priorité et calcul du déficit
@@ -1058,20 +1062,13 @@ Le PMO / Value Management Office`;
       {/* En-tête de la section Rapports */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2.5">
+          <h2 className={`${TAB_TITLE_CLASS} text-slate-900 flex items-center gap-2.5`}>
             <BarChart3 className="w-5 h-5 text-slate-700 shrink-0" />
             <span>{t('reports.governance_title')}</span>
           </h2>
           <p className="text-xs text-slate-600 mt-1 max-w-3xl leading-relaxed">
             {t('reports.governance_subtitle')}
           </p>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-white border border-slate-200 text-slate-700 shadow-2xs">
-            <Clock className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
-            <span>{t('reports.next_period')} <strong className="text-slate-900">{nextMonthLabel}</strong></span>
-          </span>
         </div>
       </div>
 
@@ -1136,11 +1133,10 @@ Le PMO / Value Management Office`;
                 <table className="w-full text-left text-xs border-collapse">
                   <thead className={`${TABLE_HEADER_THEAD_CLASS} sticky top-0 z-10 bg-slate-100`}>
                     <tr>
-                      {/* Colonne 1 : CdP */}
+                      {/* Colonne 1 : CdP (sans bulle d'information inutile) */}
                       <th
                         scope="col"
                         className={`py-2.5 px-3 text-left align-middle font-bold text-slate-700 border-r border-slate-200 ${TABLE_HEADER_DOUBLE_BOTTOM_CLASS} w-[130px]`}
-                        title="Chef de Projet"
                       >
                         {t('reports.table.cdp')}
                       </th>
@@ -1149,7 +1145,7 @@ Le PMO / Value Management Office`;
                       <th
                         scope="col"
                         className={`py-2.5 px-2 text-center align-middle font-bold text-slate-700 border-r border-slate-200 ${TABLE_HEADER_DOUBLE_BOTTOM_CLASS} w-[45px]`}
-                        title="Nombre de projets non mis à jour"
+                        title={t('reports.outdated_projects.col_count_tooltip')}
                       >
                         {t('reports.table.nb')}
                       </th>
@@ -1158,7 +1154,7 @@ Le PMO / Value Management Office`;
                       <th
                         scope="col"
                         className={`py-2.5 px-3 text-left align-middle font-bold text-slate-700 ${TABLE_HEADER_DOUBLE_BOTTOM_CLASS}`}
-                        title="Projets non mis à jour"
+                        title={t('reports.outdated_projects.col_projects_tooltip')}
                       >
                         {t('reports.table.projects')}
                       </th>
@@ -1222,7 +1218,7 @@ Le PMO / Value Management Office`;
                                 type="button"
                                 onClick={() => onNavigateToCapacityProject?.(p.name)}
                                 className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100 hover:text-rose-900 hover:border-rose-300 font-mono shadow-2xs transition-all cursor-pointer text-left"
-                                title={`Cliquer pour filtrer et afficher le projet "${p.name}" dans l'onglet Capacitaire`}
+                                title={t('reports.outdated_projects.project_badge_tooltip', { name: p.name })}
                               >
                                 <span className="font-bold">#{p.projectNumber}</span>
                                 <span className="font-sans font-medium">{p.name}</span>
@@ -1236,12 +1232,12 @@ Le PMO / Value Management Office`;
                           <div className="flex items-center justify-center">
                             <Tooltip
                               placement="top"
-                              content={`Envoyer un email de demande de mise à jour à ${pm.name}`}
+                              content={t('reports.outdated_projects.tooltip_one', { name: pm.name })}
                             >
                               <button
                                 type="button"
                                 onClick={() => handleSendEmailToOnePm(pm)}
-                                aria-label={`Envoyer un email de demande de mise à jour à ${pm.name}`}
+                                aria-label={t('reports.outdated_projects.tooltip_one', { name: pm.name })}
                                 className="p-1.5 rounded-md text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 transition-colors cursor-pointer"
                               >
                                 <Mail className="w-4 h-4" />
@@ -1320,7 +1316,7 @@ Le PMO / Value Management Office`;
                       <th
                         scope="col"
                         className={`py-2.5 px-3 text-left align-middle font-bold text-slate-700 border-r border-slate-200 ${TABLE_HEADER_DOUBLE_BOTTOM_CLASS}`}
-                        title="Compétence clé en déficit de capacité par rapport aux demandes"
+                        title={t('reports.bottlenecks.col_skill_tooltip')}
                       >
                         {t('reports.table.skill')}
                       </th>
@@ -1329,7 +1325,7 @@ Le PMO / Value Management Office`;
                       <th
                         scope="col"
                         className={`py-2.5 px-2 text-center align-middle font-bold text-slate-700 border-r border-slate-200 ${TABLE_HEADER_DOUBLE_BOTTOM_CLASS} w-[80px]`}
-                        title="Nombre de jours manquants par rapport à la demande totale (Demande - Capacité)"
+                        title={t('reports.bottlenecks.col_missing_tooltip')}
                       >
                         {t('reports.table.missing')}
                       </th>
@@ -1338,7 +1334,7 @@ Le PMO / Value Management Office`;
                       <th
                         scope="col"
                         className={`py-2.5 px-2 text-center align-middle font-bold text-slate-700 border-r border-slate-200 ${TABLE_HEADER_DOUBLE_BOTTOM_CLASS} w-[105px]`}
-                        title="Nombre de projets staffés dont la demande ne peut pas être totalement honorée"
+                        title={t('reports.bottlenecks.col_blocked_tooltip')}
                       >
                         {t('reports.table.blocked')}
                       </th>
@@ -1347,7 +1343,7 @@ Le PMO / Value Management Office`;
                       <th
                         scope="col"
                         className={`py-2.5 px-2 text-center align-middle font-bold text-slate-700 ${TABLE_HEADER_DOUBLE_BOTTOM_CLASS} w-[80px]`}
-                        title="Capacité disponible totale en nombre de jours pour ce mois"
+                        title={t('reports.bottlenecks.col_capacity_tooltip')}
                       >
                         {t('reports.table.capacity')}
                       </th>
@@ -1434,26 +1430,18 @@ Le PMO / Value Management Office`;
             </div>
 
             {/* Sélecteur de périmètre : Tous les projets vs Projets staffés uniquement */}
-            <div className="flex items-center gap-1 p-1 bg-blue-50 rounded-xl border border-blue-200 self-start sm:self-auto shrink-0">
+            <div className={`${SEGMENT_SELECTOR_CONTAINER_CLASS} self-start sm:self-auto`}>
               <button
                 type="button"
                 onClick={() => setBudgetScopeStaffedOnly(false)}
-                className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-                  !budgetScopeStaffedOnly
-                    ? 'bg-blue-600 text-white shadow-2xs font-bold'
-                    : 'text-blue-700 hover:text-blue-900'
-                }`}
+                className={getSegmentSelectorButtonClass(!budgetScopeStaffedOnly)}
               >
                 {t('reports.budget_distribution.all_scope', { count: projects.length })}
               </button>
               <button
                 type="button"
                 onClick={() => setBudgetScopeStaffedOnly(true)}
-                className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-                  budgetScopeStaffedOnly
-                    ? 'bg-blue-600 text-white shadow-2xs font-bold'
-                    : 'text-blue-700 hover:text-blue-900'
-                }`}
+                className={getSegmentSelectorButtonClass(budgetScopeStaffedOnly)}
               >
                 {t('reports.budget_distribution.staffed_scope', { count: staffedProjects.length })}
               </button>
@@ -1841,26 +1829,18 @@ Le PMO / Value Management Office`;
             </div>
 
             {/* Périmètre */}
-            <div className="flex items-center gap-1 p-1 bg-blue-50 rounded-xl border border-blue-200">
+            <div className={SEGMENT_SELECTOR_CONTAINER_CLASS}>
               <button
                 type="button"
                 onClick={() => setMatrixScopeStaffedOnly(false)}
-                className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-                  !matrixScopeStaffedOnly
-                    ? 'bg-blue-600 text-white shadow-2xs font-bold'
-                    : 'text-blue-700 hover:text-blue-900'
-                }`}
+                className={getSegmentSelectorButtonClass(!matrixScopeStaffedOnly)}
               >
                 {t('reports.matrix.all_scope', { count: projects.length })}
               </button>
               <button
                 type="button"
                 onClick={() => setMatrixScopeStaffedOnly(true)}
-                className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-                  matrixScopeStaffedOnly
-                    ? 'bg-blue-600 text-white shadow-2xs font-bold'
-                    : 'text-blue-700 hover:text-blue-900'
-                }`}
+                className={getSegmentSelectorButtonClass(matrixScopeStaffedOnly)}
               >
                 {t('reports.matrix.staffed_scope', { count: staffedProjects.length })}
               </button>
@@ -2409,6 +2389,15 @@ Le PMO / Value Management Office`;
         )}
       </div>
       </div>
+
+      {/* ======================================================== */}
+      {/* ENCART : Historique capacitaire consolidé par compétence clé */}
+      {/* ======================================================== */}
+      <ConsolidatedCapacityHistoryCard
+        projects={projects}
+        skills={skills}
+        resources={resources}
+      />
 
       {/* ======================================================== */}
       {/* MODALE : Prévisualisation & confirmation de l'email */}

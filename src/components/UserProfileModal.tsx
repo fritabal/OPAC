@@ -31,6 +31,8 @@ import { LanguageFlag } from './Flags';
 import {
   UNSAVED_CHANGES_TEXT_CLASS,
   getSaveButtonStateClass,
+  MODAL_CANCEL_BUTTON_CLASS,
+  MODAL_TITLE_CLASS,
 } from '../constants/ui';
 
 export const UserAvatarPictogram: React.FC<{
@@ -350,7 +352,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
               )}
             </div>
             <div>
-              <h2 className="text-lg font-bold text-white flex items-center gap-2">
+              <h2 className={`${MODAL_TITLE_CLASS} text-white flex items-center gap-2`}>
                 <span>{activeUser.displayName}</span>
               </h2>
               <p className="text-xs text-slate-300 font-mono mt-0.5">{activeUser.email}</p>
@@ -775,7 +777,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
               <button
                 type="button"
                 onClick={handleCancel}
-                className="px-4 py-2 border border-slate-300 rounded-lg text-xs font-semibold text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
+                className={MODAL_CANCEL_BUTTON_CLASS}
               >
                 {t('modals.common.cancel', 'Annuler')}
               </button>

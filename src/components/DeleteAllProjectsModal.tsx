@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { X, Trash2, AlertTriangle, Loader2 } from 'lucide-react';
 import { Project } from '../types/project';
 import { deleteAllProjects } from '../services/projectCsvService';
+import { MODAL_CANCEL_BUTTON_CLASS, MODAL_TITLE_CLASS } from '../constants/ui';
 
 interface DeleteAllProjectsModalProps {
   isOpen: boolean;
@@ -67,7 +68,7 @@ export const DeleteAllProjectsModal: React.FC<DeleteAllProjectsModalProps> = ({
               <Trash2 className="w-5 h-5 text-rose-600" />
             </div>
             <div>
-              <h3 className="text-base font-bold text-slate-900">
+              <h3 className={`${MODAL_TITLE_CLASS} text-slate-900`}>
                 Supprimer des projets
               </h3>
               <p className="text-xs text-slate-500">
@@ -214,7 +215,7 @@ export const DeleteAllProjectsModal: React.FC<DeleteAllProjectsModalProps> = ({
             type="button"
             onClick={onClose}
             disabled={isDeleting}
-            className="px-4 py-2 border border-slate-200 hover:bg-slate-100 text-slate-700 rounded-lg text-xs font-semibold transition-colors cursor-pointer"
+            className={MODAL_CANCEL_BUTTON_CLASS}
           >
             Annuler
           </button>

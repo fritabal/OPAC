@@ -6,7 +6,11 @@ import {
   DEFAULT_CRITERIA_ALERT_CONFIG,
   TOTAL_CRITERION_LEVELS_COUNT,
 } from '../types/criteriaAlert';
-import { PRIMARY_ACTION_BUTTON_CLASS } from '../constants/ui';
+import {
+  PRIMARY_ACTION_BUTTON_CLASS,
+  MODAL_CANCEL_BUTTON_CLASS,
+  MODAL_TITLE_CLASS,
+} from '../constants/ui';
 
 interface CriteriaAlertSettingsModalProps {
   isOpen: boolean;
@@ -121,7 +125,7 @@ export const CriteriaAlertSettingsModal: React.FC<CriteriaAlertSettingsModalProp
               <Sliders className="w-5 h-5 text-red-600" />
             </div>
             <div>
-              <h3 className="text-base font-bold text-slate-900 leading-tight">
+              <h3 className={`${MODAL_TITLE_CLASS} text-slate-900 leading-tight`}>
                 {t('settings.criteria.alerts.modal_title')}
               </h3>
               <p className="text-xs text-slate-600 mt-1 leading-relaxed">
@@ -296,7 +300,7 @@ export const CriteriaAlertSettingsModal: React.FC<CriteriaAlertSettingsModalProp
                 type="button"
                 onClick={onClose}
                 disabled={saving}
-                className="px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer disabled:opacity-50"
+                className={MODAL_CANCEL_BUTTON_CLASS}
               >
                 {t('settings.common.cancel')}
               </button>

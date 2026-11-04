@@ -29,7 +29,7 @@ import {
 } from '../services/lifecycleService';
 import { LifecycleStateModal } from './LifecycleStateModal';
 import { Tooltip } from './Tooltip';
-import { CREATE_ITEM_BUTTON_CLASS, TABLE_HEADER_THEAD_CLASS, TABLE_TH_BASE_CLASS } from '../constants/ui';
+import { CREATE_ITEM_BUTTON_CLASS, TABLE_HEADER_THEAD_CLASS, TABLE_TH_BASE_CLASS, TAB_TITLE_CLASS } from '../constants/ui';
 
 interface LifecycleStatesTableProps {
   states: ProjectState[];
@@ -144,7 +144,7 @@ export const LifecycleStatesTable: React.FC<LifecycleStatesTableProps> = ({
       {/* En-tête de section avec titre, explication et boutons d'action directement sur le fond gris */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-xl font-bold text-blue-950 flex items-center gap-2.5">
+          <h2 className={`${TAB_TITLE_CLASS} text-blue-950 flex items-center gap-2.5`}>
             <GitFork className="w-5 h-5 text-blue-950 shrink-0" />
             <span>{t('settings.lifecycle.title')}</span>
           </h2>

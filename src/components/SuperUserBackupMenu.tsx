@@ -28,6 +28,8 @@ import {
   CHECKBOX_INPUT_CLASS,
   CHECKBOX_TITLE_CLASS,
   CHECKBOX_DESCRIPTION_CLASS,
+  MODAL_CANCEL_BUTTON_CLASS,
+  MODAL_CLOSE_BUTTON_CLASS,
 } from '../constants/ui';
 
 interface SuperUserBackupMenuProps {
@@ -476,7 +478,7 @@ export const SuperUserBackupMenu: React.FC<SuperUserBackupMenuProps> = ({
                 <button
                   type="button"
                   onClick={closeImportModal}
-                  className="px-4 py-2 text-xs font-semibold bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors shadow-xs cursor-pointer"
+                  className={MODAL_CLOSE_BUTTON_CLASS}
                 >
                   {t('common.close', { defaultValue: 'Fermer' })}
                 </button>
@@ -486,7 +488,7 @@ export const SuperUserBackupMenu: React.FC<SuperUserBackupMenuProps> = ({
                     type="button"
                     onClick={closeImportModal}
                     disabled={importing}
-                    className="px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-200 rounded-lg transition-colors cursor-pointer disabled:opacity-50"
+                    className={MODAL_CANCEL_BUTTON_CLASS}
                   >
                     {t('common.cancel', { defaultValue: 'Annuler' })}
                   </button>
@@ -641,7 +643,7 @@ export const SuperUserBackupMenu: React.FC<SuperUserBackupMenuProps> = ({
                 <button
                   type="button"
                   onClick={closeEraseModal}
-                  className="px-4 py-2 text-xs font-semibold bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors shadow-xs cursor-pointer"
+                  className={MODAL_CLOSE_BUTTON_CLASS}
                 >
                   {t('common.close', { defaultValue: 'Fermer' })}
                 </button>
@@ -651,7 +653,7 @@ export const SuperUserBackupMenu: React.FC<SuperUserBackupMenuProps> = ({
                     type="button"
                     onClick={closeEraseModal}
                     disabled={erasing}
-                    className="px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-200 rounded-lg transition-colors cursor-pointer disabled:opacity-50"
+                    className={MODAL_CANCEL_BUTTON_CLASS}
                   >
                     {t('common.cancel', { defaultValue: 'Annuler' })}
                   </button>

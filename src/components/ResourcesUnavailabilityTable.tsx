@@ -30,6 +30,7 @@ import {
   TABLE_TH_BASE_CLASS,
   TABLE_TH_SORTABLE_CLASS,
   TABLE_HEADER_DOUBLE_BOTTOM_CLASS,
+  TAB_TITLE_CLASS,
 } from '../constants/ui';
 import {
   addResource,
@@ -323,7 +324,7 @@ export const ResourcesUnavailabilityTable: React.FC<ResourcesUnavailabilityTable
       {/* En-tête de section directement sur le fond de page (comme Projets) */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-xl font-bold text-rose-900 flex items-center gap-2.5">
+          <h2 className={`${TAB_TITLE_CLASS} text-rose-900 flex items-center gap-2.5`}>
             <Calendar className="w-5 h-5 text-rose-900 shrink-0" />
             <span>{t('unavailabilities.title')}</span>
           </h2>
@@ -473,14 +474,27 @@ export const ResourcesUnavailabilityTable: React.FC<ResourcesUnavailabilityTable
                     <th
                       key={m.key}
                       scope="col"
-                      className={`px-2 text-center min-w-[82px] ${TABLE_TH_BASE_CLASS} ${
+                      className={`px-2 py-1.5 text-center min-w-[82px] ${TABLE_TH_BASE_CLASS} ${
                         isCurrentMonth
                           ? 'bg-rose-50 text-rose-900 border-rose-200'
                           : ''
                       }`}
                     >
-                      <div className="text-[11px] font-bold leading-tight">
-                        {m.label}
+                      <div className="flex flex-col items-center justify-center leading-tight select-none min-w-0">
+                        <span
+                          className={`font-bold text-xs capitalize truncate ${
+                            isCurrentMonth ? 'text-rose-900' : 'text-slate-800'
+                          }`}
+                        >
+                          {new Date(m.year, m.month - 1, 1).toLocaleDateString(i18n.language, { month: 'short' })}
+                        </span>
+                        <span
+                          className={`text-[10px] font-medium font-mono ${
+                            isCurrentMonth ? 'text-rose-700/80' : 'text-slate-500'
+                          }`}
+                        >
+                          {m.year}
+                        </span>
                       </div>
                     </th>
                   );

@@ -23,7 +23,7 @@ import { BudgetLine, BudgetLineFormData } from '../types/budget';
 import { BudgetLineModal } from './BudgetLineModal';
 import { Tooltip } from './Tooltip';
 import { BUDGET_PALETTE_32 } from '../constants/colors';
-import { CREATE_ITEM_BUTTON_CLASS, TABLE_HEADER_THEAD_CLASS, TABLE_TH_BASE_CLASS } from '../constants/ui';
+import { CREATE_ITEM_BUTTON_CLASS, TABLE_HEADER_THEAD_CLASS, TABLE_TH_BASE_CLASS, TAB_TITLE_CLASS } from '../constants/ui';
 import {
   addBudgetLine,
   updateBudgetLine,
@@ -198,7 +198,7 @@ export const BudgetLinesTable: React.FC<BudgetLinesTableProps> = ({
       {/* En-tête avec titre, sous-titre et bouton d'action */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-xl font-bold text-teal-600 flex items-center gap-2.5">
+          <h2 className={`${TAB_TITLE_CLASS} text-teal-600 flex items-center gap-2.5`}>
             <Coins className="w-5 h-5 text-teal-600 shrink-0" />
             <span>{t('settings.budgets.title')}</span>
           </h2>

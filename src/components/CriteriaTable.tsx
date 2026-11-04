@@ -46,6 +46,7 @@ import {
   TABLE_FROZEN_DIVIDER_CLASS,
   TABLE_HEADER_THEAD_CLASS,
   TABLE_TH_BASE_CLASS,
+  TAB_TITLE_CLASS,
 } from '../constants/ui';
 import {
   addCriterion,
@@ -291,7 +292,7 @@ export const CriteriaTable: React.FC<CriteriaTableProps> = ({
       {/* En-tête avec titre, sous-titre et bouton d'action */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-xl font-bold text-emerald-600 flex items-center gap-2.5">
+          <h2 className={`${TAB_TITLE_CLASS} text-emerald-600 flex items-center gap-2.5`}>
             <Sliders className="w-5 h-5 text-emerald-600 shrink-0" />
             <span>{t('settings.criteria.title')}</span>
           </h2>

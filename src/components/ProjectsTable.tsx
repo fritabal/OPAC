@@ -63,6 +63,8 @@ import { LifecycleStateFilter } from './LifecycleStateFilter';
 import { BudgetLineFilter } from './BudgetLineFilter';
 import {
   CREATE_ITEM_BUTTON_CLASS,
+  FILTER_BUTTON_ACTIVE_CLASS,
+  FILTER_BUTTON_INACTIVE_CLASS,
   CHECKBOX_INPUT_CLASS,
   CHECKBOX_TITLE_CLASS,
   CHECKBOX_CONTAINER_CLASS,
@@ -75,6 +77,7 @@ import {
   TABLE_HEADER_SORT_ICON_ACTIVE_CLASS,
   TABLE_TH_BASE_CLASS,
   TABLE_TH_SORTABLE_CLASS,
+  TAB_TITLE_CLASS,
 } from '../constants/ui';
 
 export type SortColumn = 'id' | 'roi' | 'name' | 'state' | 'pm' | 'budgetLine' | 'bonus' | string;
@@ -1086,7 +1089,7 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
       {/* En-tête de section */}
       <div className="shrink-0 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
         <div>
-          <h2 className="text-xl font-bold text-blue-600 flex items-center gap-2.5">
+          <h2 className={`${TAB_TITLE_CLASS} text-blue-600 flex items-center gap-2.5`}>
             <Briefcase className="w-5 h-5 text-blue-600 shrink-0" />
             <span>{t('projects.title')}</span>
           </h2>
@@ -1261,8 +1264,8 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
               onClick={handleToggleMyProjects}
               className={`w-full py-2 px-3 rounded-lg text-xs font-semibold border transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
                 myProjectsOnly
-                  ? 'bg-indigo-600 text-white border-indigo-600 shadow-2xs'
-                  : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200'
+                  ? FILTER_BUTTON_ACTIVE_CLASS
+                  : FILTER_BUTTON_INACTIVE_CLASS
               }`}
             >
               <User className="w-3.5 h-3.5" />
@@ -1292,8 +1295,8 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
                 onClick={handleToggleManualSelection}
                 className={`w-full py-2 px-2.5 rounded-lg text-xs font-semibold border transition-all cursor-pointer flex items-center justify-center gap-1.5 whitespace-nowrap ${
                   manualSelectionActive
-                    ? 'bg-indigo-600 text-white border-indigo-600 shadow-2xs'
-                    : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200'
+                    ? FILTER_BUTTON_ACTIVE_CLASS
+                    : FILTER_BUTTON_INACTIVE_CLASS
                 }`}
                 aria-label={
                   manualSelectionActive

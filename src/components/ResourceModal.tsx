@@ -5,7 +5,11 @@ import { Resource, ResourceFormData } from '../types/resource';
 import { KeySkill } from '../types/skill';
 import { AppUser } from '../types/user';
 import { resolveUserDisplayName } from '../utils/userUtils';
-import { PRIMARY_ACTION_MODAL_BUTTON_CLASS } from '../constants/ui';
+import {
+  PRIMARY_ACTION_MODAL_BUTTON_CLASS,
+  MODAL_CANCEL_BUTTON_CLASS,
+  MODAL_TITLE_CLASS,
+} from '../constants/ui';
 
 interface ResourceModalProps {
   isOpen: boolean;
@@ -131,7 +135,7 @@ export const ResourceModal: React.FC<ResourceModalProps> = ({
               <Users className="w-5 h-5 text-rose-900" />
             </div>
             <div>
-              <h3 className="font-semibold text-slate-900 text-base">
+              <h3 className={`${MODAL_TITLE_CLASS} text-slate-900`}>
                 {isReadOnly
                   ? t('modals.resource.title_view', { name: resourceToEdit?.name || '' })
                   : resourceToEdit
@@ -265,7 +269,7 @@ export const ResourceModal: React.FC<ResourceModalProps> = ({
               <button
                 type="button"
                 onClick={onClose}
-                className="px-4 py-2 border border-slate-300 rounded-lg text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer"
+                className={MODAL_CANCEL_BUTTON_CLASS}
               >
                 {isReadOnly ? t('modals.common.close') : t('modals.common.cancel')}
               </button>

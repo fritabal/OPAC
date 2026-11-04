@@ -64,6 +64,10 @@ import {
   TABLE_HEADER_SORT_ICON_ACTIVE_CLASS,
   TABLE_TH_BASE_CLASS,
   TABLE_TH_SORTABLE_CLASS,
+  MODAL_CANCEL_BUTTON_CLASS,
+  MODAL_CLOSE_BUTTON_CLASS,
+  MODAL_TITLE_CLASS,
+  TAB_TITLE_CLASS,
 } from '../constants/ui';
 
 interface UserManagementProps {
@@ -730,7 +734,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({
         {/* En-tête : Titre et boutons d'actions */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
-            <h2 className="text-xl font-bold text-pink-600 flex items-center gap-2.5">
+            <h2 className={`${TAB_TITLE_CLASS} text-pink-600 flex items-center gap-2.5`}>
               <Users className="w-5 h-5 text-pink-600 shrink-0" />
               <span>{t('users.title')}</span>
             </h2>
@@ -1512,7 +1516,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({
               <button
                 type="button"
                 onClick={() => setGeneratedLinkData(null)}
-                className="px-4 py-2 text-xs font-semibold bg-slate-900 hover:bg-slate-800 text-white rounded-lg transition-colors cursor-pointer"
+                className={MODAL_CLOSE_BUTTON_CLASS}
               >
                 Fermer
               </button>
@@ -1532,8 +1536,10 @@ export const UserManagement: React.FC<UserManagementProps> = ({
                   <Users className="w-5 h-5 text-pink-600" />
                 </div>
                 <div>
-                  <h3 className="font-semibold text-slate-900 text-base">
-                    {editingUser ? t('users.modal.title_edit') : t('users.modal.title_add')}
+                  <h3 className={`${MODAL_TITLE_CLASS} text-slate-900`}>
+                    {editingUser
+                      ? t('users.modal.title_edit', { name: editingUser.displayName })
+                      : t('users.modal.title_add')}
                   </h3>
                   <p className="text-xs text-slate-500">
                     {editingUser
@@ -1802,7 +1808,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({
                   <button
                     type="button"
                     onClick={() => setModalOpen(false)}
-                    className="px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
+                    className={MODAL_CANCEL_BUTTON_CLASS}
                   >
                     {t('common.actions.cancel')}
                   </button>
@@ -1837,7 +1843,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({
               <button
                 type="button"
                 onClick={() => setDeleteCandidate(null)}
-                className="px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
+                className={MODAL_CANCEL_BUTTON_CLASS}
               >
                 {t('common.actions.cancel')}
               </button>

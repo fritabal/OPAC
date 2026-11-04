@@ -18,6 +18,7 @@ import {
   Check,
   RotateCcw,
   HelpCircle,
+  ChevronDown,
 } from 'lucide-react';
 import { Project } from '../types/project';
 import { KeySkill } from '../types/skill';
@@ -29,9 +30,15 @@ import { CustomProjectParam } from '../types/customParam';
 import { AppUser, UserRole } from '../types/user';
 import { BonusConfig } from '../types/bonus';
 import { calculateProjectRoi } from '../utils/roiCalculator';
-import { updateProjectCapacity, updateProjectStaffing } from '../services/projectService';
+import {
+  updateProjectCapacity,
+  updateProjectStaffing,
+  checkAndAutoArchiveCapacity,
+  updateProjectRat,
+  updateProjectPeriodDemands,
+} from '../services/projectService';
 import { isSuperAdminEmail } from '../services/userService';
-import { getWorkingDaysInMonth } from '../utils/workingDays';
+import { getWorkingDaysInMonth, roundToHalfDay, calculateResourceAvailability } from '../utils/workingDays';
 import {
   MY_FILTER_BUTTON_ACTIVE_CLASS,
   MY_FILTER_BUTTON_INACTIVE_CLASS,
@@ -47,9 +54,14 @@ import {
   TOOLTIP_TEXT_SIZE_CLASS,
   TOOLTIP_TEXT_WEIGHT_CLASS,
   TOOLTIP_MAX_WIDTH_CLASS,
+  TAB_TITLE_CLASS,
+  SEGMENT_SELECTOR_CONTAINER_CLASS,
+  getSegmentSelectorButtonClass,
 } from '../constants/ui';
 import { Tooltip } from './Tooltip';
 import { ProjectModal } from './ProjectModal';
+import { ProjectCapacityHistoryModal } from './ProjectCapacityHistoryModal';
+import { ProjectStaffingPlanModal } from './ProjectStaffingPlanModal';
 import {
   ProjectPermissionContext,
   canViewConfidentialProject,
@@ -169,6 +181,23 @@ export const ProjectsCapacityTable: React.FC<ProjectsCapacityTableProps> = ({
   const [isReadOnlyModal, setIsReadOnlyModal] = useState(false);
   const [actionSuccess, setActionSuccess] = useState<string | null>(null);
 
+  // Gestion de la modal d'historique capacitaire
+  const [historyModalOpen, setHistoryModalOpen] = useState(false);
+  const [historyProject, setHistoryProject] = useState<Project | null>(null);
+
+  // Gestion de la modal de plan de staffing prévisionnel (12 mois glissants & RAT)
+  const [staffingPlanModalOpen, setStaffingPlanModalOpen] = useState(false);
+  const [staffingPlanProject, setStaffingPlanProject] = useState<Project | null>(null);
+
+  // Auto-archivage des demandes du mois écoulé lorsqu'on bascule sur un nouveau mois
+  useEffect(() => {
+    if (projects.length > 0 && skills.length > 0) {
+      checkAndAutoArchiveCapacity(projects, skills.map((s) => s.id)).catch((err) => {
+        console.error('Erreur auto-archivage capacitaire:', err);
+      });
+    }
+  }, [projects, skills]);
+
   const showConfidentialProjects =
     showConfidentialProjectsProp !== undefined ? showConfidentialProjectsProp : localShowConfidentialProjects;
   const setShowConfidentialProjects = (val: boolean) => {
@@ -249,6 +278,12 @@ export const ProjectsCapacityTable: React.FC<ProjectsCapacityTableProps> = ({
     };
   }, [openMonthDropdownId]);
 
+  // Clé du mois courant (M) au format "YYYY-MM"
+  const currentMonthKey = useMemo(() => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  }, []);
+
   // Définition dynamique et internationalisée du "mois prochain" (le mois à venir)
   const { nextMonthKey, nextMonthLabel, nextMonthShort, nextMonthYear, nextMonthMonth } = useMemo(() => {
     const info = getNextPeriodInfo(new Date(), i18n.language);
@@ -266,6 +301,126 @@ export const ProjectsCapacityTable: React.FC<ProjectsCapacityTableProps> = ({
     return getWorkingDaysInMonth(nextMonthYear, nextMonthMonth);
   }, [nextMonthYear, nextMonthMonth]);
 
+  // Liste des options de période : mois en cours + 12 prochains mois (13 mois au total)
+  const periodOptions = useMemo(() => {
+    const list: { key: string; label: string; year: number; month: number }[] = [];
+    const now = new Date();
+    const currYear = now.getFullYear();
+    const currMonth = now.getMonth();
+
+    for (let i = 0; i < 13; i++) {
+      const d = new Date(currYear, currMonth + i, 1);
+      const year = d.getFullYear();
+      const month = d.getMonth() + 1;
+      const key = `${year}-${String(month).padStart(2, '0')}`;
+      const rawLabel = d.toLocaleDateString(i18n.language, { month: 'long', year: 'numeric' });
+      const label = rawLabel.charAt(0).toUpperCase() + rawLabel.slice(1);
+      list.push({ key, label, year, month });
+    }
+    return list;
+  }, [i18n.language]);
+
+  // Clés de stockage local pour persister la période et l'horizon lors des changements d'onglets
+  const STORAGE_KEY_SELECTED_PERIOD = 'capacity_table_selected_period';
+  const STORAGE_KEY_RAT_HORIZON = 'capacity_table_rat_horizon';
+
+  // Période sélectionnée : mémorisée dans localStorage pour persister entre onglets
+  const [selectedPeriod, setSelectedPeriod] = useState<string>(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY_SELECTED_PERIOD);
+      if (saved) return saved;
+    } catch {
+      // ignore
+    }
+    return nextMonthKey;
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_KEY_SELECTED_PERIOD, selectedPeriod);
+    } catch {
+      // ignore
+    }
+  }, [selectedPeriod]);
+
+  const [isPeriodDropdownOpen, setIsPeriodDropdownOpen] = useState(false);
+  const periodDropdownRef = useRef<HTMLDivElement>(null);
+
+  // Fermer le dropdown lors d'un clic extérieur ou Échap
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (periodDropdownRef.current && !periodDropdownRef.current.contains(event.target as Node)) {
+        setIsPeriodDropdownOpen(false);
+      }
+    };
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setIsPeriodDropdownOpen(false);
+      }
+    };
+    if (isPeriodDropdownOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener('keydown', handleKeyDown);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isPeriodDropdownOpen]);
+
+  // Horizon de capacité pour l'option "A terminaison" (3 mois, 6 mois, 12 mois) : mémorisé dans localStorage
+  const [ratHorizon, setRatHorizon] = useState<3 | 6 | 12>(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY_RAT_HORIZON);
+      if (saved === '3' || saved === '6' || saved === '12') {
+        return parseInt(saved, 10) as 3 | 6 | 12;
+      }
+    } catch {
+      // ignore
+    }
+    return 3;
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_KEY_RAT_HORIZON, String(ratHorizon));
+    } catch {
+      // ignore
+    }
+  }, [ratHorizon]);
+
+  // Réinitialiser les modifications locales temporaires lors d'un changement de période sélectionnée
+  useEffect(() => {
+    setLocalDays({});
+  }, [selectedPeriod]);
+
+  // Libellé d'affichage de la période sélectionnée
+  const selectedPeriodLabel = useMemo(() => {
+    if (selectedPeriod === 'rat') {
+      return t('capacity.at_completion');
+    }
+    const found = periodOptions.find((p) => p.key === selectedPeriod);
+    if (found) return found.label;
+    return formatPeriodLocale(selectedPeriod, i18n.language, {
+      format: 'short',
+      fallback: selectedPeriod,
+    });
+  }, [selectedPeriod, periodOptions, i18n.language, t]);
+
+  // Libellé pour la boîte d'en-tête de la colonne "À JOUR" :
+  // - Pour "rat" : "à terminaison" in extenso et en minuscules
+  // - Pour un mois : le mois court avec année (ex. "Nov. 2026")
+  const truncatedPeriodLabel = useMemo(() => {
+    if (selectedPeriod === 'rat') {
+      return t('capacity.at_completion_lower', 'à terminaison');
+    }
+    const shortStr = formatPeriodLocale(selectedPeriod, i18n.language, {
+      format: 'short',
+      fallback: selectedPeriod,
+    });
+    return shortStr.charAt(0).toUpperCase() + shortStr.slice(1);
+  }, [selectedPeriod, i18n.language, t]);
+
   const formatMonthKey = (key?: string | null): string => {
     if (!key) return t('capacity.status.not_defined');
     return formatPeriodLocale(key, i18n.language, {
@@ -274,26 +429,52 @@ export const ProjectsCapacityTable: React.FC<ProjectsCapacityTableProps> = ({
     });
   };
 
-  // Droits pour modifier le nombre de jours demandé sur les compétences clés et le mois de màj :
-  // - Seul le Super User (ou compte super admin dont stephane.labati@...), OU le Chef du projet considéré, OU son adjoint ont le droit.
+  // Droits pour modifier le nombre de jours demandé sur les compétences clés :
+  // - Seul le Super User, OU le Chef du projet considéré, OU son adjoint ont le droit.
   // - Y compris pour les projets confidentiels.
   // - Ni la persona Administrateur, ni le Value Management Officer (sauf s'ils sont PM/Adjoint sur ce projet ou Super User),
   //   ni un utilisateur sans rôle sur ce projet ne peuvent modifier ces données.
   const canEditProjectCapacity = (p: Project): boolean => {
-    // 1. Super User
+    // 1. Super User (respecte l'endossement de rôle / simulation)
     if (isSuperUser) return true;
-    if (activeUser?.email) {
-      const uEmail = activeUser.email.toLowerCase().trim();
-      if (isSuperAdminEmail(uEmail)) {
-        return true;
-      }
+    if (!effectiveRole && activeUser?.email && isSuperAdminEmail(activeUser.email)) {
+      return true;
+    }
+    if (activeUser) {
+      const uEmail = (activeUser.email || '').toLowerCase().trim();
+      const uId = (activeUser.id || '').toLowerCase().trim();
       // 2. Chef de projet ou adjoint du projet considéré
       const pm = (p.projectManagerEmail || '').toLowerCase().trim();
       const dep = (p.deputyEmail || '').toLowerCase().trim();
-      if (uEmail && (uEmail === pm || uEmail === dep)) {
+      if (
+        (uEmail && (uEmail === pm || uEmail === dep)) ||
+        (uId && (uId === pm || uId === dep))
+      ) {
         return true;
       }
     }
+    return false;
+  };
+
+  // Droits pour modifier la colonne "MOIS MAJ" :
+  // Uniquement lorsque l'utilisateur est le Chef du projet considéré, ou Super User.
+  const canEditProjectMonth = (p: Project): boolean => {
+    // 1. Super User (respecte l'endossement de rôle / simulation)
+    if (isSuperUser) return true;
+    if (!effectiveRole && activeUser?.email && isSuperAdminEmail(activeUser.email)) {
+      return true;
+    }
+
+    // 2. Chef du projet considéré (titulaire uniquement)
+    if (activeUser) {
+      const uEmail = (activeUser.email || '').toLowerCase().trim();
+      const uId = (activeUser.id || '').toLowerCase().trim();
+      const pmEmail = (p.projectManagerEmail || '').toLowerCase().trim();
+      if ((uEmail && pmEmail && uEmail === pmEmail) || (uId && pmEmail && uId === pmEmail)) {
+        return true;
+      }
+    }
+
     return false;
   };
 
@@ -470,15 +651,33 @@ export const ProjectsCapacityTable: React.FC<ProjectsCapacityTableProps> = ({
     return normalizePeriodKey(rawVal) || rawVal;
   };
 
-  // Récupération de la valeur locale ou distante des jours mobilisés pour une compétence
+  const formatDaysVal = (val: number): string => {
+    return Number.isInteger(val) ? String(val) : val.toFixed(1);
+  };
+
+  // Récupération de la valeur locale ou distante des jours mobilisés pour une compétence et pour la période sélectionnée
   const getSkillDays = (p: Project, skillId: string): string => {
     const localVal = localDays[p.id]?.[skillId];
     if (localVal !== undefined) {
       return localVal === null ? '' : String(localVal);
     }
-    const storedVal = p.capacityDaysPerSkill?.[skillId];
-    if (storedVal !== undefined && storedVal !== null) {
-      return String(storedVal);
+    if (selectedPeriod === 'rat') {
+      const storedRat = p.remainingToComplete?.[skillId];
+      if (storedRat !== undefined && storedRat !== null && storedRat > 0) {
+        return formatDaysVal(storedRat);
+      }
+      return '';
+    }
+    // Période mensuelle
+    const staffingPlanVal = p.staffingPlan?.[selectedPeriod]?.[skillId];
+    if (staffingPlanVal !== undefined && staffingPlanVal !== null && staffingPlanVal > 0) {
+      return formatDaysVal(staffingPlanVal);
+    }
+    if (selectedPeriod === nextMonthKey) {
+      const storedVal = p.capacityDaysPerSkill?.[skillId];
+      if (storedVal !== undefined && storedVal !== null && storedVal > 0) {
+        return formatDaysVal(storedVal);
+      }
     }
     return '';
   };
@@ -487,8 +686,7 @@ export const ProjectsCapacityTable: React.FC<ProjectsCapacityTableProps> = ({
   // Les projets sont évalués selon leur ordre strict de priorité (ROI décroissant).
   // Seuls les projets effectivement staffés (isProjectStaffed) consomment de la bande passante.
   // Pour chaque compétence clé, si la demande cumulée des projets plus prioritaires et du projet courant
-  // dépasse la capacité totale disponible C, la demande de ce projet ne peut pas être totalement honorée.
-  // Ce projet et cette cellule sont alors marqués comme goulet d'étranglement (en rouge sur fond rose).
+  // dépasse la capacité totale disponible C sur la période sélectionnée, la demande ne peut pas être totalement honorée.
   const bottleneckData = useMemo(() => {
     const bottleneckCells = new Set<string>();
     const bottleneckProjects = new Set<string>();
@@ -500,22 +698,49 @@ export const ProjectsCapacityTable: React.FC<ProjectsCapacityTableProps> = ({
       projectDeficit?: number;
     }>();
 
-    // Capacités disponibles C par compétence
+    // Capacités disponibles C par compétence (arrondies à 0,5 près) pour la période sélectionnée
     const capacityBySkill: Record<string, number> = {};
-    skills.forEach((skill) => {
-      let C = 0;
-      (resources || []).forEach((res) => {
-        if (res.skillId === skill.id) {
-          const fte = typeof res.fte === 'number' && !isNaN(res.fte) ? res.fte : 1.0;
-          const unavail = (res.unavailability && typeof res.unavailability[nextMonthKey] === 'number')
-            ? res.unavailability[nextMonthKey]
-            : 0;
-          const avail = (workingDaysNextMonth * fte) - unavail;
-          C += Math.max(0, avail);
-        }
+    if (selectedPeriod === 'rat') {
+      const horizonMonths = periodOptions.slice(0, ratHorizon);
+      skills.forEach((skill) => {
+        let C = 0;
+        (resources || []).forEach((res) => {
+          if (res.skillId === skill.id) {
+            let resAvailOverHorizon = 0;
+            horizonMonths.forEach((m) => {
+              const wDays = getWorkingDaysInMonth(m.year, m.month);
+              const unavail =
+                res.unavailability && typeof res.unavailability[m.key] === 'number'
+                  ? res.unavailability[m.key]
+                  : 0;
+              resAvailOverHorizon += calculateResourceAvailability(wDays, res.fte, unavail);
+            });
+            C += resAvailOverHorizon;
+          }
+        });
+        capacityBySkill[skill.id] = roundToHalfDay(C);
       });
-      capacityBySkill[skill.id] = Math.round(C * 10) / 10;
-    });
+    } else {
+      const [yStr, mStr] = selectedPeriod.split('-');
+      const y = parseInt(yStr, 10);
+      const m = parseInt(mStr, 10);
+      const workingDays = isNaN(y) || isNaN(m) ? workingDaysNextMonth : getWorkingDaysInMonth(y, m);
+
+      skills.forEach((skill) => {
+        let C = 0;
+        (resources || []).forEach((res) => {
+          if (res.skillId === skill.id) {
+            const unavail =
+              res.unavailability && typeof res.unavailability[selectedPeriod] === 'number'
+                ? res.unavailability[selectedPeriod]
+                : 0;
+            const avail = calculateResourceAvailability(workingDays, res.fte, unavail);
+            C += avail;
+          }
+        });
+        capacityBySkill[skill.id] = roundToHalfDay(C);
+      });
+    }
 
     // Parcours par compétence dans l'ordre strict de priorité des projets
     skills.forEach((skill) => {
@@ -529,7 +754,6 @@ export const ProjectsCapacityTable: React.FC<ProjectsCapacityTableProps> = ({
 
       sortedProjectsByPriority.orderedProjects.forEach((project) => {
         // Les projets non staffés ne sont JAMAIS pris en compte dans le capacitaire
-        // et restent en grisé sans subir de goulet d'étranglement
         if (!isProjectStaffed(project)) {
           return;
         }
@@ -540,15 +764,13 @@ export const ProjectsCapacityTable: React.FC<ProjectsCapacityTableProps> = ({
           return;
         }
 
-        const requested = Math.round(days * 10) / 10;
-        const availableBefore = Math.max(0, Math.round((C - cumulativeUsed) * 10) / 10);
-        const totalWithCurrent = Math.round((cumulativeUsed + requested) * 10) / 10;
+        const requested = roundToHalfDay(days);
+        const availableBefore = Math.max(0, roundToHalfDay(C - cumulativeUsed));
+        const totalWithCurrent = roundToHalfDay(cumulativeUsed + requested);
 
-        // Si la demande cumulée (projets plus prioritaires + projet courant) dépasse la capacité totale,
-        // la demande de ce projet ne peut pas être totalement honorée
+        // Si la demande cumulée (projets plus prioritaires + projet courant) dépasse la capacité totale C
         if (totalWithCurrent > C) {
-          // Déficit spécifique pour ce projet (partie de sa demande qui dépasse la capacité restante)
-          const projectDeficit = Math.round((requested - Math.min(requested, availableBefore)) * 10) / 10;
+          const projectDeficit = roundToHalfDay(requested - Math.min(requested, availableBefore));
           const key = `${project.id}_${skill.id}`;
           bottleneckCells.add(key);
           bottleneckProjects.add(project.id);
@@ -569,12 +791,15 @@ export const ProjectsCapacityTable: React.FC<ProjectsCapacityTableProps> = ({
       bottleneckCells,
       bottleneckProjects,
       cellDetails,
+      capacityBySkill,
     };
   }, [
     skills,
     sortedProjectsByPriority.orderedProjects,
     resources,
-    nextMonthKey,
+    selectedPeriod,
+    ratHorizon,
+    periodOptions,
     workingDaysNextMonth,
     localDays,
     localStaffed,
@@ -686,7 +911,12 @@ export const ProjectsCapacityTable: React.FC<ProjectsCapacityTableProps> = ({
       if (isAlertFilterActive) {
         const matchesCapacity = filterCapacityOverruns && bottleneckData.bottleneckProjects.has(p.id);
         const matchesBudget = filterBudgetOverruns && budgetOverrunData.overrunProjects.has(p.id);
-        const matchesOutdatedStaffing = filterOutdatedStaffingDemands && (getProjectMonth(p) !== nextMonthKey);
+        const isProjectUpToDate = Boolean(
+          selectedPeriod === 'rat'
+            ? (p.staffingPlanValidatedMonths?.['rat'] ?? p.isRatValidated)
+            : p.staffingPlanValidatedMonths?.[selectedPeriod]
+        );
+        const matchesOutdatedStaffing = filterOutdatedStaffingDemands && !isProjectUpToDate;
         if (!matchesCapacity && !matchesBudget && !matchesOutdatedStaffing) return false;
       }
 
@@ -708,6 +938,8 @@ export const ProjectsCapacityTable: React.FC<ProjectsCapacityTableProps> = ({
     budgetOverrunData,
     activeUser,
     localMonths,
+    selectedPeriod,
+    currentMonthKey,
     nextMonthKey,
     showConfidentialProjects,
     canViewConfidential,
@@ -717,7 +949,7 @@ export const ProjectsCapacityTable: React.FC<ProjectsCapacityTableProps> = ({
 
   // Mise à jour du mois de planification vers le mois prochain (stockage indépendant de la langue au format "YYYY-MM")
   const handleUpdateMonth = async (project: Project, targetMonth: string | null) => {
-    if (!canEditProjectCapacity(project)) return;
+    if (!canEditProjectMonth(project)) return;
 
     const normalizedMonth = targetMonth ? normalizePeriodKey(targetMonth) || targetMonth : null;
 
@@ -734,7 +966,7 @@ export const ProjectsCapacityTable: React.FC<ProjectsCapacityTableProps> = ({
     }
   };
 
-  // Saisie du nombre de jours de compétence à mobiliser
+  // Saisie du nombre de jours de compétence à mobiliser pour la période sélectionnée
   const handleSkillDaysChange = (project: Project, skillId: string, rawVal: string) => {
     if (!canEditProjectCapacity(project) || !isProjectStaffed(project)) return;
 
@@ -744,13 +976,12 @@ export const ProjectsCapacityTable: React.FC<ProjectsCapacityTableProps> = ({
     if (normalized.trim() !== '') {
       const parsed = parseFloat(normalized);
       if (!isNaN(parsed) && parsed >= 0) {
-        // Arrondi à une décimale
-        numVal = Math.round(parsed * 10) / 10;
+        numVal = roundToHalfDay(parsed);
       }
     }
 
     const updatedSkillMap = {
-      ...(localDays[project.id] || project.capacityDaysPerSkill || {}),
+      ...(localDays[project.id] || {}),
       [skillId]: numVal,
     };
 
@@ -758,9 +989,6 @@ export const ProjectsCapacityTable: React.FC<ProjectsCapacityTableProps> = ({
       ...prev,
       [project.id]: updatedSkillMap,
     }));
-
-    // Ne pas modifier automatiquement le mois : la mise à jour du mois doit être une action volontaire
-    const currentMonth = getProjectMonth(project);
 
     // Débouncing pour persistance Firestore (600ms)
     const timeoutKey = `${project.id}_${skillId}`;
@@ -770,7 +998,28 @@ export const ProjectsCapacityTable: React.FC<ProjectsCapacityTableProps> = ({
 
     saveTimeoutRef.current[timeoutKey] = setTimeout(async () => {
       try {
-        await updateProjectCapacity(project.id, currentMonth, updatedSkillMap, project.name);
+        if (selectedPeriod === 'rat') {
+          const currentRat = {
+            ...(project.remainingToComplete || {}),
+            [skillId]: numVal,
+          };
+          await updateProjectRat(project.id, currentRat, project.name);
+        } else {
+          const isNext = selectedPeriod === nextMonthKey;
+          const currentStaffingPlan = project.staffingPlan || {};
+          const currentPeriodDemands = {
+            ...(currentStaffingPlan[selectedPeriod] || {}),
+            [skillId]: numVal,
+          };
+          await updateProjectPeriodDemands(
+            project.id,
+            selectedPeriod,
+            currentPeriodDemands,
+            currentStaffingPlan,
+            isNext,
+            project.name
+          );
+        }
       } catch (err) {
         console.error('Erreur sauvegarde jours capacitaire:', err);
       } finally {
@@ -786,7 +1035,7 @@ export const ProjectsCapacityTable: React.FC<ProjectsCapacityTableProps> = ({
     const result: Record<string, { D: number; P: number; C: number; R: number }> = {};
 
     skills.forEach((skill) => {
-      // 1. D : Demande totale en jours sur l'ensemble de TOUS les projets staffés
+      // 1. D : Demande totale en jours sur l'ensemble de TOUS les projets staffés pour la période
       // P : Nombre de projets qui demandent de la capacité sur cette compétence (> 0) ET staffés
       let D = 0;
       let P = 0;
@@ -801,35 +1050,19 @@ export const ProjectsCapacityTable: React.FC<ProjectsCapacityTableProps> = ({
           P += 1;
         }
       });
-      D = Math.round(D * 10) / 10;
+      D = roundToHalfDay(D);
 
-      // 2. C : Nombre total de jours disponibles de cette compétence sur ce mois
-      // C = somme( (jours_ouvrés * ETP) - indisponibilité ) pour toutes les ressources ayant cette compétence clé
-      let C = 0;
-      (resources || []).forEach((res) => {
-        if (res.skillId === skill.id) {
-          const fte = typeof res.fte === 'number' && !isNaN(res.fte) ? res.fte : 1.0;
-          const unavail = (res.unavailability && typeof res.unavailability[nextMonthKey] === 'number')
-            ? res.unavailability[nextMonthKey]
-            : 0;
-          const avail = (workingDaysNextMonth * fte) - unavail;
-          C += Math.max(0, avail);
-        }
-      });
-      C = Math.round(C * 10) / 10;
+      // 2. C : Nombre total de jours disponibles de cette compétence sur la période sélectionnée
+      const C = bottleneckData.capacityBySkill[skill.id] ?? 0;
 
-      // 3. R : Nombre de jours restant disponibles (R = C - D)
-      const R = Math.round((C - D) * 10) / 10;
+      // 3. R : Nombre de jours restant disponibles (R = C - D, arrondi à 0,5 près)
+      const R = roundToHalfDay(C - D);
 
       result[skill.id] = { D, P, C, R };
     });
 
     return result;
-  }, [skills, sortedProjectsByPriority.orderedProjects, localDays, resources, nextMonthKey, workingDaysNextMonth, projectStates, localStaffed]);
-
-  const formatDaysVal = (val: number): string => {
-    return Number.isInteger(val) ? String(val) : val.toFixed(1);
-  };
+  }, [skills, sortedProjectsByPriority.orderedProjects, localDays, bottleneckData.capacityBySkill, projectStates, localStaffed, selectedPeriod]);
 
   // Statistiques globales pour la barre de synthèse
   const stats = useMemo(() => {
@@ -839,11 +1072,16 @@ export const ProjectsCapacityTable: React.FC<ProjectsCapacityTableProps> = ({
 
     projects.forEach((p) => {
       const isStaffed = isProjectStaffed(p);
-      const m = getProjectMonth(p);
-      if (!m || m < nextMonthKey) {
-        delayedCount++;
-      } else {
+      const isUpToDate = Boolean(
+        selectedPeriod === 'rat'
+          ? (p.staffingPlanValidatedMonths?.['rat'] ?? p.isRatValidated)
+          : p.staffingPlanValidatedMonths?.[selectedPeriod]
+      );
+
+      if (isUpToDate) {
         updatedCount++;
+      } else {
+        delayedCount++;
       }
 
       if (isStaffed) {
@@ -857,24 +1095,30 @@ export const ProjectsCapacityTable: React.FC<ProjectsCapacityTableProps> = ({
       }
     });
 
-    return { delayedCount, updatedCount, totalDaysMobilized };
-  }, [projects, skills, localMonths, localDays, nextMonthKey, projectStates, localStaffed]);
+    return { delayedCount, updatedCount, totalDaysMobilized: roundToHalfDay(totalDaysMobilized) };
+  }, [projects, skills, localDays, selectedPeriod, currentMonthKey, projectStates, localStaffed]);
 
   // Nombre de projets staffés parmi les projets affichés
   const staffedProjectsCount = useMemo(() => {
     return displayedProjects.filter((p) => isProjectStaffed(p)).length;
   }, [displayedProjects, projectStates, localStaffed]);
 
-  // Nombre total de projets nécessitant une mise à jour pour le mois prochain (pastille de la colonne MOIS MÀJ)
+  // Nombre total de projets nécessitant une mise à jour pour la période sélectionnée (pastille de la colonne À JOUR ...)
   // Indépendant des filtres appliqués (recherche, cycle de vie, lignes budgétaires, alertes, mes projets).
   // Lorsque les projets confidentiels sont masqués (option décochée), ils ne sont pas pris en compte dans ce décompte.
   const outdatedProjectsCount = useMemo(() => {
     return sortedProjectsByPriority.orderedProjects.filter((p) => {
       const isHidden = Boolean(p.isConfidential) && !canViewConfidential(p);
       if (isHidden) return false;
-      return getProjectMonth(p) !== nextMonthKey;
+      if (!isProjectStaffed(p)) return false;
+      const isUpToDate = Boolean(
+        selectedPeriod === 'rat'
+          ? (p.staffingPlanValidatedMonths?.['rat'] ?? p.isRatValidated)
+          : p.staffingPlanValidatedMonths?.[selectedPeriod]
+      );
+      return !isUpToDate;
     }).length;
-  }, [sortedProjectsByPriority.orderedProjects, canViewConfidential, localMonths, nextMonthKey]);
+  }, [sortedProjectsByPriority.orderedProjects, canViewConfidential, selectedPeriod, projectStates, localStaffed]);
 
   return (
     <div className="flex-1 min-h-0 flex flex-col space-y-3">
@@ -890,24 +1134,125 @@ export const ProjectsCapacityTable: React.FC<ProjectsCapacityTableProps> = ({
         </div>
       )}
 
-      {/* En-tête de section sur le fond de page */}
-      <div className="shrink-0 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-        <div>
-          <h2 className="text-xl font-bold text-rose-900 flex items-center gap-2.5">
+      {/* En-tête de section avec titre à gauche et cadre blanc de période à droite */}
+      <div className="shrink-0 flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+        {/* Titre et sous-titre de l'onglet à gauche */}
+        <div className="max-w-2xl">
+          <h2 className={`${TAB_TITLE_CLASS} text-rose-900 flex items-center gap-2.5`}>
             <Gauge className="w-5 h-5 text-rose-900 shrink-0" />
             <span>{t('capacity.title')}</span>
           </h2>
-          <div className="text-xs text-slate-600 mt-0.5 max-w-3xl leading-relaxed space-y-0.5">
-            <div className="flex items-center gap-1.5 flex-wrap">
-              <span>{t('capacity.subtitle')}</span>
-              <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-semibold bg-emerald-100 text-emerald-800 border border-emerald-300 shadow-2xs">
-                <span>{nextMonthShort}</span>
-              </span>
-            </div>
-            <div className="flex items-center gap-2 flex-wrap">
-              <span>{t('capacity.info')}</span>
+          <p className="text-xs text-slate-600 mt-1 leading-relaxed">
+            {t('capacity.info')}
+          </p>
+        </div>
+
+        {/* Cadre blanc à droite du titre pour le choix de la période et le sélecteur d'horizon */}
+        <div className="shrink-0 bg-white px-3 py-2 rounded-xl border border-slate-200 shadow-2xs space-y-1 relative z-30">
+          <div className="flex items-center justify-between sm:justify-end gap-2.5">
+            <span className={CHECKBOX_TITLE_CLASS}>
+              {t('capacity.period_prompt', 'Planifiez les besoins en compétences clés pour la période suivante :')}
+            </span>
+
+            {/* Bouton de sélection personnalisé (sans double filet de focus) */}
+            <div className="relative" ref={periodDropdownRef}>
+              <button
+                type="button"
+                onClick={() => setIsPeriodDropdownOpen((prev) => !prev)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all cursor-pointer inline-flex items-center gap-2 shadow-2xs select-none ${
+                  selectedPeriod === 'rat'
+                    ? 'bg-[#efebe9] hover:bg-[#e7e0db] text-[#4e342e] border-[#bcaaa4]'
+                    : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-900 border-emerald-300'
+                }`}
+                title={t('capacity.choose_period', 'Choisir la période')}
+              >
+                <span>{selectedPeriodLabel}</span>
+                <ChevronDown
+                  className={`w-3.5 h-3.5 transition-transform duration-150 ${
+                    isPeriodDropdownOpen ? 'rotate-180' : ''
+                  }`}
+                />
+              </button>
+
+              {isPeriodDropdownOpen && (
+                <div className="absolute right-0 top-full mt-1.5 w-52 bg-white border border-slate-200 rounded-xl shadow-xl z-50 p-1.5 text-slate-800 animate-in fade-in zoom-in-95 duration-100 max-h-72 overflow-y-auto [scrollbar-width:thin]">
+                  {/* Option 1 : A terminaison en premier */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedPeriod('rat');
+                      setIsPeriodDropdownOpen(false);
+                    }}
+                    className={`w-full text-left px-2.5 py-1.5 text-xs rounded-lg flex items-center justify-between transition-colors cursor-pointer ${
+                      selectedPeriod === 'rat'
+                        ? 'bg-[#efebe9] text-[#4e342e] font-bold'
+                        : 'hover:bg-[#f7f5f4] text-[#4e342e] font-medium'
+                    }`}
+                  >
+                    <span>{t('capacity.at_completion', 'À terminaison')}</span>
+                    {selectedPeriod === 'rat' && <Check className="w-3.5 h-3.5 text-[#4e342e] shrink-0" />}
+                  </button>
+
+                  {/* Filet séparateur */}
+                  <div className="my-1 border-t border-slate-100" />
+
+                  {periodOptions.map((opt) => {
+                    const isSelected = selectedPeriod === opt.key;
+                    return (
+                      <button
+                        key={opt.key}
+                        type="button"
+                        onClick={() => {
+                          setSelectedPeriod(opt.key);
+                          setIsPeriodDropdownOpen(false);
+                        }}
+                        className={`w-full text-left px-2.5 py-1.5 text-xs rounded-lg flex items-center justify-between transition-colors cursor-pointer ${
+                          isSelected
+                            ? 'bg-emerald-50 text-emerald-900 font-bold'
+                            : 'hover:bg-slate-100 text-slate-700 font-medium'
+                        }`}
+                      >
+                        <span>{opt.label}</span>
+                        {isSelected && <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" />}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           </div>
+
+          {/* Si "A terminaison" est choisi, sélecteur à 3 états apparaissant sur la ligne en dessous avec peu d'espace */}
+          {selectedPeriod === 'rat' && (
+            <div className="pt-1 border-t border-slate-100 flex items-center justify-between sm:justify-end gap-2.5 animate-in fade-in">
+              <span className={CHECKBOX_TITLE_CLASS}>
+                {t('capacity.capacity_at_horizon', 'Capacité à :')}
+              </span>
+              <div className={SEGMENT_SELECTOR_CONTAINER_CLASS}>
+                <button
+                  type="button"
+                  onClick={() => setRatHorizon(3)}
+                  className={getSegmentSelectorButtonClass(ratHorizon === 3)}
+                >
+                  {t('capacity.horizon_3_months', '3 mois')}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setRatHorizon(6)}
+                  className={getSegmentSelectorButtonClass(ratHorizon === 6)}
+                >
+                  {t('capacity.horizon_6_months', '6 mois')}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setRatHorizon(12)}
+                  className={getSegmentSelectorButtonClass(ratHorizon === 12)}
+                >
+                  {t('capacity.horizon_12_months', '12 mois')}
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -1093,7 +1438,7 @@ export const ProjectsCapacityTable: React.FC<ProjectsCapacityTableProps> = ({
                 {/* Colonne : Action (figée à gauche : 302px, top : 0) */}
                 <th
                   scope="col"
-                  className={`sticky left-[302px] top-0 bg-slate-100 z-50 px-1 py-2 text-center align-top w-[50px] min-w-[50px] max-w-[50px] border-r border-slate-200 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.06)] table-header-double-bottom ${TABLE_HEADER_TEXT_CLASS}`}
+                  className={`sticky left-[302px] top-0 bg-slate-100 z-50 px-1 py-2 text-right pr-2.5 align-top w-[88px] min-w-[88px] max-w-[88px] border-r border-slate-200 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.06)] table-header-double-bottom ${TABLE_HEADER_TEXT_CLASS}`}
                 >
                   {t('capacity.columns.action')}
                 </th>
@@ -1101,18 +1446,18 @@ export const ProjectsCapacityTable: React.FC<ProjectsCapacityTableProps> = ({
                 {/* Colonnes optionnelles affichées uniquement si "Afficher les dépassements budgétaires" est coché */}
                 {showBudgetOverruns && (
                   <>
-                    {/* Colonne : Ligne budgétaire (figée à gauche : 352px, top : 0) */}
+                    {/* Colonne : Ligne budgétaire (figée à gauche : 390px, top : 0) */}
                     <th
                       scope="col"
-                      className={`sticky left-[352px] top-0 bg-slate-100 z-50 px-2 py-2 text-center align-top w-[140px] min-w-[140px] max-w-[140px] border-r border-slate-200 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.06)] table-header-double-bottom ${TABLE_HEADER_TEXT_CLASS}`}
+                      className={`sticky left-[390px] top-0 bg-slate-100 z-50 px-2 py-2 text-center align-top w-[140px] min-w-[140px] max-w-[140px] border-r border-slate-200 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.06)] table-header-double-bottom ${TABLE_HEADER_TEXT_CLASS}`}
                     >
                       {t('capacity.columns.budget_line')}
                     </th>
 
-                    {/* Colonne : Budget (figée à gauche : 492px, top : 0) */}
+                    {/* Colonne : Budget (figée à gauche : 530px, top : 0) */}
                     <th
                       scope="col"
-                      className={`sticky left-[492px] top-0 bg-slate-100 z-50 px-2 py-2 text-center align-top w-[90px] min-w-[90px] max-w-[90px] border-r border-slate-200 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.06)] table-header-double-bottom ${TABLE_HEADER_TEXT_CLASS}`}
+                      className={`sticky left-[530px] top-0 bg-slate-100 z-50 px-2 py-2 text-center align-top w-[90px] min-w-[90px] max-w-[90px] border-r border-slate-200 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.06)] table-header-double-bottom ${TABLE_HEADER_TEXT_CLASS}`}
                     >
                       <div className="flex flex-col items-center justify-start leading-tight">
                         <span>{t('capacity.columns.budget')}</span>
@@ -1140,10 +1485,10 @@ export const ProjectsCapacityTable: React.FC<ProjectsCapacityTableProps> = ({
                   </>
                 )}
 
-                {/* Colonne 4 : Staffé (figée à gauche : 582px si budget affiché, sinon 352px) */}
+                {/* Colonne 4 : Staffé (figée à gauche : 620px si budget affiché, sinon 390px) */}
                 <th
                   scope="col"
-                  className={`sticky ${showBudgetOverruns ? 'left-[582px]' : 'left-[352px]'} top-0 bg-slate-100 z-50 px-1 py-2 text-center align-top w-[60px] min-w-[60px] max-w-[60px] border-r border-slate-200 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.06)] table-header-double-bottom ${TABLE_HEADER_TEXT_CLASS}`}
+                  className={`sticky ${showBudgetOverruns ? 'left-[620px]' : 'left-[390px]'} top-0 bg-slate-100 z-50 px-1 py-2 text-center align-top w-[60px] min-w-[60px] max-w-[60px] border-r border-slate-200 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.06)] table-header-double-bottom ${TABLE_HEADER_TEXT_CLASS}`}
                 >
                   <div className="flex flex-col items-center justify-start leading-tight">
                     <Tooltip content={t('capacity.tooltips.staffed')}>
@@ -1171,30 +1516,52 @@ export const ProjectsCapacityTable: React.FC<ProjectsCapacityTableProps> = ({
                   </div>
                 </th>
 
-                {/* Colonne 5 : Mois de mise à jour (figée à gauche : 642px si budget affiché, sinon 412px) - Dernière colonne figée avec double filet vertical */}
+                {/* Colonne 5 : À JOUR ... (figée à gauche : 680px si budget affiché, sinon 450px) - Dernière colonne figée avec double filet vertical */}
                 <th
                   scope="col"
-                  className={`sticky ${showBudgetOverruns ? 'left-[642px]' : 'left-[412px]'} top-0 bg-slate-100 z-50 px-2 py-2 text-center align-top w-[130px] min-w-[130px] max-w-[130px] ${TABLE_FROZEN_DIVIDER_CLASS} shadow-[2px_0_4px_-2px_rgba(0,0,0,0.06)] table-header-double-bottom ${TABLE_HEADER_TEXT_CLASS}`}
+                  className={`sticky ${showBudgetOverruns ? 'left-[680px]' : 'left-[450px]'} top-0 bg-slate-100 z-50 px-1 py-2 text-center align-top w-[92px] min-w-[92px] max-w-[92px] ${TABLE_FROZEN_DIVIDER_CLASS} shadow-[2px_0_4px_-2px_rgba(0,0,0,0.06)] table-header-double-bottom ${TABLE_HEADER_TEXT_CLASS}`}
                 >
                   <div className="flex flex-col items-center justify-start leading-tight">
-                    <Tooltip content={t('capacity.tooltips.month_update')}>
-                      <span className="cursor-default">{t('capacity.columns.month_update')}</span>
+                    <Tooltip
+                      content={t('capacity.tooltips.up_to_date_indicator', {
+                        period: selectedPeriod === 'rat' ? t('capacity.at_completion_def', 'la terminaison') : selectedPeriodLabel,
+                      })}
+                    >
+                      <div className="cursor-default flex flex-col items-center text-center gap-1">
+                        <span className="font-bold">{t('capacity.columns.up_to_date', 'À JOUR')}</span>
+                        <span
+                          className={`inline-flex items-center justify-center px-1.5 py-0.5 rounded-md text-[10px] font-bold border shadow-2xs max-w-full text-center ${
+                            selectedPeriod === 'rat'
+                              ? 'bg-[#efebe9] text-[#4e342e] border-[#bcaaa4] normal-case leading-tight'
+                              : 'bg-emerald-50 text-emerald-900 border-emerald-300'
+                          }`}
+                        >
+                          <span className={selectedPeriod === 'rat' ? 'break-words leading-tight text-center' : 'truncate'}>
+                            {truncatedPeriodLabel}
+                          </span>
+                        </span>
+                      </div>
                     </Tooltip>
                     {outdatedProjectsCount > 0 && (
-                      <div className="mt-4">
+                      <div className="mt-2.5">
                         <Tooltip
                           variant="error"
                           placement="bottom"
                           content={
                             outdatedProjectsCount > 1
-                              ? t('capacity.badges.outdated_tooltip_plural', { count: outdatedProjectsCount })
-                              : t('capacity.badges.outdated_tooltip_singular')
+                              ? t('capacity.tooltips.projects_not_up_to_date_count_plural', {
+                                  count: outdatedProjectsCount,
+                                  period: selectedPeriod === 'rat' ? t('capacity.at_completion_def', 'la terminaison') : selectedPeriodLabel,
+                                })
+                              : t('capacity.tooltips.projects_not_up_to_date_count_singular', {
+                                  period: selectedPeriod === 'rat' ? t('capacity.at_completion_def', 'la terminaison') : selectedPeriodLabel,
+                                })
                           }
                         >
                           <span
-                            className="inline-flex items-center justify-center text-[10px] font-bold text-white bg-red-600 px-2 py-0.5 rounded-full shadow-2xs whitespace-nowrap normal-case tracking-normal min-w-[18px] cursor-default"
+                            className="inline-flex items-center justify-center text-[10px] font-bold text-white bg-red-600 px-1.5 py-0.5 rounded-full shadow-2xs whitespace-nowrap normal-case tracking-normal min-w-[18px] cursor-default"
                           >
-                            {outdatedProjectsCount} {t('capacity.badges.proj_to_update_short')}
+                            {outdatedProjectsCount} {t('capacity.badges.proj_to_update_short', 'proj. à màj')}
                           </span>
                         </Tooltip>
                       </div>
@@ -1235,7 +1602,6 @@ export const ProjectsCapacityTable: React.FC<ProjectsCapacityTableProps> = ({
                               className={`${TABLE_HEADER_FONT_SIZE_CLASS} ${TABLE_HEADER_FONT_WEIGHT_CLASS} truncate block w-full text-center cursor-default ${
                                 isAlerting ? 'text-red-700' : TABLE_HEADER_TEXT_COLOR_CLASS
                               }`}
-                              title={skill.name}
                             >
                               {skill.name}
                             </span>
@@ -1363,6 +1729,7 @@ export const ProjectsCapacityTable: React.FC<ProjectsCapacityTableProps> = ({
                   const isConfidentialHidden =
                     Boolean(project.isConfidential) && !canViewConfidential(project);
                   const userCanEditCapacity = canEditProjectCapacity(project);
+                  const userCanEditMonth = canEditProjectMonth(project);
 
                   const monthVal = getProjectMonth(project);
                   const isDelayed = !monthVal || monthVal < nextMonthKey;
@@ -1468,7 +1835,7 @@ export const ProjectsCapacityTable: React.FC<ProjectsCapacityTableProps> = ({
 
                       {/* Colonne : Action (figée à gauche : 302px) */}
                       <td
-                        className={`sticky left-[302px] z-20 px-1 py-2 text-center whitespace-nowrap w-[50px] min-w-[50px] max-w-[50px] border-r border-slate-200 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.06)] transition-colors ${
+                        className={`sticky left-[302px] z-20 px-1 py-2 text-center whitespace-nowrap w-[88px] min-w-[88px] max-w-[88px] border-r border-slate-200 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.06)] transition-colors ${
                           isStaffed ? 'bg-white group-hover:bg-slate-50/80' : 'bg-slate-50 group-hover:bg-slate-100/70'
                         }`}
                       >
@@ -1479,6 +1846,14 @@ export const ProjectsCapacityTable: React.FC<ProjectsCapacityTableProps> = ({
                             setSelectedProject(proj);
                             setIsReadOnlyModal(isReadOnly);
                             setModalOpen(true);
+                          }}
+                          onOpenHistory={(proj) => {
+                            setHistoryProject(proj);
+                            setHistoryModalOpen(true);
+                          }}
+                          onOpenStaffingPlan={(proj) => {
+                            setStaffingPlanProject(proj);
+                            setStaffingPlanModalOpen(true);
                           }}
                           showDelete={false}
                         />
@@ -1492,9 +1867,9 @@ export const ProjectsCapacityTable: React.FC<ProjectsCapacityTableProps> = ({
 
                         return (
                           <>
-                            {/* Colonne : Ligne budgétaire (figée à gauche : 352px) */}
+                            {/* Colonne : Ligne budgétaire (figée à gauche : 390px) */}
                             <td
-                              className={`sticky left-[352px] z-20 px-2.5 py-2 whitespace-nowrap w-[140px] min-w-[140px] max-w-[140px] border-r border-slate-200 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.06)] text-xs ${
+                              className={`sticky left-[390px] z-20 px-2.5 py-2 whitespace-nowrap w-[140px] min-w-[140px] max-w-[140px] border-r border-slate-200 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.06)] text-xs ${
                                 isStaffed ? 'bg-white group-hover:bg-slate-50/80' : 'bg-slate-50 group-hover:bg-slate-100/70'
                               }`}
                             >
@@ -1517,9 +1892,9 @@ export const ProjectsCapacityTable: React.FC<ProjectsCapacityTableProps> = ({
                               )}
                             </td>
 
-                            {/* Colonne : Budget (figée à gauche : 492px) */}
+                            {/* Colonne : Budget (figée à gauche : 530px) */}
                             <td
-                              className={`sticky left-[492px] z-20 px-2 py-2 text-center whitespace-nowrap w-[90px] min-w-[90px] max-w-[90px] border-r border-slate-200 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.06)] transition-colors ${
+                              className={`sticky left-[530px] z-20 px-2 py-2 text-center whitespace-nowrap w-[90px] min-w-[90px] max-w-[90px] border-r border-slate-200 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.06)] transition-colors ${
                                 isStaffed
                                   ? 'bg-white group-hover:bg-slate-50/80'
                                   : 'bg-slate-50 group-hover:bg-slate-100/70'
@@ -1560,9 +1935,9 @@ export const ProjectsCapacityTable: React.FC<ProjectsCapacityTableProps> = ({
                         );
                       })()}
 
-                      {/* Colonne 4 : Staffé (figée à gauche : 582px si budget affiché, sinon 352px) */}
+                      {/* Colonne 4 : Staffé (figée à gauche : 620px si budget affiché, sinon 390px) */}
                       <td
-                        className={`sticky ${showBudgetOverruns ? 'left-[582px]' : 'left-[352px]'} z-20 px-1 py-2 text-center whitespace-nowrap w-[60px] min-w-[60px] max-w-[60px] border-r border-slate-200 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.06)] transition-colors ${
+                        className={`sticky ${showBudgetOverruns ? 'left-[620px]' : 'left-[390px]'} z-20 px-1 py-2 text-center whitespace-nowrap w-[60px] min-w-[60px] max-w-[60px] border-r border-slate-200 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.06)] transition-colors ${
                           !isStaffed
                             ? 'bg-slate-50 group-hover:bg-slate-100/70'
                             : isProjectBottlenecked
@@ -1691,120 +2066,63 @@ export const ProjectsCapacityTable: React.FC<ProjectsCapacityTableProps> = ({
                         </div>
                       </td>
 
-                      {/* Colonne 5 : Mois de mise à jour (figée à gauche : 642px si budget affiché, sinon 412px) */}
+                      {/* Colonne 5 : À jour pour la période sélectionnée (figée à gauche : 680px si budget affiché, sinon 450px) */}
                       <td
-                        className={`sticky ${showBudgetOverruns ? 'left-[642px]' : 'left-[412px]'} ${
-                          openMonthDropdownId === project.id ? 'z-50' : 'z-20'
-                        } px-1.5 py-2 text-center whitespace-nowrap w-[130px] min-w-[130px] max-w-[130px] ${TABLE_FROZEN_DIVIDER_CLASS} shadow-[2px_0_4px_-2px_rgba(0,0,0,0.06)] ${
+                        className={`sticky ${showBudgetOverruns ? 'left-[680px]' : 'left-[450px]'} z-20 px-1 py-2 text-center whitespace-nowrap w-[92px] min-w-[92px] max-w-[92px] ${TABLE_FROZEN_DIVIDER_CLASS} shadow-[2px_0_4px_-2px_rgba(0,0,0,0.06)] ${
                           isStaffed ? 'bg-white group-hover:bg-slate-50/80' : 'bg-slate-50 group-hover:bg-slate-100/70'
                         }`}
-                        style={
-                          openMonthDropdownId === project.id
-                            ? { zIndex: 50 }
-                            : undefined
-                        }
                       >
-                        <div className={`relative inline-block month-dropdown-container ${openMonthDropdownId === project.id ? 'z-50' : ''}`}>
-                          {userCanEditCapacity ? (
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setOpenMonthDropdownId((prev) =>
-                                  prev === project.id ? null : project.id
-                                );
-                              }}
-                              title={
-                                isUpdatedForNextMonth
-                                  ? t('capacity.tooltips.up_to_date_month', { period: nextMonthShort })
-                                  : t('capacity.tooltips.click_to_update_month', { period: nextMonthShort })
-                              }
-                              className={`cursor-pointer transition-transform hover:scale-105 ${!isStaffed ? 'opacity-75' : ''}`}
-                            >
-                              {isUpdatedForNextMonth ? (
-                                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-semibold shadow-2xs ${
-                                  isStaffed
-                                    ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
-                                    : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                                }`}>
-                                  <span>{nextMonthShort}</span>
-                                </span>
-                              ) : !monthVal ? (
-                                <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold border shadow-2xs ${
-                                  isStaffed
-                                    ? 'bg-rose-100 text-rose-700 border-rose-300'
-                                    : 'bg-slate-200 text-slate-500 border-slate-300'
-                                }`}>
-                                  ???
-                                </span>
-                              ) : (
-                                <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold border shadow-2xs ${
-                                  isStaffed
-                                    ? 'bg-rose-100 text-rose-700 border-rose-300'
-                                    : 'bg-slate-200 text-slate-500 border-slate-300'
-                                }`}>
-                                  {formatMonthKey(monthVal)}
-                                </span>
-                              )}
-                            </button>
-                          ) : (
-                            /* En lecture seule pour les utilisateurs non autorisés */
-                            <div title={t('capacity.tooltips.readonly_month')}>
-                              {isUpdatedForNextMonth ? (
-                                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-semibold shadow-2xs opacity-80 ${
-                                  isStaffed
-                                    ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
-                                    : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                                }`}>
-                                  <span>{nextMonthShort}</span>
-                                </span>
-                              ) : !monthVal ? (
-                                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-slate-200 text-slate-500 border border-slate-300 shadow-2xs opacity-80">
-                                  ???
-                                </span>
-                              ) : (
-                                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-slate-200 text-slate-500 border border-slate-300 shadow-2xs opacity-80">
-                                  {formatMonthKey(monthVal)}
-                                </span>
-                              )}
-                            </div>
-                          )}
+                        <div className="flex items-center justify-center">
+                          {(() => {
+                            const isProjectUpToDate = Boolean(
+                              selectedPeriod === 'rat'
+                                ? (project.staffingPlanValidatedMonths?.['rat'] ?? project.isRatValidated)
+                                : project.staffingPlanValidatedMonths?.[selectedPeriod]
+                            );
 
-                          {/* Liste de choix du mois : au premier plan absolu avec élévation et positionnement fluide */}
-                          {userCanEditCapacity && openMonthDropdownId === project.id && (
-                            <div className={`absolute left-1/2 -translate-x-1/2 z-50 bg-white border border-slate-200 rounded-lg shadow-2xl py-1.5 px-1.5 min-w-[185px] whitespace-nowrap ring-2 ring-indigo-500/10 animate-in fade-in zoom-in-95 ${
-                              projectIndex >= 2 && projectIndex >= displayedProjects.length - 2
-                                ? 'bottom-full mb-1.5'
-                                : 'top-full mt-1.5'
-                            }`}>
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleUpdateMonth(project, nextMonthKey);
-                                  setOpenMonthDropdownId(null);
-                                }}
-                                className="w-full text-left px-2.5 py-1.5 text-xs font-semibold text-slate-800 hover:bg-emerald-50 hover:text-emerald-900 rounded flex items-center gap-2 cursor-pointer transition-colors"
+                            // Si le projet n'est pas coché dans la colonne Staffé : case à cocher à bord grisé sur fond blanc clair
+                            if (!isStaffed) {
+                              return (
+                                <Tooltip content={t('capacity.status.unstaffed_project', 'Projet non staffé')}>
+                                  <div
+                                    role="checkbox"
+                                    aria-checked={isProjectUpToDate}
+                                    className="w-4 h-4 rounded-[4px] flex items-center justify-center cursor-default select-none shadow-2xs border border-slate-300 bg-white text-slate-400"
+                                  >
+                                    {isProjectUpToDate && <Check className="w-3 h-3 stroke-[3]" />}
+                                  </div>
+                                </Tooltip>
+                              );
+                            }
+
+                            const periodTarget =
+                              selectedPeriod === 'rat' ? t('capacity.at_completion_def', 'la terminaison') : selectedPeriodLabel;
+
+                            return isProjectUpToDate ? (
+                              <Tooltip
+                                content={t('capacity.tooltips.project_up_to_date', { period: periodTarget })}
                               >
-                                <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                                <span>{t('capacity.status.up_to_date', { period: nextMonthShort })}</span>
-                              </button>
-                              {isUpdatedForNextMonth && (
-                                <button
-                                  type="button"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleUpdateMonth(project, null);
-                                    setOpenMonthDropdownId(null);
-                                  }}
-                                  className="w-full text-left px-2.5 py-1 text-[11px] text-slate-500 hover:bg-slate-100 rounded flex items-center gap-2 cursor-pointer transition-colors mt-0.5 border-t border-slate-100 pt-1"
+                                <div
+                                  role="checkbox"
+                                  aria-checked={true}
+                                  className="w-4 h-4 rounded-[4px] border border-blue-600 bg-blue-600 text-white flex items-center justify-center cursor-default select-none shadow-2xs"
                                 >
-                                  <RotateCcw className="w-3 h-3 text-slate-400 shrink-0" />
-                                  <span>{t('capacity.tooltips.reset_month')}</span>
-                                </button>
-                              )}
-                            </div>
-                          )}
+                                  <Check className="w-3 h-3 stroke-[3]" />
+                                </div>
+                              </Tooltip>
+                            ) : (
+                              <Tooltip
+                                variant="error"
+                                content={t('capacity.tooltips.project_not_up_to_date', { period: periodTarget })}
+                              >
+                                <div
+                                  role="checkbox"
+                                  aria-checked={false}
+                                  className="w-4 h-4 rounded-[4px] border-2 border-red-500 bg-white flex items-center justify-center cursor-default select-none shadow-2xs"
+                                />
+                              </Tooltip>
+                            );
+                          })()}
                         </div>
                       </td>
 
@@ -1848,7 +2166,7 @@ export const ProjectsCapacityTable: React.FC<ProjectsCapacityTableProps> = ({
                                       project: isConfidentialHidden ? t('projects.tooltips.confidential_badge') : project.name,
                                       skill: skill.name,
                                       val: cellVal || '0',
-                                      period: nextMonthLabel,
+                                      period: selectedPeriodLabel,
                                     })
                                 : undefined
                             }
@@ -1923,6 +2241,35 @@ export const ProjectsCapacityTable: React.FC<ProjectsCapacityTableProps> = ({
               ? t('projects.success_update', { number: pNum })
               : t('projects.success_create', { number: pNum })
           );
+          setTimeout(() => setActionSuccess(null), 4000);
+        }}
+      />
+
+      {/* Modal Historique Capacitaire par Compétence Clé */}
+      <ProjectCapacityHistoryModal
+        isOpen={historyModalOpen}
+        onClose={() => {
+          setHistoryModalOpen(false);
+          setHistoryProject(null);
+        }}
+        project={historyProject}
+        skills={skills}
+        orderedProjects={sortedProjectsByPriority.orderedProjects}
+        resources={resources}
+      />
+
+      {/* Modal Plan de Staffing Prévisionnel (12 mois glissants & RAT) */}
+      <ProjectStaffingPlanModal
+        isOpen={staffingPlanModalOpen}
+        onClose={() => {
+          setStaffingPlanModalOpen(false);
+          setStaffingPlanProject(null);
+        }}
+        project={staffingPlanProject}
+        skills={skills}
+        nextMonthKey={nextMonthKey}
+        onSaved={() => {
+          setActionSuccess(t('capacity.staffing_plan.saved_success', 'Plan de staffing et reste à terminaison enregistrés avec succès.'));
           setTimeout(() => setActionSuccess(null), 4000);
         }}
       />

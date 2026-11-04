@@ -41,6 +41,27 @@ i18n.use(initReactI18next).init({
   },
 });
 
+// Application immédiate des surcharges de traductions enregistrées dans localStorage
+try {
+  const cachedRaw = localStorage.getItem('opac_i18n_overrides');
+  if (cachedRaw) {
+    const cachedOverrides = JSON.parse(cachedRaw);
+    if (cachedOverrides && typeof cachedOverrides === 'object') {
+      for (const [lang, keyMap] of Object.entries(cachedOverrides)) {
+        if (keyMap && typeof keyMap === 'object') {
+          for (const [k, v] of Object.entries(keyMap as Record<string, string>)) {
+            if (typeof v === 'string') {
+              i18n.addResource(lang, 'translation', k, v);
+            }
+          }
+        }
+      }
+    }
+  }
+} catch {
+  // ignore
+}
+
 export const changeAppLanguage = (lang: SupportedLanguage) => {
   i18n.changeLanguage(lang);
   try {

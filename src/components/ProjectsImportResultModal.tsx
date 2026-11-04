@@ -7,6 +7,7 @@ import {
   FileText,
 } from 'lucide-react';
 import { ImportResult, downloadFile } from '../services/projectCsvService';
+import { MODAL_CLOSE_BUTTON_CLASS, MODAL_TITLE_CLASS } from '../constants/ui';
 
 interface ProjectsImportResultModalProps {
   isOpen: boolean;
@@ -49,7 +50,7 @@ export const ProjectsImportResultModal: React.FC<ProjectsImportResultModalProps>
               )}
             </div>
             <div>
-              <h3 className="text-base font-bold text-slate-900">
+              <h3 className={`${MODAL_TITLE_CLASS} text-slate-900`}>
                 Résultat de l'importation des projets
               </h3>
               <p className="text-xs text-slate-500">
@@ -133,7 +134,7 @@ export const ProjectsImportResultModal: React.FC<ProjectsImportResultModalProps>
           <button
             type="button"
             onClick={onClose}
-            className="px-5 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-semibold transition-colors cursor-pointer"
+            className={MODAL_CLOSE_BUTTON_CLASS}
           >
             Fermer
           </button>

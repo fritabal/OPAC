@@ -24,7 +24,7 @@ import { AppUser } from '../types/user';
 import { resolveUserDisplayName } from '../utils/userUtils';
 import { SkillModal } from './SkillModal';
 import { Tooltip } from './Tooltip';
-import { CREATE_ITEM_BUTTON_CLASS, TABLE_HEADER_THEAD_CLASS, TABLE_TH_BASE_CLASS } from '../constants/ui';
+import { CREATE_ITEM_BUTTON_CLASS, TABLE_HEADER_THEAD_CLASS, TABLE_TH_BASE_CLASS, TAB_TITLE_CLASS } from '../constants/ui';
 import {
   addKeySkill,
   updateKeySkill,
@@ -144,7 +144,7 @@ export const SkillsTable: React.FC<SkillsTableProps> = ({
       {/* En-tête avec titre, sous-titre et bouton d'action */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-xl font-bold text-rose-600 flex items-center gap-2.5">
+          <h2 className={`${TAB_TITLE_CLASS} text-rose-600 flex items-center gap-2.5`}>
             <Brain className="w-5 h-5 text-rose-600 shrink-0" />
             <span>{t('settings.skills.title')}</span>
           </h2>

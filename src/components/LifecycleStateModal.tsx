@@ -6,6 +6,9 @@ import {
   CHECKBOX_INPUT_CLASS,
   CHECKBOX_TITLE_CLASS,
   CHECKBOX_DESCRIPTION_CLASS,
+  MODAL_CANCEL_BUTTON_CLASS,
+  MODAL_CLOSE_BUTTON_CLASS,
+  MODAL_TITLE_CLASS,
 } from '../constants/ui';
 
 interface LifecycleStateModalProps {
@@ -105,7 +108,7 @@ export const LifecycleStateModal: React.FC<LifecycleStateModalProps> = ({
               <GitFork className="w-5 h-5 text-blue-950" />
             </div>
             <div>
-              <h3 className="font-semibold text-slate-900 text-base">
+              <h3 className={`${MODAL_TITLE_CLASS} text-slate-900`}>
                 {isReadOnly
                   ? t('modals.lifecycle_state.title_view', { name: editingState?.name || '' })
                   : editingState
@@ -252,7 +255,7 @@ export const LifecycleStateModal: React.FC<LifecycleStateModalProps> = ({
                 <button
                   type="button"
                   onClick={onClose}
-                  className="px-4 py-2 text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition-colors cursor-pointer"
+                  className={MODAL_CLOSE_BUTTON_CLASS}
                 >
                   {t('modals.common.close')}
                 </button>
@@ -261,7 +264,7 @@ export const LifecycleStateModal: React.FC<LifecycleStateModalProps> = ({
                   <button
                     type="button"
                     onClick={onClose}
-                    className="px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
+                    className={MODAL_CANCEL_BUTTON_CLASS}
                   >
                     {t('modals.common.cancel')}
                   </button>

@@ -418,6 +418,34 @@
         "capacityDaysPerSkill": {
           "type": "object",
           "description": "Nombre de jours de mobilisation par compétence clé pour le mois à venir (clé: skillId, valeur: nombre de jours)"
+        },
+        "capacityHistory": {
+          "type": "object",
+          "description": "Historique mensuel archivé des demandes de mobilisation (clé: YYYY-MM, valeur: { skillId: nombre de jours })"
+        },
+        "staffingPlan": {
+          "type": "object",
+          "description": "Plan de staffing prévisionnel sur 12 mois glissants (clé: YYYY-MM, valeur: { skillId: nombre de jours })"
+        },
+        "remainingToComplete": {
+          "type": "object",
+          "description": "Reste à Terminaison (RAT) en nombre de jours par compétence clé (clé: skillId, valeur: nombre de jours RAT)"
+        },
+        "staffingPlanValidatedMonths": {
+          "type": "object",
+          "description": "Indicateurs de confirmation que la demande a bien été renseignée pour un mois (clé: YYYY-MM, valeur: boolean)"
+        },
+        "isRatValidated": {
+          "type": "boolean",
+          "description": "Indicateur si la case RAT a été validée pour le mois en cours"
+        },
+        "ratValidatedMonth": {
+          "type": "string",
+          "description": "Mois pour lequel le Reste à Terminaison (RAT) a été validé au format YYYY-MM"
+        },
+        "ratHistory": {
+          "type": "object",
+          "description": "Historique mensuel archivé du Reste à Terminaison (RAT) (clé: YYYY-MM, valeur: { skillId: nombre de jours })"
         }
       },
       "required": ["projectNumber", "name", "stateId", "createdByEmail", "projectManagerEmail", "budgetLineId"]

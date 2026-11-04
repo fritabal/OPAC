@@ -91,6 +91,10 @@ export function subscribeToProjects(
           customParamValues: data.customParamValues || {},
           capacityUpdatedMonth: data.capacityUpdatedMonth || null,
           capacityDaysPerSkill: data.capacityDaysPerSkill || {},
+          capacityHistory: data.capacityHistory || {},
+          staffingPlan: data.staffingPlan || {},
+          remainingToComplete: data.remainingToComplete || {},
+          staffingPlanValidatedMonths: data.staffingPlanValidatedMonths || {},
           isStaffed: data.isStaffed !== undefined ? Boolean(data.isStaffed) : undefined,
           createdAt: data.createdAt?.toDate?.()?.toISOString() || data.createdAt,
           updatedAt: data.updatedAt?.toDate?.()?.toISOString() || data.updatedAt,
@@ -150,6 +154,7 @@ export async function createProject(formData: ProjectFormData): Promise<Project>
       customParamValues: formData.customParamValues || {},
       capacityUpdatedMonth: formData.capacityUpdatedMonth || null,
       capacityDaysPerSkill: formData.capacityDaysPerSkill || {},
+      capacityHistory: formData.capacityHistory || {},
       isStaffed: formData.isStaffed !== undefined ? Boolean(formData.isStaffed) : true,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
@@ -235,6 +240,7 @@ export async function updateProject(id: string, formData: Partial<ProjectFormDat
     if (formData.customParamValues !== undefined) payload.customParamValues = formData.customParamValues;
     if (formData.capacityUpdatedMonth !== undefined) payload.capacityUpdatedMonth = formData.capacityUpdatedMonth;
     if (formData.capacityDaysPerSkill !== undefined) payload.capacityDaysPerSkill = formData.capacityDaysPerSkill;
+    if (formData.capacityHistory !== undefined) payload.capacityHistory = formData.capacityHistory;
     if (formData.isStaffed !== undefined) payload.isStaffed = Boolean(formData.isStaffed);
 
     const cleanPayload: Record<string, any> = {};
@@ -361,6 +367,130 @@ export async function updateProjectCapacity(
 }
 
 /**
+ * Met à jour le plan de staffing prévisionnel (12 mois glissants) et le Reste à Terminaison (RAT).
+ * Synchronise également la demande du prochain mois sur capacityDaysPerSkill et capacityUpdatedMonth.
+ */
+export async function updateProjectStaffingPlan(
+  id: string,
+  staffingPlan: Record<string, Record<string, number | null>>,
+  remainingToComplete: Record<string, number | null>,
+  capacityDaysPerSkillForNextMonth?: Record<string, number | null>,
+  nextMonthKey?: string,
+  projectName?: string,
+  staffingPlanValidatedMonths?: Record<string, boolean>,
+  isRatValidated?: boolean,
+  ratValidatedMonth?: string | null
+): Promise<void> {
+  try {
+    const docRef = doc(db, COLLECTION_NAME, id);
+    const payload: Record<string, any> = {
+      staffingPlan,
+      remainingToComplete,
+      updatedAt: serverTimestamp(),
+    };
+    if (staffingPlanValidatedMonths !== undefined) {
+      payload.staffingPlanValidatedMonths = staffingPlanValidatedMonths;
+    }
+    if (isRatValidated !== undefined) {
+      payload.isRatValidated = Boolean(isRatValidated);
+      payload.ratValidatedMonth = isRatValidated ? (ratValidatedMonth || null) : null;
+    }
+    if (capacityDaysPerSkillForNextMonth !== undefined) {
+      payload.capacityDaysPerSkill = capacityDaysPerSkillForNextMonth;
+    }
+    if (nextMonthKey) {
+      payload.capacityUpdatedMonth = nextMonthKey;
+    }
+    await updateDoc(docRef, payload);
+
+    broadcastCollaborationChange({
+      category: 'project_staffing',
+      title: 'Plan de staffing mis à jour',
+      message: projectName
+        ? `Un autre utilisateur vient de mettre à jour le plan de staffing et le reste à terminaison du projet « ${projectName} ».`
+        : `Un autre utilisateur vient de mettre à jour le plan de staffing et le reste à terminaison d'un projet.`,
+      projectName,
+      projectId: id,
+    });
+  } catch (error) {
+    handleFirestoreError(error, OperationType.UPDATE, `${COLLECTION_NAME}/${id}`);
+    throw error;
+  }
+}
+
+/**
+ * Met à jour le Reste à Terminaison (RAT) d'un projet.
+ */
+export async function updateProjectRat(
+  id: string,
+  remainingToComplete: Record<string, number | null>,
+  projectName?: string
+): Promise<void> {
+  try {
+    const docRef = doc(db, COLLECTION_NAME, id);
+    await updateDoc(docRef, {
+      remainingToComplete,
+      updatedAt: serverTimestamp(),
+    });
+
+    broadcastCollaborationChange({
+      category: 'project_staffing',
+      title: 'Reste à terminaison mis à jour',
+      message: projectName
+        ? `Un autre utilisateur a mis à jour le RAT du projet « ${projectName} ».`
+        : `Un autre utilisateur a mis à jour le RAT d'un projet.`,
+      projectName,
+      projectId: id,
+    });
+  } catch (error) {
+    handleFirestoreError(error, OperationType.UPDATE, `${COLLECTION_NAME}/${id}`);
+    throw error;
+  }
+}
+
+/**
+ * Met à jour les demandes d'un projet pour une période donnée (mois au format YYYY-MM ou autre).
+ */
+export async function updateProjectPeriodDemands(
+  id: string,
+  periodKey: string,
+  periodDemands: Record<string, number | null>,
+  existingStaffingPlan?: Record<string, Record<string, number | null>>,
+  isNextMonth: boolean = false,
+  projectName?: string
+): Promise<void> {
+  try {
+    const docRef = doc(db, COLLECTION_NAME, id);
+    const updatedPlan = {
+      ...(existingStaffingPlan || {}),
+      [periodKey]: periodDemands,
+    };
+    const payload: Record<string, any> = {
+      staffingPlan: updatedPlan,
+      updatedAt: serverTimestamp(),
+    };
+    if (isNextMonth) {
+      payload.capacityDaysPerSkill = periodDemands;
+      payload.capacityUpdatedMonth = periodKey;
+    }
+    await updateDoc(docRef, payload);
+
+    broadcastCollaborationChange({
+      category: 'project_staffing',
+      title: 'Demandes capacitaires mises à jour',
+      message: projectName
+        ? `Un autre utilisateur a mis à jour les demandes pour ${periodKey} du projet « ${projectName} ».`
+        : `Un autre utilisateur a mis à jour les demandes capacitaires d'un projet.`,
+      projectName,
+      projectId: id,
+    });
+  } catch (error) {
+    handleFirestoreError(error, OperationType.UPDATE, `${COLLECTION_NAME}/${id}`);
+    throw error;
+  }
+}
+
+/**
  * Supprime un projet.
  */
 export async function deleteProject(id: string, projectName?: string): Promise<void> {
@@ -381,3 +511,130 @@ export async function deleteProject(id: string, projectName?: string): Promise<v
     throw error;
   }
 }
+
+/**
+ * Sauvegarde/Archive l'historique des demandes de compétences clés pour un mois donné (format "YYYY-MM").
+ * Règle métier demandée :
+ * - Si le projet a mis à jour ses demandes pour le mois considéré (et est staffé),
+ *   on sauvegarde les demandes déclarées pour chaque compétence clé.
+ * - Si le projet n'a pas mis à jour ses demandes pour le mois écoulé (par exemple parce qu'il a été décidé
+ *   de ne pas le staffer et donc de le mettre en standby), alors on prend 0 comme valeur de la demande
+ *   pour toutes les compétences clés pour ce projet.
+ */
+export async function archiveCapacityForMonth(
+  monthKey: string,
+  projects: Project[],
+  allSkillIds: string[],
+  forceOverwrite: boolean = false
+): Promise<number> {
+  let updatedCount = 0;
+  const updates: Promise<void>[] = [];
+
+  for (const project of projects) {
+    const existingHistory = project.capacityHistory || {};
+    const existingRatHistory = project.ratHistory || {};
+    // Si déjà archivé et qu'on ne force pas l'écrasement, ne pas modifier
+    if (!forceOverwrite && existingHistory[monthKey] !== undefined && existingRatHistory[monthKey] !== undefined) {
+      continue;
+    }
+
+    const wasUpdatedForMonth =
+      project.capacityUpdatedMonth === monthKey && project.isStaffed !== false;
+
+    const monthDemands: Record<string, number> = {};
+    allSkillIds.forEach((skillId) => {
+      if (wasUpdatedForMonth) {
+        const val = project.capacityDaysPerSkill?.[skillId];
+        monthDemands[skillId] =
+          typeof val === 'number' && !isNaN(val) && val >= 0
+            ? Math.round(val * 10) / 10
+            : 0;
+      } else {
+        monthDemands[skillId] = 0;
+      }
+    });
+
+    const newHistory = {
+      ...existingHistory,
+      [monthKey]: monthDemands,
+    };
+
+    // Historisation également du Reste à Terminaison (RAT) pour ce mois écoulé
+    const monthRat: Record<string, number> = {};
+    allSkillIds.forEach((skillId) => {
+      const val = project.remainingToComplete?.[skillId];
+      monthRat[skillId] =
+        typeof val === 'number' && !isNaN(val) && val >= 0
+          ? Math.round(val * 10) / 10
+          : 0;
+    });
+
+    const newRatHistory = {
+      ...existingRatHistory,
+      [monthKey]: monthRat,
+    };
+
+    const docRef = doc(db, COLLECTION_NAME, project.id);
+    updates.push(
+      updateDoc(docRef, {
+        capacityHistory: newHistory,
+        ratHistory: newRatHistory,
+        updatedAt: serverTimestamp(),
+      }).then(() => {
+        updatedCount++;
+      })
+    );
+  }
+
+  if (updates.length > 0) {
+    await Promise.all(updates);
+    broadcastCollaborationChange({
+      category: 'project_staffing',
+      title: 'Historique capacitaire et RAT archivés',
+      message: `L'historique des demandes capacitaires et du reste à terminaison (RAT) pour la période ${monthKey} a été archivé.`,
+    });
+  }
+
+  return updatedCount;
+}
+
+/**
+ * Vérifie et archive automatiquement les demandes et le RAT pour les mois écoulés non encore archivés.
+ * Réinitialise également automatiquement toutes les cases à cocher en entête de la colonne RAT à chaque changement de mois.
+ */
+export async function checkAndAutoArchiveCapacity(
+  projects: Project[],
+  allSkillIds: string[]
+): Promise<void> {
+  if (projects.length === 0 || allSkillIds.length === 0) return;
+
+  const now = new Date();
+  const currentMonthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  // Mois précédent (M-1)
+  const prevDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  const prevMonthKey = `${prevDate.getFullYear()}-${String(prevDate.getMonth() + 1).padStart(2, '0')}`;
+
+  // 1. Vérifier si le mois précédent a des projets non archivés
+  const unarchivedPrev = projects.filter(
+    (p) => !p.capacityHistory || p.capacityHistory[prevMonthKey] === undefined
+  );
+  if (unarchivedPrev.length > 0) {
+    await archiveCapacityForMonth(prevMonthKey, unarchivedPrev, allSkillIds, false);
+  }
+
+  // 2. À chaque changement de mois, réinitialisation automatique de la case à cocher RAT pour tous les projets
+  const projectsNeedingRatReset = projects.filter(
+    (p) => Boolean(p.isRatValidated) && p.ratValidatedMonth !== currentMonthKey
+  );
+  if (projectsNeedingRatReset.length > 0) {
+    const resetPromises = projectsNeedingRatReset.map((p) => {
+      const docRef = doc(db, COLLECTION_NAME, p.id);
+      return updateDoc(docRef, {
+        isRatValidated: false,
+        updatedAt: serverTimestamp(),
+      });
+    });
+    await Promise.all(resetPromises);
+  }
+}
+

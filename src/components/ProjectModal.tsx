@@ -40,6 +40,8 @@ import {
   CHECKBOX_TITLE_CLASS,
   CHECKBOX_DESCRIPTION_CLASS,
   TOOLTIP_MAX_WIDTH_CLASS,
+  MODAL_CANCEL_BUTTON_CLASS,
+  MODAL_TITLE_CLASS,
 } from '../constants/ui';
 
 /**
@@ -379,18 +381,13 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h3 className="font-bold text-slate-900 text-base">
+                <h3 className={`${MODAL_TITLE_CLASS} text-slate-900`}>
                   {isReadOnly
                     ? t('modals.project.title_view', { number: projectToEdit?.projectNumber, name: projectToEdit?.name || '' })
                     : projectToEdit
                     ? t('modals.project.title_edit', { number: projectToEdit.projectNumber, name: projectToEdit.name })
                     : t('modals.project.title_create')}
                 </h3>
-                {isReadOnly && (
-                  <span className="text-[10px] bg-slate-200 text-slate-700 px-2 py-0.5 rounded font-semibold uppercase tracking-wider">
-                    {t('modals.common.read_only')}
-                  </span>
-                )}
                 {isConfidential && (
                   <span className="text-[10px] bg-red-100 text-red-700 border border-red-200 px-2 py-0.5 rounded font-bold uppercase tracking-wider flex items-center gap-1 shadow-2xs">
                     <Lock className="w-2.5 h-2.5 text-red-600" />
@@ -1143,7 +1140,7 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
+              className={MODAL_CANCEL_BUTTON_CLASS}
             >
               {isReadOnly ? t('modals.common.close') : t('modals.common.cancel')}
             </button>
@@ -1217,7 +1214,7 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
                 <button
                   type="button"
                   onClick={() => setLongTextParamTarget(null)}
-                  className="px-3.5 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
+                  className={MODAL_CANCEL_BUTTON_CLASS}
                 >
                   {t('modals.common.cancel')}
                 </button>

@@ -74,11 +74,11 @@ textarea,
   top: 0;
   bottom: 0;
   right: 0;
-  width: 4px;
+  width: 5px;
   height: 100%;
   box-sizing: border-box;
-  border-left: 1px solid #e2e8f0;
-  border-right: 1px solid #e2e8f0;
+  border-left: 1px solid #cbd5e1;
+  border-right: 2px solid #cbd5e1;
   background-color: inherit;
   pointer-events: none;
   z-index: 30;
@@ -96,12 +96,35 @@ textarea,
   left: 0;
   right: 0;
   bottom: 0;
-  height: 4px;
+  height: 5px;
   box-sizing: border-box;
-  border-top: 1px solid #e2e8f0;
-  border-bottom: 1px solid #e2e8f0;
+  border-top: 1px solid #cbd5e1;
+  border-bottom: 2px solid #cbd5e1;
   background-color: inherit;
   pointer-events: none;
   z-index: 60;
 }
+
+/* Double filet vertical pour séparer les colonnes figées à droite (avant la colonne) */
+.table-frozen-divider-left {
+  position: sticky !important;
+  border-left: none !important;
+}
+
+.table-frozen-divider-left::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 5px;
+  height: 100%;
+  box-sizing: border-box;
+  border-left: 1px solid #cbd5e1;
+  border-right: 2px solid #cbd5e1;
+  background-color: inherit;
+  pointer-events: none;
+  z-index: 30;
+}
+
 

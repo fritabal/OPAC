@@ -28,6 +28,15 @@ export interface Project {
   capacityUpdatedMonth?: string | null; // Mois de mise à jour au format "YYYY-MM" (ex: "2026-11")
   capacityDaysPerSkill?: Record<string, number | null>; // clé = skillId, valeur = nombre de jours (>= 0)
   isStaffed?: boolean; // Boîte à cocher Capacitaire : true par défaut si l'état est à staffer, false si exclu du staffing
+  capacityHistory?: Record<string, Record<string, number>>; // clé = mois "YYYY-MM", valeur = { [skillId]: nombre de jours }
+
+  // Plan de staffing prévisionnel (12 mois glissants) & Reste à Terminaison (RAT)
+  staffingPlan?: Record<string, Record<string, number | null>>; // clé = mois "YYYY-MM", valeur = { [skillId]: nombre de jours }
+  remainingToComplete?: Record<string, number | null>; // clé = skillId, valeur = nombre de jours RAT
+  staffingPlanValidatedMonths?: Record<string, boolean>; // clé = mois "YYYY-MM", valeur = true si validé/renseigné
+  isRatValidated?: boolean; // Boîte à cocher RAT validée pour le mois en cours
+  ratValidatedMonth?: string | null; // Mois de validation du RAT au format "YYYY-MM"
+  ratHistory?: Record<string, Record<string, number>>; // clé = mois "YYYY-MM", valeur = { [skillId]: nombre de jours RAT }
 
   createdAt?: string;
   updatedAt?: string;

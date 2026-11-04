@@ -35,7 +35,7 @@ import {
 import { CustomParamModal } from './CustomParamModal';
 import { Tooltip } from './Tooltip';
 import { DEFAULT_CUSTOM_PARAMS_SEED } from '../constants/defaultLpmParams';
-import { CREATE_ITEM_BUTTON_CLASS, TABLE_HEADER_THEAD_CLASS, TABLE_TH_BASE_CLASS } from '../constants/ui';
+import { CREATE_ITEM_BUTTON_CLASS, TABLE_HEADER_THEAD_CLASS, TABLE_TH_BASE_CLASS, TAB_TITLE_CLASS } from '../constants/ui';
 
 interface CustomParamsTableProps {
   params: CustomProjectParam[];
@@ -172,7 +172,7 @@ export const CustomParamsTable: React.FC<CustomParamsTableProps> = ({
       {/* En-tête avec bouton d'ajout */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-xl font-bold text-sky-500 flex items-center gap-2.5">
+          <h2 className={`${TAB_TITLE_CLASS} text-sky-500 flex items-center gap-2.5`}>
             <SlidersHorizontal className="w-5 h-5 text-sky-500 shrink-0" />
             <span>{t('settings.custom_params.title')}</span>
           </h2>

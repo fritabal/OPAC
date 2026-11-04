@@ -22,6 +22,7 @@ import {
   setUserNewPassword,
   SUPER_ADMIN_EMAIL,
 } from '../services/userService';
+import { MODAL_TITLE_CLASS } from '../constants/ui';
 
 interface LoginModalProps {
   isOpen: boolean;
@@ -300,7 +301,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
               <Lock className="w-6 h-6 text-indigo-300" />
             )}
           </div>
-          <h2 className="text-lg font-bold">
+          <h2 className={MODAL_TITLE_CLASS}>
             {view === 'login' && 'Authentification Requise'}
             {view === 'forgot_password' && 'Réinitialiser le mot de passe'}
             {view === 'force_new_password' && 'Nouveau mot de passe obligatoire'}
