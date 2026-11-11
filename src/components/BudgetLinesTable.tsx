@@ -251,7 +251,7 @@ export const BudgetLinesTable: React.FC<BudgetLinesTableProps> = ({
       )}
 
       {/* Tableau tabulaire avec ascenseur horizontal et vertical */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-xs">
+      <div className="bg-white rounded-xl border border-slate-200 shadow-xs isolate relative z-0">
         <div className="overflow-x-auto overflow-y-auto max-h-[620px]">
           <table className="w-full text-left border-collapse text-xs">
             <thead className={`sticky top-0 z-10 ${TABLE_HEADER_THEAD_CLASS} shadow-2xs`}>

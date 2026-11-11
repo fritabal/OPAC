@@ -47,6 +47,8 @@ import {
   TABLE_HEADER_THEAD_CLASS,
   TABLE_TH_BASE_CLASS,
   TAB_TITLE_CLASS,
+  CRITERION_VALEUR_BADGE_CLASS,
+  CRITERION_COST_BADGE_CLASS,
 } from '../constants/ui';
 import {
   addCriterion,
@@ -387,16 +389,16 @@ export const CriteriaTable: React.FC<CriteriaTableProps> = ({
       )}
 
       {/* Tableau tabulaire avec ascenseur horizontal et vertical */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden">
+      <div className="bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden isolate relative z-0">
         <div className="overflow-x-auto overflow-y-auto max-h-[620px]">
           <table className="w-full text-left border-collapse text-xs">
-            <thead className={`sticky top-0 z-30 ${TABLE_HEADER_THEAD_CLASS} shadow-2xs`}>
+            <thead className={`sticky top-0 z-20 ${TABLE_HEADER_THEAD_CLASS} shadow-2xs`}>
               <tr>
                 {/* Ordre */}
                 {isAdmin && (
                   <th
                     scope="col"
-                    className={`sticky top-0 left-0 z-40 px-1.5 w-[72px] min-w-[72px] max-w-[72px] text-center whitespace-nowrap ${TABLE_TH_BASE_CLASS}`}
+                    className={`sticky top-0 left-0 z-30 px-1.5 w-[72px] min-w-[72px] max-w-[72px] text-center whitespace-nowrap ${TABLE_TH_BASE_CLASS}`}
                   >
                     {t('settings.criteria.col_order')}
                   </th>
@@ -404,7 +406,7 @@ export const CriteriaTable: React.FC<CriteriaTableProps> = ({
                 {/* Boîte à cocher Actif */}
                 <th
                   scope="col"
-                  className={`sticky top-0 ${isAdmin ? 'left-[72px]' : 'left-0'} z-40 px-1 w-14 min-w-[56px] max-w-[56px] text-center ${TABLE_TH_BASE_CLASS}`}
+                  className={`sticky top-0 ${isAdmin ? 'left-[72px]' : 'left-0'} z-30 px-1 w-14 min-w-[56px] max-w-[56px] text-center ${TABLE_TH_BASE_CLASS}`}
                 >
                   <Tooltip content={t('settings.criteria.col_active_tooltip')} className="w-full inline-block">
                     <span className="cursor-default">{t('settings.criteria.col_active')}</span>
@@ -413,14 +415,14 @@ export const CriteriaTable: React.FC<CriteriaTableProps> = ({
                 {/* Type */}
                 <th
                   scope="col"
-                  className={`sticky top-0 ${isAdmin ? 'left-[128px]' : 'left-[56px]'} z-40 px-2 w-20 min-w-[80px] max-w-[80px] text-center ${TABLE_TH_BASE_CLASS}`}
+                  className={`sticky top-0 ${isAdmin ? 'left-[128px]' : 'left-[56px]'} z-30 px-2 w-20 min-w-[80px] max-w-[80px] text-center ${TABLE_TH_BASE_CLASS}`}
                 >
                   {t('settings.criteria.col_type')}
                 </th>
                 {/* Nom du critère */}
                 <th
                   scope="col"
-                  className={`sticky top-0 ${isAdmin ? 'left-[208px]' : 'left-[136px]'} z-40 px-4 min-w-[200px] border-r-4 border-double border-slate-200 ${TABLE_FROZEN_DIVIDER_CLASS} shadow-[2px_0_4px_-1px_rgba(0,0,0,0.06)] ${TABLE_TH_BASE_CLASS}`}
+                  className={`sticky top-0 ${isAdmin ? 'left-[208px]' : 'left-[136px]'} z-30 px-4 min-w-[200px] border-r-4 border-double border-slate-200 ${TABLE_FROZEN_DIVIDER_CLASS} shadow-[2px_0_4px_-1px_rgba(0,0,0,0.06)] ${TABLE_TH_BASE_CLASS}`}
                 >
                   {t('settings.criteria.col_name')}
                 </th>
@@ -441,7 +443,7 @@ export const CriteriaTable: React.FC<CriteriaTableProps> = ({
                   </th>
                 ))}
                 {/* Actions */}
-                <th scope="col" className={`px-4 w-24 text-right sticky right-0 z-40 ${TABLE_TH_BASE_CLASS}`}>
+                <th scope="col" className={`px-4 w-24 text-right sticky right-0 z-30 ${TABLE_TH_BASE_CLASS}`}>
                   {t('settings.criteria.col_actions')}
                 </th>
               </tr>
@@ -511,7 +513,7 @@ export const CriteriaTable: React.FC<CriteriaTableProps> = ({
                     >
                       {/* Boutons de réorganisation (admin) */}
                       {isAdmin && (
-                        <td className={`py-2.5 px-1.5 w-[72px] min-w-[72px] max-w-[72px] text-center whitespace-nowrap sticky left-0 z-20 ${stickyBg} border-r border-slate-200`}>
+                        <td className={`py-2.5 px-1.5 w-[72px] min-w-[72px] max-w-[72px] text-center whitespace-nowrap sticky left-0 z-10 ${stickyBg} border-r border-slate-200`}>
                           <div className="flex items-center justify-center gap-0.5">
                             <button
                               type="button"
@@ -536,7 +538,7 @@ export const CriteriaTable: React.FC<CriteriaTableProps> = ({
                       )}
 
                       {/* Boîte à cocher Actif / Inactif */}
-                      <td className={`py-2.5 px-1 w-14 min-w-[56px] max-w-[56px] text-center whitespace-nowrap sticky ${isAdmin ? 'left-[72px]' : 'left-0'} z-20 ${stickyBg} border-r border-slate-200`}>
+                      <td className={`py-2.5 px-1 w-14 min-w-[56px] max-w-[56px] text-center whitespace-nowrap sticky ${isAdmin ? 'left-[72px]' : 'left-0'} z-10 ${stickyBg} border-r border-slate-200`}>
                         <div className="flex items-center justify-center">
                           {isAdmin ? (
                             <input
@@ -563,14 +565,14 @@ export const CriteriaTable: React.FC<CriteriaTableProps> = ({
                       </td>
 
                       {/* Type VALEUR ou COÛT */}
-                      <td className={`py-2.5 px-2 w-20 min-w-[80px] max-w-[80px] text-center whitespace-nowrap sticky ${isAdmin ? 'left-[128px]' : 'left-[56px]'} z-20 ${stickyBg} border-r border-slate-200`}>
+                      <td className={`py-2.5 px-2 w-20 min-w-[80px] max-w-[80px] text-center whitespace-nowrap sticky ${isAdmin ? 'left-[128px]' : 'left-[56px]'} z-10 ${stickyBg} border-r border-slate-200`}>
                         <span
                           className={`inline-flex items-center px-2 py-0.5 rounded text-[11px] font-bold tracking-wide uppercase ${
                             !isActive
                               ? 'bg-slate-100 text-slate-400 border border-slate-200 italic'
                               : criterion.type === 'VALEUR'
-                              ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                              : 'bg-amber-50 text-amber-700 border border-amber-200'
+                              ? CRITERION_VALEUR_BADGE_CLASS
+                              : CRITERION_COST_BADGE_CLASS
                           }`}
                         >
                           {criterion.type === 'VALEUR' ? t('settings.criteria.type_value') : t('settings.criteria.type_cost')}
@@ -578,7 +580,7 @@ export const CriteriaTable: React.FC<CriteriaTableProps> = ({
                       </td>
 
                       {/* Nom du critère */}
-                      <td className={`py-2.5 px-4 min-w-[200px] whitespace-nowrap sticky ${isAdmin ? 'left-[208px]' : 'left-[136px]'} z-20 ${stickyBg} border-r-4 border-double border-slate-200 ${TABLE_FROZEN_DIVIDER_CLASS} shadow-[2px_0_4px_-1px_rgba(0,0,0,0.06)]`}>
+                      <td className={`py-2.5 px-4 min-w-[200px] whitespace-nowrap sticky ${isAdmin ? 'left-[208px]' : 'left-[136px]'} z-10 ${stickyBg} border-r-4 border-double border-slate-200 ${TABLE_FROZEN_DIVIDER_CLASS} shadow-[2px_0_4px_-1px_rgba(0,0,0,0.06)]`}>
                         <span
                           className={`font-semibold ${
                             isActive ? 'text-slate-900' : 'text-slate-400 italic'

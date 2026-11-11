@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ChevronDown } from 'lucide-react';
 import { BudgetLine } from '../types/budget';
+import { getFilterDropdownButtonClass } from '../constants/ui';
 
 interface BudgetLineFilterProps {
   budgetLines: BudgetLine[];
@@ -107,13 +108,7 @@ export const BudgetLineFilter: React.FC<BudgetLineFilterProps> = ({
       <button
         type="button"
         onClick={() => setIsOpen((prev) => !prev)}
-        className={`w-full px-3 py-2 border rounded-lg text-xs bg-white text-left flex items-center justify-between gap-2 transition-all cursor-pointer ${
-          isOpen
-            ? 'border-indigo-500 ring-2 ring-indigo-100'
-            : isFilterActive
-            ? 'border-indigo-300 bg-indigo-50/20 text-slate-800'
-            : 'border-slate-300 hover:border-slate-400 text-slate-700'
-        }`}
+        className={getFilterDropdownButtonClass(isOpen, isFilterActive)}
         title={t('filters.filter_prefix', { label: buttonLabel })}
       >
         <span className="truncate font-normal">{buttonLabel}</span>

@@ -203,7 +203,7 @@ export const LifecycleStatesTable: React.FC<LifecycleStatesTableProps> = ({
       )}
 
       {/* Tableau tabulaire des états */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden">
+      <div className="bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden isolate relative z-0">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs border-collapse">
             <thead className={TABLE_HEADER_THEAD_CLASS}>

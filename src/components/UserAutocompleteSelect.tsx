@@ -190,7 +190,7 @@ export const UserAutocompleteSelect: React.FC<UserAutocompleteSelectProps> = ({
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               placeholder="Tapez des lettres..."
-              className={`w-full pl-8 pr-7 border-2 border-indigo-500 rounded-lg text-xs font-medium focus:outline-none bg-white shadow-sm ${
+              className={`w-full pl-8 pr-7 border-2 border-indigo-600 rounded-lg text-xs font-medium focus:outline-none focus:ring-0 bg-white shadow-xs ${
                 isSmall ? 'py-1.5' : 'py-2'
               }`}
             />

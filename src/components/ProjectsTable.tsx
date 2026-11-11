@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef, useEffect } from 'react';
+import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Briefcase,
@@ -27,11 +27,14 @@ import {
   Download,
   Upload,
   CheckSquare,
+  ArrowRightFromLine,
+  ArrowLeftToLine,
+  Undo2,
 } from 'lucide-react';
 import { Project } from '../types/project';
 import { ProjectState } from '../types/lifecycle';
 import { BudgetLine } from '../types/budget';
-import { Criterion } from '../types/criteria';
+import { Criterion, CRITERION_POINTS } from '../types/criteria';
 import { CustomProjectParam } from '../types/customParam';
 import { KeySkill } from '../types/skill';
 import { AppUser, UserRole } from '../types/user';
@@ -61,6 +64,7 @@ import {
 import { ProjectActionButton } from './ProjectActionButton';
 import { LifecycleStateFilter } from './LifecycleStateFilter';
 import { BudgetLineFilter } from './BudgetLineFilter';
+import { SearchFilterInput } from './SearchFilterInput';
 import {
   CREATE_ITEM_BUTTON_CLASS,
   FILTER_BUTTON_ACTIVE_CLASS,
@@ -78,7 +82,16 @@ import {
   TABLE_TH_BASE_CLASS,
   TABLE_TH_SORTABLE_CLASS,
   TAB_TITLE_CLASS,
+  CRITERION_VALEUR_BADGE_CLASS,
+  CRITERION_COST_BADGE_CLASS,
+  CRITERION_HEADER_VALEUR_CLASS,
+  CRITERION_HEADER_COST_CLASS,
+  CRITERION_CELL_VALEUR_BG,
+  CRITERION_CELL_COST_BG,
+  SEGMENT_SELECTOR_CONTAINER_CLASS,
+  getSegmentSelectorButtonClass,
 } from '../constants/ui';
+import { ProjectsKanbanView } from './ProjectsKanbanView';
 
 export type SortColumn = 'id' | 'roi' | 'name' | 'state' | 'pm' | 'budgetLine' | 'bonus' | string;
 export type SortDirection = 'asc' | 'desc';
@@ -106,6 +119,8 @@ interface ProjectsTableProps {
   setSortColumn?: (col: SortColumn) => void;
   sortDirection?: SortDirection;
   setSortDirection?: (dir: SortDirection) => void;
+  showCriteriaDetails?: boolean;
+  setShowCriteriaDetails?: (show: boolean) => void;
 }
 
 export const ProjectsTable: React.FC<ProjectsTableProps> = ({
@@ -131,6 +146,8 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
   setSortColumn: setSortColumnProp,
   sortDirection: sortDirectionProp,
   setSortDirection: setSortDirectionProp,
+  showCriteriaDetails: showCriteriaDetailsProp,
+  setShowCriteriaDetails: setShowCriteriaDetailsProp,
 }) => {
   const { t } = useTranslation();
   const [modalOpen, setModalOpen] = useState(false);
@@ -141,6 +158,41 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
   const [isDeleting, setIsDeleting] = useState(false);
   const [actionSuccess, setActionSuccess] = useState<string | null>(null);
   const [updatingStateProjectId, setUpdatingStateProjectId] = useState<string | null>(null);
+
+  // Mode d'affichage de l'onglet : Liste ou Kanban (mémorisé dans localStorage pour persister entre onglets)
+  const STORAGE_KEY_VIEW_MODE = 'opac_projects_view_mode';
+  const [viewMode, setViewMode] = useState<'list' | 'kanban'>(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY_VIEW_MODE);
+      if (saved === 'list' || saved === 'kanban') {
+        return saved;
+      }
+    } catch {
+      // fallback
+    }
+    return 'list';
+  });
+
+  const handleViewModeChange = (mode: 'list' | 'kanban') => {
+    setViewMode(mode);
+    try {
+      localStorage.setItem(STORAGE_KEY_VIEW_MODE, mode);
+    } catch {
+      // ignore
+    }
+  };
+
+  // Historique pour annulation (Ctrl-Z) du changement d'état d'un projet
+  const [lastStateChange, setLastStateChange] = useState<{
+    projectId: string;
+    projectNumber: number;
+    projectName: string;
+    previousStateId: string;
+    previousStateName: string;
+    newStateId: string;
+    newStateName: string;
+    previousIsStaffed: boolean;
+  } | null>(null);
 
   // Menu burger : Export / Import / Suppression de projets
   const [actionsMenuOpen, setActionsMenuOpen] = useState(false);
@@ -154,6 +206,33 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
   // Sélection individuelle de projets (cases à cocher dans le tableau)
   const [manualSelectionActive, setManualSelectionActive] = useState(false);
   const [selectedProjectIds, setSelectedProjectIds] = useState<string[]>([]);
+
+  // Déploiement des colonnes de critères de priorisation (conservé lors du changement d'onglet)
+  const [internalShowCriteriaDetails, setInternalShowCriteriaDetails] = useState(false);
+  const showCriteriaDetails = showCriteriaDetailsProp !== undefined ? showCriteriaDetailsProp : internalShowCriteriaDetails;
+  const setShowCriteriaDetails = (valOrFn: boolean | ((prev: boolean) => boolean)) => {
+    if (setShowCriteriaDetailsProp) {
+      if (typeof valOrFn === 'function') {
+        setShowCriteriaDetailsProp(valOrFn(showCriteriaDetails));
+      } else {
+        setShowCriteriaDetailsProp(valOrFn);
+      }
+    } else {
+      setInternalShowCriteriaDetails(valOrFn);
+    }
+  };
+
+  // Critères actifs triés (Valeur puis Coût) pour le déploiement des colonnes de critères
+  const activeCriteria = useMemo(() => {
+    return [...criteria]
+      .filter((c) => c.isActive !== false)
+      .sort((a, b) => {
+        if (a.type !== b.type) {
+          return a.type === 'VALEUR' ? -1 : 1;
+        }
+        return (a.order ?? 0) - (b.order ?? 0);
+      });
+  }, [criteria]);
 
   const handleToggleSelectProject = (projectId: string) => {
     setSelectedProjectIds((prev) =>
@@ -242,13 +321,45 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
     setShowConfidentialProjectsProp?.(val);
   };
 
+  // Helper : vérifie si le projet est staffé (son état a pour attribut "à staffer", ou case cochée)
+  const isProjectStaffed = useCallback((p: Project): boolean => {
+    const s = projectStates.find((st) => st.id === p.stateId);
+    const stateNeedsStaffing = Boolean(s?.needsStaffing);
+    if (!stateNeedsStaffing) {
+      return p.isStaffed === true;
+    }
+    return p.isStaffed !== false;
+  }, [projectStates]);
+
+  // Filtre Tous / Staffés spécifique à la vue Kanban
+  const STORAGE_KEY_KANBAN_STAFFED_FILTER = 'opac_projects_kanban_staffed_filter';
+  const [kanbanStaffedFilter, setKanbanStaffedFilter] = useState<'all' | 'staffed'>(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY_KANBAN_STAFFED_FILTER);
+      if (saved === 'all' || saved === 'staffed') return saved;
+    } catch {
+      // ignore
+    }
+    return 'all';
+  });
+
+  const handleKanbanStaffedFilterChange = (val: 'all' | 'staffed') => {
+    setKanbanStaffedFilter(val);
+    try {
+      localStorage.setItem(STORAGE_KEY_KANBAN_STAFFED_FILTER, val);
+    } catch {
+      // ignore
+    }
+  };
+
   const hasActiveFilters = Boolean(
     searchQuery.trim() ||
       isStateFilterActive ||
       isBudgetLineFilterActive ||
       myProjectsOnly ||
       bonusedOnly ||
-      manualSelectionActive
+      manualSelectionActive ||
+      (viewMode === 'kanban' && kanbanStaffedFilter === 'staffed')
   );
 
   // Références de lignes pour le défilement automatique
@@ -440,11 +551,117 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
     }
   };
 
-  // Modification directe de l'état du projet depuis le tableau (avec recalcul automatique de l'état "à staffer")
+  // Annuler le dernier changement d'état (Ctrl-Z)
+  const handleUndoStateChange = async () => {
+    if (!lastStateChange) return;
+    const {
+      projectId,
+      projectNumber,
+      projectName,
+      previousStateId,
+      previousStateName,
+      previousIsStaffed,
+    } = lastStateChange;
+
+    const proj = projects.find((p) => p.id === projectId);
+    if (!proj) {
+      setLastStateChange(null);
+      return;
+    }
+
+    const prevState = projectStates.find((s) => s.id === previousStateId);
+    if (!prevState) {
+      setLastStateChange(null);
+      return;
+    }
+
+    setUpdatingStateProjectId(projectId);
+    try {
+      const calculatedRoi = calculateProjectRoi(
+        proj.criteriaValues,
+        criteria,
+        true,
+        getProjectBonus(proj),
+        bonusConfig.isBonusActive
+      );
+
+      await updateProject(projectId, {
+        stateId: prevState.id,
+        stateName: prevState.name,
+        isStaffed: previousIsStaffed,
+        roi: calculatedRoi,
+      });
+
+      setLastStateChange(null);
+    } catch (err: any) {
+      console.error('Erreur annulation du changement d’état:', err);
+    } finally {
+      setUpdatingStateProjectId(null);
+    }
+  };
+
+  // Écouteur global pour raccourci clavier Ctrl-Z (ou Cmd-Z sur Mac)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Ignorer si l'utilisateur est en train de saisir dans un input ou textarea
+      const target = e.target as HTMLElement | null;
+      if (
+        target &&
+        (target.tagName === 'INPUT' ||
+          target.tagName === 'TEXTAREA' ||
+          target.isContentEditable)
+      ) {
+        return;
+      }
+
+      // Si une modale est ouverte, ne pas intercepter Ctrl-Z
+      if (
+        modalOpen ||
+        exportModalOpen ||
+        importModalOpen ||
+        importResultModalOpen ||
+        deleteAllModalOpen ||
+        Boolean(deleteCandidate)
+      ) {
+        return;
+      }
+
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z' && !e.shiftKey) {
+        if (lastStateChange) {
+          e.preventDefault();
+          handleUndoStateChange();
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [
+    lastStateChange,
+    modalOpen,
+    exportModalOpen,
+    importModalOpen,
+    importResultModalOpen,
+    deleteAllModalOpen,
+    deleteCandidate,
+    projects,
+    projectStates,
+    criteria,
+    bonusConfig,
+  ]);
+
+  // Modification directe de l'état du projet depuis le tableau ou le kanban (avec recalcul automatique de l'état "à staffer")
   const handleDirectStateChange = async (p: Project, newStateId: string) => {
     if (!canEdit(p) || p.stateId === newStateId) return;
     const targetState = projectStates.find((s) => s.id === newStateId);
     if (!targetState) return;
+
+    const prevState = projectStates.find((s) => s.id === p.stateId);
+    const oldStateId = p.stateId;
+    const oldStateName = prevState?.name || p.stateName || 'État précédent';
+    const oldIsStaffed = isProjectStaffed(p);
 
     setUpdatingStateProjectId(p.id);
     try {
@@ -467,8 +684,17 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
         roi: calculatedRoi,
       });
 
-      setActionSuccess(`État du projet #${p.projectNumber ?? ''} mis à jour : « ${targetState.name} » (Staffé : ${newIsStaffed ? 'Oui' : 'Non'}).`);
-      setTimeout(() => setActionSuccess(null), 3000);
+      // Enregistrer l'opération pour permettre l'annulation par Ctrl-Z
+      setLastStateChange({
+        projectId: p.id,
+        projectNumber: p.projectNumber || 0,
+        projectName: p.name,
+        previousStateId: oldStateId,
+        previousStateName: oldStateName,
+        newStateId: targetState.id,
+        newStateName: targetState.name,
+        previousIsStaffed: oldIsStaffed,
+      });
     } catch (err: any) {
       console.error('Erreur mise à jour directe de l\'état du projet:', err);
     } finally {
@@ -555,6 +781,14 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
     });
   }, [projects, searchQuery, isStateFilterActive, selectedStateIds, isBudgetLineFilterActive, selectedBudgetLineIds, myProjectsOnly, bonusedOnly, showConfidentialProjects, activeUser, localBonuses, isSuperUser, isValueManagementOfficer]);
 
+  // Nombre de projets affichés selon les filtres et le mode Kanban (tous ou staffés)
+  const displayedProjectsCount = useMemo(() => {
+    if (viewMode === 'kanban' && kanbanStaffedFilter === 'staffed') {
+      return filteredProjects.filter((p) => isProjectStaffed(p)).length;
+    }
+    return filteredProjects.length;
+  }, [viewMode, kanbanStaffedFilter, filteredProjects, isProjectStaffed]);
+
   // Bascule de la sélection manuelle :
   // Ne cocher que les projets qui ont été pré-sélectionnés par un autre filtre.
   // S'il n'y a pas d'autre filtre prédéfini avant qu'on ne clique sur "sélection manuelle",
@@ -634,16 +868,6 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
   const isProjectStatePrioritized = (stateId: string): boolean => {
     const s = projectStates.find((st) => st.id === stateId);
     return Boolean(s?.needsPrioritization);
-  };
-
-  // Helper : vérifie si le projet est staffé (son état a pour attribut "à staffer", ou case cochée)
-  const isProjectStaffed = (p: Project): boolean => {
-    const s = projectStates.find((st) => st.id === p.stateId);
-    const stateNeedsStaffing = Boolean(s?.needsStaffing);
-    if (!stateNeedsStaffing) {
-      return p.isStaffed === true;
-    }
-    return p.isStaffed !== false;
   };
 
   // Obtenir le ROI effectif d'un projet : calculé quel que soit son état
@@ -754,11 +978,14 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
           return <span className="text-slate-300 font-mono">—</span>;
         }
         const str = String(val);
-        const isTruncated = str.length > 15;
-        const displayed = isTruncated ? `${str.slice(0, 15)}...` : str;
+        const cleanText = cp.type === 'texte long'
+          ? str.replace(/<[^>]*>/g, ' ').replace(/&nbsp;/gi, ' ').replace(/\s+/g, ' ').trim()
+          : str;
+        const isTruncated = cleanText.length > 20;
+        const displayed = isTruncated ? `${cleanText.slice(0, 20)}...` : cleanText;
         if (isTruncated) {
           return (
-            <Tooltip content={str}>
+            <Tooltip content={cleanText}>
               <span className="text-xs text-slate-800 font-medium whitespace-nowrap cursor-default underline decoration-dotted decoration-slate-300 underline-offset-2">
                 {displayed}
               </span>
@@ -779,7 +1006,7 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
       setSortDirection((prev) => (prev === 'asc' ? 'desc' : 'asc'));
     } else {
       setSortColumn(col);
-      if (col === 'roi' || col === 'bonus' || col === 'id') {
+      if (col === 'roi' || col === 'bonus' || col === 'id' || col.startsWith('crit_')) {
         setSortDirection('desc');
       } else {
         setSortDirection('asc');
@@ -862,7 +1089,20 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
           break;
         }
         default: {
-          if (sortColumn.startsWith('cp_')) {
+          if (sortColumn.startsWith('crit_')) {
+            const critId = sortColumn.replace('crit_', '');
+            const valA = a.criteriaValues?.[critId];
+            const valB = b.criteriaValues?.[critId];
+            const hasA = typeof valA === 'number' && !isNaN(valA);
+            const hasB = typeof valB === 'number' && !isNaN(valB);
+
+            const numA = hasA ? (valA as number) : -1;
+            const numB = hasB ? (valB as number) : -1;
+            comparison = numA - numB;
+            if (comparison === 0) {
+              comparison = (a.projectNumber || 0) - (b.projectNumber || 0);
+            }
+          } else if (sortColumn.startsWith('cp_')) {
             const cpId = sortColumn.replace('cp_', '');
             const cp = customParams.find((c) => c.id === cpId);
             const valA = a.customParamValues?.[cpId];
@@ -1087,21 +1327,41 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
   return (
     <div className="flex-1 min-h-0 flex flex-col space-y-3">
       {/* En-tête de section */}
-      <div className="shrink-0 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-        <div>
-          <h2 className={`${TAB_TITLE_CLASS} text-blue-600 flex items-center gap-2.5`}>
-            <Briefcase className="w-5 h-5 text-blue-600 shrink-0" />
-            <span>{t('projects.title')}</span>
-          </h2>
-          <p className="text-xs text-slate-600 mt-0.5 max-w-2xl">
-            {t('projects.subtitle')}
-          </p>
+      <div className={`shrink-0 flex flex-col sm:flex-row sm:items-center justify-between gap-3 relative ${actionsMenuOpen ? 'z-40' : 'z-10'}`}>
+        <div className="flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-6">
+          <div>
+            <h2 className={`${TAB_TITLE_CLASS} text-blue-600 flex items-center gap-2.5`}>
+              <Briefcase className="w-5 h-5 text-blue-600 shrink-0" />
+              <span>{t('projects.title')}</span>
+            </h2>
+            <p className="text-xs text-slate-600 mt-0.5 max-w-2xl">
+              {t('projects.subtitle')}
+            </p>
+          </div>
+
+          {/* Sélecteur Liste / Kanban placé directement à droite du bloc titre et sous-titre pour plus de visibilité */}
+          <div className={SEGMENT_SELECTOR_CONTAINER_CLASS}>
+            <button
+              type="button"
+              onClick={() => handleViewModeChange('list')}
+              className={getSegmentSelectorButtonClass(viewMode === 'list')}
+            >
+              {t('projects.view_list', 'Liste')}
+            </button>
+            <button
+              type="button"
+              onClick={() => handleViewModeChange('kanban')}
+              className={getSegmentSelectorButtonClass(viewMode === 'kanban')}
+            >
+              {t('projects.view_kanban', 'Kanban')}
+            </button>
+          </div>
         </div>
 
+        {/* Contrôles d'actions à droite : Menu burger et Bouton Nouveau projet */}
         <div className="flex items-center gap-2 shrink-0">
-          {/* Menu burger (Export, Import, Supprimer des projets) directement sur le fond de la frame - Réservé au Value Management Officer et au Super User */}
           {canAccessBurgerMenu && (
-            <div className="relative" ref={actionsMenuRef}>
+            <div className={`relative ${actionsMenuOpen ? 'z-50' : 'z-20'}`} ref={actionsMenuRef}>
               <button
                 type="button"
                 onClick={() => setActionsMenuOpen((prev) => !prev)}
@@ -1223,18 +1483,16 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
         </div>
       )}
 
-      {/* Barre de recherche et de filtres */}
-      <div className="shrink-0 bg-white p-3 rounded-xl border border-slate-200 shadow-2xs space-y-2.5 relative z-20">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3">
+      {/* Barre de recherche et de filtres avec hauteur stable et rangée inférieure fixe */}
+      <div className="shrink-0 bg-white p-3 rounded-xl border border-slate-200 shadow-2xs flex flex-col gap-2.5 relative z-20">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3 items-center">
           {/* Recherche textuelle */}
-          <div className="lg:col-span-3 relative">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
-            <input
-              type="text"
+          <div className="lg:col-span-3">
+            <SearchFilterInput
               value={searchQuery}
-              onChange={(e) => handleSearchChange(e.target.value)}
+              onChange={handleSearchChange}
+              onClear={() => handleSearchChange('')}
               placeholder={t('projects.search_placeholder')}
-              className="w-full pl-9 pr-3 py-2 border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-indigo-500"
             />
           </div>
 
@@ -1262,7 +1520,7 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
             <button
               type="button"
               onClick={handleToggleMyProjects}
-              className={`w-full py-2 px-3 rounded-lg text-xs font-semibold border transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+              className={`w-full h-9 px-3 rounded-lg text-xs font-semibold border transition-all cursor-pointer flex items-center justify-center gap-1.5 box-border ${
                 myProjectsOnly
                   ? FILTER_BUTTON_ACTIVE_CLASS
                   : FILTER_BUTTON_INACTIVE_CLASS
@@ -1293,7 +1551,7 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
               <button
                 type="button"
                 onClick={handleToggleManualSelection}
-                className={`w-full py-2 px-2.5 rounded-lg text-xs font-semibold border transition-all cursor-pointer flex items-center justify-center gap-1.5 whitespace-nowrap ${
+                className={`w-full h-9 px-2.5 rounded-lg text-xs font-semibold border transition-all cursor-pointer flex items-center justify-center gap-1.5 whitespace-nowrap box-border ${
                   manualSelectionActive
                     ? FILTER_BUTTON_ACTIVE_CLASS
                     : FILTER_BUTTON_INACTIVE_CLASS
@@ -1316,11 +1574,11 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
           </div>
         </div>
 
-        {/* Ligne inférieure : Boîte de comptage à gauche et case Afficher les projets confidentiels à droite, alignées horizontalement */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2 border-t border-slate-100">
-          <div className="flex items-center gap-3 flex-wrap">
+        {/* Ligne inférieure : Boîte de comptage à gauche et case Afficher les projets confidentiels à droite, position et hauteur stables */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2.5 border-t border-slate-100 min-h-[36px]">
+          <div className="flex items-center gap-3 flex-wrap min-h-[28px]">
             <span
-              className={`inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${
+              className={`inline-flex items-center px-3 h-7 box-border rounded-lg text-xs font-bold transition-colors ${
                 hasActiveFilters
                   ? 'bg-blue-50 border border-blue-200 text-blue-900'
                   : 'bg-slate-100 border border-slate-200 text-slate-600'
@@ -1335,8 +1593,8 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
                   })
                 : hasActiveFilters
                 ? t('projects.counts.filtered', {
-                    filtered: filteredProjects.length,
-                    filtered_word: filteredProjects.length > 1 ? t('common.words.project_other') : t('common.words.project_one'),
+                    filtered: displayedProjectsCount,
+                    filtered_word: displayedProjectsCount > 1 ? t('common.words.project_other') : t('common.words.project_one'),
                     total: projects.length,
                     total_word: projects.length > 1 ? t('common.words.project_other') : t('common.words.project_one'),
                   })
@@ -1357,8 +1615,9 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
                   setBonusedOnly(false);
                   setManualSelectionActive(false);
                   setSelectedProjectIds([]);
+                  handleKanbanStaffedFilterChange('all');
                 }}
-                className="text-blue-600 hover:text-blue-800 hover:underline flex items-center gap-1.5 cursor-pointer text-xs font-semibold"
+                className="text-blue-600 hover:text-blue-800 hover:underline flex items-center gap-1.5 cursor-pointer text-xs font-semibold h-7"
               >
                 <RotateCcw className="w-3.5 h-3.5" />
                 <span>{t('projects.clear_filters')}</span>
@@ -1366,25 +1625,49 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
             )}
           </div>
 
-          {/* Case à cocher pour le Value Management Officer alignée horizontalement à droite */}
-          {isValueManagementOfficer && (
-            <div className={CHECKBOX_CONTAINER_CLASS}>
-              <input
-                type="checkbox"
-                id="vmo-checkbox-show-confidential-priorities"
-                checked={showConfidentialProjects}
-                onChange={(e) => setShowConfidentialProjects(e.target.checked)}
-                className={CHECKBOX_INPUT_CLASS}
-              />
-              <label
-                htmlFor="vmo-checkbox-show-confidential-priorities"
-                className={CHECKBOX_TITLE_CLASS}
-                title={t('projects.show_confidential')}
-              >
-                {t('projects.show_confidential')}
-              </label>
-            </div>
-          )}
+          {/* Contrôles à droite : Sélecteur Tous / Staffés (en mode Kanban) décalé de 20px sur la gauche et Case Afficher les projets confidentiels */}
+          <div className="flex items-center self-end sm:self-center shrink-0">
+            {viewMode === 'kanban' && (
+              <div className={`${SEGMENT_SELECTOR_CONTAINER_CLASS} mr-5`}>
+                <button
+                  type="button"
+                  onClick={() => handleKanbanStaffedFilterChange('all')}
+                  className={getSegmentSelectorButtonClass(kanbanStaffedFilter === 'all')}
+                  title={t('projects.kanban_scope_all_tooltip', 'Afficher tous les projets (staffés et non staffés)')}
+                >
+                  {t('projects.kanban_scope_all', 'Tous')}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleKanbanStaffedFilterChange('staffed')}
+                  className={getSegmentSelectorButtonClass(kanbanStaffedFilter === 'staffed')}
+                  title={t('projects.kanban_scope_staffed_tooltip', 'Afficher uniquement les projets staffés')}
+                >
+                  {t('projects.kanban_scope_staffed', 'Staffés')}
+                </button>
+              </div>
+            )}
+
+            {/* Case à cocher pour le Super User et le Value Management Officer alignée horizontalement à droite */}
+            {(isValueManagementOfficer || isSuperUser) && (
+              <div className={`${CHECKBOX_CONTAINER_CLASS} h-7`}>
+                <input
+                  type="checkbox"
+                  id="checkbox-show-confidential-priorities"
+                  checked={showConfidentialProjects}
+                  onChange={(e) => setShowConfidentialProjects(e.target.checked)}
+                  className={CHECKBOX_INPUT_CLASS}
+                />
+                <label
+                  htmlFor="checkbox-show-confidential-priorities"
+                  className={CHECKBOX_TITLE_CLASS}
+                  title={t('projects.show_confidential')}
+                >
+                  {t('projects.show_confidential')}
+                </label>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
@@ -1535,12 +1818,32 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
         );
       })()}
 
-      {/* Table des projets (ascenseur vertical dédié à la liste seule) */}
-      <div className="flex-1 min-h-0 bg-white rounded-xl border border-slate-200 shadow-xs flex flex-col overflow-hidden relative z-10">
-        {loading ? (
-          <div className="p-12 text-center text-slate-500 text-xs">
-            Chargement des projets...
-          </div>
+      {/* Affichage conditionnel : Table des projets (Liste) ou Kanban par état du cycle de vie */}
+      {viewMode === 'kanban' ? (
+        <ProjectsKanbanView
+          projects={
+            kanbanStaffedFilter === 'staffed'
+              ? filteredProjects.filter((p) => isProjectStaffed(p))
+              : filteredProjects
+          }
+          states={projectStates}
+          budgetLines={budgetLines}
+          selectedStateIds={selectedStateIds}
+          projectRoiRanks={projectRoiRanks}
+          getProjectEffectiveRoi={getProjectEffectiveRoi}
+          isProjectStatePrioritized={isProjectStatePrioritized}
+          permissionContext={permissionContext}
+          onOpenProject={(proj) => handleOpenEdit(proj)}
+          onMoveProjectState={handleDirectStateChange}
+          updatingStateProjectId={updatingStateProjectId}
+          loading={loading}
+        />
+      ) : (
+        <div className="flex-1 min-h-0 bg-white rounded-xl border border-slate-200 shadow-xs flex flex-col overflow-hidden relative z-0 isolate">
+          {loading ? (
+            <div className="p-12 text-center text-slate-500 text-xs">
+              Chargement des projets...
+            </div>
         ) : filteredProjects.length === 0 ? (
           <div className="p-12 text-center">
             <div className="w-12 h-12 bg-slate-100 text-slate-400 rounded-full flex items-center justify-center mx-auto mb-3">
@@ -1565,8 +1868,8 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
             )}
           </div>
         ) : (
-          <div className="flex-1 min-h-0 overflow-auto [scrollbar-width:thin]">
-            <table className="w-full text-left text-xs border-collapse">
+          <div className="flex-1 min-h-0 overflow-x-auto overflow-y-auto [scrollbar-width:thin]">
+            <table className={`${showCriteriaDetails ? 'min-w-max' : 'w-full'} text-left text-xs border-collapse`}>
               <thead className={`sticky top-0 z-30 ${TABLE_HEADER_THEAD_CLASS}`}>
                 <tr>
                   {/* Case à cocher de sélection groupée (affichée uniquement lorsque la sélection manuelle est activée) */}
@@ -1601,20 +1904,6 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
                     </div>
                   </th>
 
-                  {/* PRIORITE */}
-                  <th
-                    scope="col"
-                    onClick={() => handleSort('roi')}
-                    className={`sticky top-0 z-30 px-1.5 w-24 min-w-[96px] max-w-[96px] text-center ${TABLE_TH_SORTABLE_CLASS}`}
-                  >
-                    <Tooltip content={t('projects.tooltips.sort_priority')} className="w-full inline-block cursor-pointer">
-                      <div className="flex items-center justify-center gap-1 cursor-pointer">
-                        <span>{t('projects.columns.roi')}</span>
-                        {renderSortIcon('roi')}
-                      </div>
-                    </Tooltip>
-                  </th>
-
                   {/* Projet (Nom & Description) */}
                   <th
                     scope="col"
@@ -1626,6 +1915,89 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
                       {renderSortIcon('name')}
                     </div>
                   </th>
+
+                  {/* PRIORITE */}
+                  <th
+                    scope="col"
+                    className={`sticky top-0 z-30 px-1.5 min-w-[85px] w-24 text-center ${TABLE_TH_BASE_CLASS}`}
+                  >
+                    <div className="flex items-center justify-between gap-1">
+                      <div
+                        onClick={() => handleSort('roi')}
+                        className="flex-1 flex items-center justify-center gap-1 cursor-pointer hover:text-slate-900 transition-colors"
+                      >
+                        <Tooltip content={t('projects.tooltips.sort_priority')} className="inline-flex items-center gap-1">
+                          <span className="font-semibold whitespace-nowrap">{t('projects.columns.roi')}</span>
+                          {renderSortIcon('roi')}
+                        </Tooltip>
+                      </div>
+                      <Tooltip
+                        content={
+                          showCriteriaDetails
+                            ? t('projects.tooltips.hide_criteria_details')
+                            : t('projects.tooltips.show_criteria_details')
+                        }
+                        placement="bottom"
+                      >
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setShowCriteriaDetails((prev) => !prev);
+                          }}
+                          aria-label={
+                            showCriteriaDetails
+                              ? t('projects.tooltips.hide_criteria_details')
+                              : t('projects.tooltips.show_criteria_details')
+                          }
+                          className="p-0.5 rounded bg-blue-50 hover:bg-blue-100 text-blue-600 border border-blue-200 shadow-2xs cursor-pointer transition-colors shrink-0 flex items-center justify-center"
+                        >
+                          {showCriteriaDetails ? (
+                            <ArrowLeftToLine className="w-3.5 h-3.5 text-blue-600" />
+                          ) : (
+                            <ArrowRightFromLine className="w-3.5 h-3.5 text-blue-600" />
+                          )}
+                        </button>
+                      </Tooltip>
+                    </div>
+                  </th>
+
+                  {/* Colonnes détaillées des critères de priorisation */}
+                  {showCriteriaDetails &&
+                    activeCriteria.map((crit) => {
+                      const colKey = `crit_${crit.id}`;
+                      const isCost = crit.type === 'COÛT';
+                      const hasDesc = Boolean(crit.description && crit.description.trim());
+                      return (
+                        <th
+                          key={crit.id}
+                          scope="col"
+                          onClick={() => handleSort(colKey)}
+                          className={`sticky top-0 z-30 px-2 min-w-[150px] text-center ${TABLE_TH_BASE_CLASS} cursor-pointer group transition-colors ${
+                            isCost ? CRITERION_HEADER_COST_CLASS : CRITERION_HEADER_VALEUR_CLASS
+                          }`}
+                        >
+                          <Tooltip
+                            title={crit.name}
+                            content={hasDesc ? crit.description!.trim() : undefined}
+                            placement="bottom"
+                            maxWidthClass={TOOLTIP_MAX_WIDTH_CLASS}
+                            className="w-full inline-block cursor-pointer"
+                          >
+                            <div className="flex items-center justify-center gap-1 cursor-pointer">
+                              <span
+                                className={`truncate max-w-[120px] font-bold ${
+                                  isCost ? 'text-amber-800' : 'text-emerald-800'
+                                }`}
+                              >
+                                {crit.name}
+                              </span>
+                              {renderSortIcon(colKey)}
+                            </div>
+                          </Tooltip>
+                        </th>
+                      );
+                    })}
 
                   {/* État (Cycle de vie) */}
                   <th
@@ -1788,31 +2160,7 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
                         </span>
                       </td>
 
-                      {/* Colonne 2 : PRIORITE (Numéro de priorité pour états cochés "à prioriser", ROI affiché pour tous) */}
-                      <td className="py-2.5 px-1.5 text-center whitespace-nowrap border-r border-slate-200">
-                        {projectRoi !== null ? (
-                          isProjectStatePrioritized(p.stateId) && projectRoiRanks.has(p.id) ? (
-                            <div className="inline-flex items-center justify-center gap-1">
-                              <span className="font-mono font-bold text-xs px-1.5 py-0.5 rounded-md bg-indigo-50 text-indigo-700 border border-indigo-200 shadow-2xs min-w-[20px] text-center">
-                                {projectRoiRanks.get(p.id)}
-                              </span>
-                              <span className="font-mono text-xs text-slate-500 font-medium">
-                                ({formatRoi(projectRoi)})
-                              </span>
-                            </div>
-                          ) : (
-                            <div className="inline-flex items-center justify-center">
-                              <span className="font-mono text-xs text-slate-500 font-medium">
-                                ({formatRoi(projectRoi)})
-                              </span>
-                            </div>
-                          )
-                        ) : (
-                          <span className="text-slate-300">-</span>
-                        )}
-                      </td>
-
-                      {/* Colonne 3 : Nom et description (remplacé par la boîte CONFIDENTIEL si non autorisé) */}
+                      {/* Colonne 2 : Nom et description (remplacé par la boîte CONFIDENTIEL si non autorisé) */}
                       <td className="py-2.5 px-4 border-r border-slate-200">
                         {isConfidentialHidden ? (
                           <span
@@ -1857,6 +2205,85 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
                           </div>
                         )}
                       </td>
+
+                      {/* Colonne 3 : PRIORITE (Numéro de priorité pour états cochés "à prioriser", ROI affiché pour tous) */}
+                      <td className="py-2.5 px-1.5 min-w-[85px] w-24 text-center whitespace-nowrap border-r border-slate-200">
+                        {projectRoi !== null ? (
+                          isProjectStatePrioritized(p.stateId) && projectRoiRanks.has(p.id) ? (
+                            <div className="inline-flex items-center justify-center gap-0.5">
+                              <span className="font-mono font-bold text-xs px-1 py-0.5 rounded-md bg-indigo-50 text-indigo-700 border border-indigo-200 shadow-2xs min-w-[18px] text-center">
+                                {projectRoiRanks.get(p.id)}
+                              </span>
+                              <span className="font-mono text-xs text-slate-500 font-medium">
+                                ({formatRoi(projectRoi)})
+                              </span>
+                            </div>
+                          ) : (
+                            <div className="inline-flex items-center justify-center">
+                              <span className="font-mono text-xs text-slate-500 font-medium">
+                                ({formatRoi(projectRoi)})
+                              </span>
+                            </div>
+                          )
+                        ) : (
+                          <span className="text-slate-300">-</span>
+                        )}
+                      </td>
+
+                      {/* Colonnes détaillées des critères de priorisation */}
+                      {showCriteriaDetails &&
+                        activeCriteria.map((crit) => {
+                          if (isConfidentialHidden) {
+                            return (
+                              <td
+                                key={crit.id}
+                                className="py-2.5 px-2 text-center whitespace-nowrap border-r border-slate-200 min-w-[150px]"
+                              >
+                                <span
+                                  className="inline-flex items-center justify-center p-1 rounded-md bg-rose-50 border border-red-300 text-red-600 shadow-2xs cursor-default"
+                                  title={t('projects.tooltips.confidential_badge')}
+                                >
+                                  <Lock className="w-3 h-3 text-red-600" />
+                                </span>
+                              </td>
+                            );
+                          }
+
+                          const rawScore = p.criteriaValues?.[crit.id];
+                          const hasScore = typeof rawScore === 'number' && !isNaN(rawScore);
+                          const ptIndex = hasScore ? (CRITERION_POINTS as readonly number[]).indexOf(rawScore) : -1;
+                          const levelText = ptIndex >= 0 ? crit.levels?.[ptIndex]?.trim() : undefined;
+                          const isCost = crit.type === 'COÛT';
+
+                          return (
+                            <td
+                              key={crit.id}
+                              className={`py-2.5 px-2 text-center whitespace-nowrap border-r border-slate-200 min-w-[150px] ${
+                                isCost ? CRITERION_CELL_COST_BG : CRITERION_CELL_VALEUR_BG
+                              }`}
+                            >
+                              {hasScore ? (
+                                <div className="flex items-center justify-center">
+                                  <span
+                                    className={`inline-flex items-center px-2 py-0.5 rounded-md text-xs font-semibold shadow-2xs whitespace-nowrap ${
+                                      isCost ? CRITERION_COST_BADGE_CLASS : CRITERION_VALEUR_BADGE_CLASS
+                                    }`}
+                                  >
+                                    <span className="font-mono font-bold">{rawScore}</span>
+                                    {levelText && (
+                                      <>
+                                        <span className={`mx-1 ${isCost ? 'text-amber-500' : 'text-emerald-500'} font-normal`}>:</span>
+                                        <span className="font-medium">{levelText}</span>
+                                      </>
+                                    )}
+                                  </span>
+                                </div>
+                              ) : (
+                                <span className="text-slate-300 font-mono">—</span>
+                              )}
+                            </td>
+                          );
+                        })}
 
                       {/* Colonne 3 : État du cycle de vie */}
                       <td className="py-2.5 px-4 border-r border-slate-200">
@@ -2065,6 +2492,7 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
           </div>
         )}
       </div>
+      )}
 
       {/* Modal Projet (4 encarts) */}
       <ProjectModal

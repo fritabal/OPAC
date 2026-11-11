@@ -46,3 +46,24 @@ export function getFirstAvailableColor(usedColors: string[]): string {
   const found = BUDGET_PALETTE_32.find((c) => !normalizedUsed.includes(c.hex.toLowerCase()));
   return found ? found.hex : BUDGET_PALETTE_32[0].hex;
 }
+
+/**
+ * Convertit une couleur hexadécimale en notation rgba() avec l'opacité spécifiée.
+ */
+export function hexToRgba(hex: string, alpha: number): string {
+  if (!hex) return `rgba(148, 163, 184, ${alpha})`;
+  let cleanHex = hex.replace('#', '').trim();
+  if (cleanHex.length === 3) {
+    cleanHex = cleanHex.split('').map((c) => c + c).join('');
+  }
+  if (cleanHex.length !== 6) {
+    return `rgba(148, 163, 184, ${alpha})`;
+  }
+  const r = parseInt(cleanHex.substring(0, 2), 16);
+  const g = parseInt(cleanHex.substring(2, 4), 16);
+  const b = parseInt(cleanHex.substring(4, 6), 16);
+  if (isNaN(r) || isNaN(g) || isNaN(b)) {
+    return `rgba(148, 163, 184, ${alpha})`;
+  }
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}

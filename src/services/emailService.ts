@@ -477,3 +477,118 @@ export async function sendPasswordResetNotification(options: {
     htmlContent,
   });
 }
+
+/**
+ * Génère le modèle HTML et envoie l'email de rappel de mise à jour des compétences clés pour les projets en retard
+ */
+export async function sendOutdatedProjectsReminderEmail(options: {
+  toEmail: string;
+  toName: string;
+  subject: string;
+  bodyText: string;
+  language?: string;
+  appUrl?: string;
+}): Promise<EmailSendResult> {
+  const currentOrigin = options.appUrl || window.location.origin;
+  const lang = options.language || 'fr';
+
+  // Conversion du texte brut en HTML propre (paragraphes et listes à puces)
+  const lines = options.bodyText.split('\n');
+  let bodyHtml = '';
+  let inList = false;
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed) {
+      if (inList) {
+        bodyHtml += '</ul>';
+        inList = false;
+      }
+      continue;
+    }
+    if (trimmed.startsWith('•') || trimmed.startsWith('-')) {
+      if (!inList) {
+        bodyHtml += '<ul style="margin: 12px 0 16px 20px; padding: 0; color: #334155; font-size: 13px; line-height: 1.6;">';
+        inList = true;
+      }
+      const itemText = trimmed.replace(/^[•\-]\s*/, '');
+      bodyHtml += `<li style="margin-bottom: 6px;">${itemText}</li>`;
+    } else {
+      if (inList) {
+        bodyHtml += '</ul>';
+        inList = false;
+      }
+      bodyHtml += `<p style="margin: 0 0 14px; font-size: 14px; color: #475569; line-height: 1.6;">${trimmed}</p>`;
+    }
+  }
+  if (inList) {
+    bodyHtml += '</ul>';
+  }
+
+  const ctaLabelByLang: Record<string, string> = {
+    fr: "Accéder à l'application",
+    en: 'Access the application',
+    de: 'Zur Anwendung',
+    it: "Accedi all'applicazione",
+  };
+  const ctaLabel = ctaLabelByLang[lang] || ctaLabelByLang.fr;
+
+  const htmlContent = `
+<!DOCTYPE html>
+<html lang="${lang}">
+<head>
+  <meta charset="UTF-8">
+  <title>${options.subject}</title>
+</head>
+<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; color: #1e293b; background-color: #f8fafc; margin: 0; padding: 24px;">
+  <table width="100%" border="0" cellspacing="0" cellpadding="0">
+    <tr>
+      <td align="center">
+        <table width="600" border="0" cellspacing="0" cellpadding="0" style="background-color: #ffffff; border-radius: 16px; border: 1px solid #e2e8f0; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);">
+          <!-- Header -->
+          <tr>
+            <td style="background-color: #0f172a; padding: 28px 36px; text-align: left;">
+              <h1 style="margin: 0; color: #ffffff; font-size: 20px; font-weight: 800; letter-spacing: 0.5px;">
+                OPAC <span style="font-size: 13px; font-weight: 500; color: #94a3b8; margin-left: 8px;">Pilotage du portefeuille de projets</span>
+              </h1>
+            </td>
+          </tr>
+          <!-- Body -->
+          <tr>
+            <td style="padding: 36px;">
+              ${bodyHtml}
+
+              <!-- CTA Button -->
+              <table border="0" cellspacing="0" cellpadding="0" style="margin: 24px 0;">
+                <tr>
+                  <td align="center" style="border-radius: 8px; background-color: #4f46e5;">
+                    <a href="${currentOrigin}" target="_blank" style="font-size: 14px; font-weight: 700; color: #ffffff; text-decoration: none; padding: 12px 24px; border-radius: 8px; display: inline-block;">
+                      ${ctaLabel}
+                    </a>
+                  </td>
+                </tr>
+              </table>
+
+              <hr style="border: none; border-top: 1px solid #f1f5f9; margin: 24px 0;" />
+
+              <p style="margin: 0; font-size: 12px; color: #64748b;">
+                Ce message a été envoyé depuis OPAC.
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+  `.trim();
+
+  return sendEmailViaGmail({
+    toEmail: options.toEmail,
+    toName: options.toName,
+    subject: options.subject,
+    htmlContent,
+  });
+}
+

@@ -58,6 +58,7 @@ import {
   SEGMENT_SELECTOR_CONTAINER_CLASS,
   getSegmentSelectorButtonClass,
 } from '../constants/ui';
+import { SearchFilterInput } from './SearchFilterInput';
 import { Tooltip } from './Tooltip';
 import { ProjectModal } from './ProjectModal';
 import { ProjectCapacityHistoryModal } from './ProjectCapacityHistoryModal';
@@ -1256,18 +1257,16 @@ export const ProjectsCapacityTable: React.FC<ProjectsCapacityTableProps> = ({
         </div>
       </div>
 
-      {/* Barre de filtres et recherche */}
-      <div className="shrink-0 bg-white p-3 rounded-xl border border-slate-200 shadow-2xs space-y-2.5 relative z-20">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3">
+      {/* Barre de filtres et recherche avec hauteur stable et rangée inférieure fixe */}
+      <div className="shrink-0 bg-white p-3 rounded-xl border border-slate-200 shadow-2xs flex flex-col gap-2.5 relative z-20">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3 items-center">
           {/* Recherche texte */}
-          <div className="sm:col-span-2 lg:col-span-3 relative">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
-            <input
-              type="text"
+          <div className="sm:col-span-2 lg:col-span-3">
+            <SearchFilterInput
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={setSearchQuery}
+              onClear={() => setSearchQuery('')}
               placeholder={t('capacity.search_placeholder')}
-              className="w-full pl-9 pr-3 py-2 border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-rose-900 bg-white"
             />
           </div>
 
@@ -1315,7 +1314,7 @@ export const ProjectsCapacityTable: React.FC<ProjectsCapacityTableProps> = ({
             <button
               type="button"
               onClick={() => setMyProjectsOnly(!myProjectsOnly)}
-              className={`w-full py-2 px-3 rounded-lg text-xs font-semibold border transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+              className={`w-full h-9 px-3 rounded-lg text-xs font-semibold border transition-all cursor-pointer flex items-center justify-center gap-1.5 box-border ${
                 myProjectsOnly
                   ? MY_FILTER_BUTTON_ACTIVE_CLASS
                   : MY_FILTER_BUTTON_INACTIVE_CLASS
@@ -1327,11 +1326,11 @@ export const ProjectsCapacityTable: React.FC<ProjectsCapacityTableProps> = ({
           </div>
         </div>
 
-        {/* Ligne inférieure : Boîte de comptage à gauche et case Afficher les projets confidentiels à droite, alignées horizontalement */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2 border-t border-slate-100">
-          <div className="flex items-center gap-3 flex-wrap">
+        {/* Ligne inférieure : Boîte de comptage à gauche et case Afficher les projets confidentiels à droite, position et hauteur stables */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2.5 border-t border-slate-100 min-h-[36px]">
+          <div className="flex items-center gap-3 flex-wrap min-h-[28px]">
             <span
-              className={`inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${
+              className={`inline-flex items-center px-3 h-7 box-border rounded-lg text-xs font-bold transition-colors ${
                 hasActiveFilters
                   ? 'bg-blue-50 border border-blue-200 text-blue-900'
                   : 'bg-slate-100 border border-slate-200 text-slate-600'
@@ -1354,7 +1353,7 @@ export const ProjectsCapacityTable: React.FC<ProjectsCapacityTableProps> = ({
               <button
                 type="button"
                 onClick={handleResetFilters}
-                className="text-blue-600 hover:text-blue-800 hover:underline flex items-center gap-1.5 cursor-pointer text-xs font-semibold"
+                className="text-blue-600 hover:text-blue-800 hover:underline flex items-center gap-1.5 cursor-pointer text-xs font-semibold h-7"
               >
                 <RotateCcw className="w-3.5 h-3.5" />
                 <span>{t('projects.clear_filters')}</span>
@@ -1362,10 +1361,10 @@ export const ProjectsCapacityTable: React.FC<ProjectsCapacityTableProps> = ({
             )}
           </div>
 
-          {/* Cases à cocher pour le Value Management Officer alignées horizontalement à droite */}
-          {isValueManagementOfficer && (
+          {/* Cases à cocher pour le Value Management Officer et le Super User alignées horizontalement à droite */}
+          {(isValueManagementOfficer || isSuperUser) && (
             <div className="flex items-center gap-4 flex-wrap">
-              <div className={CHECKBOX_CONTAINER_CLASS}>
+              <div className={`${CHECKBOX_CONTAINER_CLASS} h-7`}>
                 <input
                   type="checkbox"
                   id="vmo-checkbox-show-budget-overruns-capacity"
@@ -1382,7 +1381,7 @@ export const ProjectsCapacityTable: React.FC<ProjectsCapacityTableProps> = ({
                 </label>
               </div>
 
-              <div className={CHECKBOX_CONTAINER_CLASS}>
+              <div className={`${CHECKBOX_CONTAINER_CLASS} h-7`}>
                 <input
                   type="checkbox"
                   id="vmo-checkbox-show-confidential-capacity"
@@ -1404,7 +1403,7 @@ export const ProjectsCapacityTable: React.FC<ProjectsCapacityTableProps> = ({
       </div>
 
       {/* Tableau capacitaire avec colonnes figées à gauche, en-têtes figés en haut et ascenseur vertical dédié à la liste */}
-      <div className="flex-1 min-h-0 bg-white rounded-xl border border-slate-200 shadow-2xs flex flex-col overflow-hidden relative z-0">
+      <div className="flex-1 min-h-0 bg-white rounded-xl border border-slate-200 shadow-2xs flex flex-col overflow-hidden relative z-0 isolate">
         <div className="flex-1 min-h-0 overflow-auto [scrollbar-width:thin]">
           <table className="w-full text-xs text-left border-collapse">
             <thead className="select-none sticky top-0 z-40 bg-slate-100">

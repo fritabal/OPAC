@@ -16,7 +16,7 @@ import {
   ChevronDown,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { SUPPORTED_LANGUAGES, changeAppLanguage, SupportedLanguage } from '../i18n';
+import { changeAppLanguage, SupportedLanguage, getActiveLanguageItems } from '../i18n';
 import { AppUser, UserRole, ROLE_LABELS, getRoleLabel } from '../types/user';
 import {
   updateUser,
@@ -406,7 +406,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
                     type="button"
                     onClick={() => setLangDropdownOpen((prev) => !prev)}
                     className="h-[38px] px-2.5 bg-slate-50 hover:bg-slate-100 active:bg-slate-200 border border-slate-300 rounded-lg flex items-center gap-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer shadow-2xs transition-colors"
-                    title={SUPPORTED_LANGUAGES.find((l) => l.code === selectedLang)?.label || "Langue de l'interface"}
+                    title={getActiveLanguageItems().find((l) => l.code === selectedLang)?.nativeLabel || "Langue de l'interface"}
                     aria-label="Sélectionner la langue"
                   >
                     <LanguageFlag code={selectedLang} className="w-5 h-3.5" />
@@ -418,8 +418,8 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
                   </button>
 
                   {langDropdownOpen && (
-                    <div className="absolute right-0 top-full mt-1 z-50 bg-white border border-slate-200 rounded-xl shadow-xl p-1.5 min-w-[150px] flex flex-col gap-1 animate-in fade-in zoom-in-95 duration-100">
-                      {SUPPORTED_LANGUAGES.map((lang) => {
+                    <div className="absolute right-0 top-full mt-1 z-50 bg-white border border-slate-200 rounded-xl shadow-xl p-1.5 min-w-[170px] max-h-64 overflow-y-auto flex flex-col gap-1 animate-in fade-in zoom-in-95 duration-100">
+                      {getActiveLanguageItems().map((lang) => {
                         const isCurrentSelected = selectedLang === lang.code;
                         return (
                           <button
@@ -438,7 +438,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
                             }`}
                           >
                             <LanguageFlag code={lang.code} className="w-5 h-3.5" />
-                            <span>{lang.label}</span>
+                            <span>{lang.nativeLabel}</span>
                           </button>
                         );
                       })}

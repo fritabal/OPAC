@@ -21,11 +21,18 @@ export type TranslationTreeNode = TranslationSectionNode | TranslationLeafNode;
 
 export type TranslationOverridesMap = Record<string, Record<string, string>>; // lang -> { [key]: value }
 
+export interface ZoomModalRow {
+  langCode: string;
+  currentValue: string;
+  correctedValue: string;
+  defaultValue: string;
+}
+
 export interface ZoomModalState {
   isOpen: boolean;
   leaf: TranslationLeafNode | null;
   langCode: string;
   langLabel: string;
-  currentValue: string;
-  defaultValue: string;
+  rows: ZoomModalRow[];
 }
+

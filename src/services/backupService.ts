@@ -11,6 +11,49 @@ import {
 import { db } from '../lib/firebase';
 import { LOCAL_STORAGE_KEY as BONUS_CACHE_KEY } from './bonusService';
 import { SUPER_ADMIN_EMAIL } from './userService';
+import { fr } from '../i18n/locales/fr';
+import { en } from '../i18n/locales/en';
+import { de } from '../i18n/locales/de';
+import { it } from '../i18n/locales/it';
+import { buildTranslationTree } from '../utils/translationTree';
+import {
+  getCachedTranslationOverrides,
+  applyOverridesToI18n,
+  SETTINGS_COLLECTION,
+  TRANSLATIONS_DOC_ID,
+  LOCAL_STORAGE_OVERRIDES_KEY,
+} from './translationService';
+import {
+  getSavedActiveLanguageCodes,
+  setSavedActiveLanguageCodes,
+} from '../i18n/languages';
+
+export interface BackupI18nData {
+  totalKeys: number;
+  languages: string[];
+  overrides: Record<string, Record<string, string>>;
+  baseMessages: {
+    fr: Record<string, any>;
+    en: Record<string, any>;
+    de: Record<string, any>;
+    it: Record<string, any>;
+  };
+  effectiveMessages: {
+    fr: Record<string, any>;
+    en: Record<string, any>;
+    de: Record<string, any>;
+    it: Record<string, any>;
+  };
+  allMessages: Record<
+    string,
+    {
+      key: string;
+      defaults: { fr: string; en: string; de: string; it: string };
+      effective: { fr: string; en: string; de: string; it: string };
+      isOverridden: boolean;
+    }
+  >;
+}
 
 export interface BackupData {
   format: 'OPAC_BACKUP';
@@ -28,6 +71,7 @@ export interface BackupData {
     projectCustomParams: number;
     settings: number;
     counters: number;
+    i18n?: number;
   };
   data: {
     projects: Record<string, any>[];
@@ -40,6 +84,7 @@ export interface BackupData {
     projectCustomParams: Record<string, any>[];
     settings: Record<string, any>[];
     counters: Record<string, any>[];
+    i18n?: BackupI18nData;
   };
 }
 
@@ -57,6 +102,7 @@ export interface ImportResult {
     projectCustomParams: number;
     settings: number;
     counters: number;
+    i18n?: number;
   };
   message?: string;
 }
@@ -156,6 +202,7 @@ export async function exportAllApplicationData(currentUserEmail: string): Promis
       projectCustomParams: 0,
       settings: 0,
       counters: 0,
+      i18n: 0,
     },
     data: {
       projects: [],
@@ -171,7 +218,7 @@ export async function exportAllApplicationData(currentUserEmail: string): Promis
     },
   };
 
-  // Extraction de toutes les collections
+  // 1. Extraction de toutes les collections Firestore
   for (const colName of BACKUP_COLLECTIONS) {
     try {
       const snap = await getDocs(collection(db, colName));
@@ -188,6 +235,123 @@ export async function exportAllApplicationData(currentUserEmail: string): Promis
       console.warn(`Avertissement lors de l'export de la collection ${colName}:`, err);
     }
   }
+
+  // 2. Traitement et consolidation de l'Internationalisation & des Messages de traduction
+  // Récupération des surcharges de traductions (depuis settings/translations ou cache local)
+  let translationsDoc = (backup.data.settings || []).find((s) => s.id === TRANSLATIONS_DOC_ID);
+  let overrides: Record<string, Record<string, string>> = translationsDoc?.overrides || {};
+
+  if (!translationsDoc || Object.keys(overrides).length === 0) {
+    const cachedOverrides = getCachedTranslationOverrides();
+    if (cachedOverrides && Object.keys(cachedOverrides).length > 0) {
+      overrides = cachedOverrides;
+      if (!translationsDoc) {
+        translationsDoc = {
+          id: TRANSLATIONS_DOC_ID,
+          overrides,
+          updatedAt: new Date().toISOString(),
+          updatedBy: currentUserEmail || 'Super User',
+        };
+        backup.data.settings.push(translationsDoc);
+        backup.counts.settings = backup.data.settings.length;
+      } else {
+        translationsDoc.overrides = overrides;
+      }
+    }
+  }
+
+  // Construction de l'arbre exhaustif des libellés et messages de l'application
+  const { allLeaves, leafCount } = buildTranslationTree();
+
+  // Dictionnaires effectifs complets par langue (base + surcharges éventuelles)
+  const effectiveMessages: {
+    fr: Record<string, any>;
+    en: Record<string, any>;
+    de: Record<string, any>;
+    it: Record<string, any>;
+    [key: string]: Record<string, any>;
+  } = {
+    fr: JSON.parse(JSON.stringify(fr)),
+    en: JSON.parse(JSON.stringify(en)),
+    de: JSON.parse(JSON.stringify(de)),
+    it: JSON.parse(JSON.stringify(it)),
+  };
+
+  for (const [lang, keyMap] of Object.entries(overrides)) {
+    if (effectiveMessages[lang] && keyMap && typeof keyMap === 'object') {
+      for (const [path, val] of Object.entries(keyMap)) {
+        if (typeof val === 'string') {
+          const parts = path.split('.');
+          let curr = effectiveMessages[lang];
+          for (let i = 0; i < parts.length - 1; i++) {
+            if (!curr[parts[i]] || typeof curr[parts[i]] !== 'object') {
+              curr[parts[i]] = {};
+            }
+            curr = curr[parts[i]];
+          }
+          curr[parts[parts.length - 1]] = val;
+        }
+      }
+    }
+  }
+
+  // Dictionnaire plat détaillé de tous les messages (clé, valeurs par défaut, valeurs effectives, statut personnalisé)
+  const allMessagesFlat: Record<
+    string,
+    {
+      key: string;
+      defaults: { fr: string; en: string; de: string; it: string };
+      effective: { fr: string; en: string; de: string; it: string };
+      isOverridden: boolean;
+    }
+  > = {};
+
+  for (const leaf of allLeaves) {
+    const frVal = overrides['fr']?.[leaf.id] ?? leaf.defaults['fr'] ?? '';
+    const enVal = overrides['en']?.[leaf.id] ?? leaf.defaults['en'] ?? '';
+    const deVal = overrides['de']?.[leaf.id] ?? leaf.defaults['de'] ?? '';
+    const itVal = overrides['it']?.[leaf.id] ?? leaf.defaults['it'] ?? '';
+
+    const isOverridden = Boolean(
+      overrides['fr']?.[leaf.id] !== undefined ||
+      overrides['en']?.[leaf.id] !== undefined ||
+      overrides['de']?.[leaf.id] !== undefined ||
+      overrides['it']?.[leaf.id] !== undefined
+    );
+
+    allMessagesFlat[leaf.id] = {
+      key: leaf.id,
+      defaults: {
+        fr: leaf.defaults['fr'] || '',
+        en: leaf.defaults['en'] || '',
+        de: leaf.defaults['de'] || '',
+        it: leaf.defaults['it'] || '',
+      },
+      effective: {
+        fr: frVal,
+        en: enVal,
+        de: deVal,
+        it: itVal,
+      },
+      isOverridden,
+    };
+  }
+
+  // Bloc dédié pour toutes les traductions & messages d'internationalisation
+  backup.data.i18n = {
+    totalKeys: leafCount,
+    languages: getSavedActiveLanguageCodes(),
+    overrides,
+    baseMessages: {
+      fr,
+      en,
+      de,
+      it,
+    },
+    effectiveMessages,
+    allMessages: allMessagesFlat,
+  };
+  backup.counts.i18n = leafCount;
 
   return backup;
 }
@@ -242,6 +406,7 @@ export async function importAllApplicationData(
     projectCustomParams: 0,
     settings: 0,
     counters: 0,
+    i18n: 0,
   };
 
   // 1. Si réinitialisation demandée : supprimer les documents existants dans les collections concernées
@@ -323,6 +488,19 @@ export async function importAllApplicationData(
             } catch {
               // ignore
             }
+          } else if (docId === TRANSLATIONS_DOC_ID || docId === 'translations') {
+            try {
+              const overrides = docData.overrides || {};
+              const activeLangs = docData.activeLanguages;
+              if (Array.isArray(activeLangs) && activeLangs.length > 0) {
+                setSavedActiveLanguageCodes(activeLangs);
+              }
+              localStorage.setItem(LOCAL_STORAGE_OVERRIDES_KEY, JSON.stringify(overrides));
+              applyOverridesToI18n(overrides);
+              resultCounts.i18n = Object.keys(overrides).length || 1158;
+            } catch {
+              // ignore
+            }
           }
         }
       }
@@ -341,6 +519,32 @@ export async function importAllApplicationData(
       }, { merge: true });
     } catch (e) {
       console.warn('Erreur lors de la mise à jour du compteur de projets:', e);
+    }
+  }
+
+  // 4. Synchronisation et restauration des messages d'internationalisation depuis le bloc i18n si présent
+  if (dataBlock.i18n && typeof dataBlock.i18n === 'object') {
+    const i18nOverrides = dataBlock.i18n.overrides || {};
+    const i18nLanguages = dataBlock.i18n.languages;
+    if (Array.isArray(i18nLanguages) && i18nLanguages.length > 0) {
+      setSavedActiveLanguageCodes(i18nLanguages);
+    }
+    try {
+      await setDoc(
+        doc(db, SETTINGS_COLLECTION, TRANSLATIONS_DOC_ID),
+        {
+          overrides: i18nOverrides,
+          ...(Array.isArray(i18nLanguages) && i18nLanguages.length > 0 ? { activeLanguages: i18nLanguages } : {}),
+          updatedAt: new Date().toISOString(),
+          updatedBy: options.currentUserEmail || 'Super User',
+        },
+        { merge: true }
+      );
+      localStorage.setItem(LOCAL_STORAGE_OVERRIDES_KEY, JSON.stringify(i18nOverrides));
+      applyOverridesToI18n(i18nOverrides);
+      resultCounts.i18n = dataBlock.i18n.totalKeys || 1158;
+    } catch (e) {
+      console.warn('Erreur réplication des surcharges d\'internationalisation:', e);
     }
   }
 
@@ -365,6 +569,7 @@ export async function eraseAllApplicationData(currentUserEmail: string): Promise
     criteria: 0,
     budgetLines: 0,
     keySkills: 0,
+    resources: 0,
     projectStates: 0,
     projectCustomParams: 0,
     settings: 0,
@@ -411,6 +616,8 @@ export async function eraseAllApplicationData(currentUserEmail: string): Promise
   try {
     localStorage.removeItem(BONUS_CACHE_KEY);
     localStorage.removeItem('opac_custom_logo');
+    localStorage.removeItem(LOCAL_STORAGE_OVERRIDES_KEY);
+    applyOverridesToI18n({});
   } catch {
     // ignore
   }

@@ -168,6 +168,7 @@ function Dashboard() {
 
   const isProjectsActive = ['projects', 'projects_capacity', 'projects_reports'].includes(activeTab);
   const isProjectsTableTab = activeTab === 'projects' || activeTab === 'projects_capacity';
+  const isFullHeightTab = isProjectsTableTab || activeTab === 'projects_reports' || activeTab === 'internationalization';
   const isSettingsActive = ['criteria', 'budgets', 'lifecycle', 'custom_params', 'skills', 'internationalization'].includes(activeTab);
 
   // Logo personnalisé de l'application (administrable)
@@ -253,6 +254,8 @@ function Dashboard() {
   // Maintien du tri appliqué sur la liste des projets dans l'onglet Priorités lors du changement d'onglet
   const [projectsSortColumn, setProjectsSortColumn] = useState<SortColumn>('id');
   const [projectsSortDirection, setProjectsSortDirection] = useState<SortDirection>('desc');
+  // Maintien du déploiement des critères de priorisation lors du changement d'onglet
+  const [showCriteriaDetails, setShowCriteriaDetails] = useState(false);
 
   // Filtre texte contrôlé pour l'onglet capacitaire (permet de cibler un projet précis depuis l'onglet Rapports)
   const [capacitySearchQuery, setCapacitySearchQuery] = useState('');
@@ -578,7 +581,7 @@ function Dashboard() {
   return (
     <div
       className={`min-h-screen bg-slate-50 text-slate-900 flex flex-col font-sans ${
-        isProjectsTableTab ? 'h-screen overflow-hidden' : ''
+        isFullHeightTab ? 'h-screen overflow-hidden' : ''
       }`}
     >
       {/* Barre d'usurpation active pour le Super User */}
@@ -704,7 +707,7 @@ function Dashboard() {
       )}
 
       {/* En-tête de navigation principale (Pleine largeur fluide) */}
-      <header className="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-2xs shrink-0">
+      <header className="bg-white border-b border-slate-200 sticky top-0 z-40 shadow-2xs shrink-0">
         <div className="w-full px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
           {/* Côté gauche : Logo (modifiable par l'administrateur) & Titre OPAC */}
           <div className="flex items-center gap-3 shrink-0">
@@ -805,7 +808,13 @@ function Dashboard() {
 
               {/* Onglet Haut Niveau 3 : Paramètres */}
               <button
-                onClick={() => setActiveTab(lastSettingsTab)}
+                onClick={() => {
+                  if (lastSettingsTab === 'internationalization' && !isAdmin) {
+                    setActiveTab('criteria');
+                  } else {
+                    setActiveTab(lastSettingsTab);
+                  }
+                }}
                 className={`px-4 py-2 rounded-t-xl border-t-2 border-x-2 border-b-0 text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer whitespace-nowrap ${
                   isSettingsActive
                     ? 'bg-indigo-700 text-white border-indigo-700 shadow-xs'
@@ -1072,22 +1081,23 @@ function Dashboard() {
                 {!canManageSkills && <Lock className="w-3 h-3 ml-0.5" />}
               </button>
 
-              {/* 6. Internationalisation (en marron) */}
-              <button
-                onClick={() => {
-                  setActiveTab('internationalization');
-                  setLastSettingsTab('internationalization');
-                }}
-                className={`px-3 py-1.5 rounded-t-xl border-t-2 border-x-2 border-b-0 text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer whitespace-nowrap ${
-                  activeTab === 'internationalization'
-                    ? 'bg-[#5d4037] text-white border-[#5d4037] shadow-xs -mb-[1px] pb-[7px]'
-                    : 'bg-[#efebe9]/90 hover:bg-[#d7ccc8] text-[#4e342e] border-[#bcaaa4] hover:border-[#8d6e63]'
-                }`}
-              >
-                <Globe className="w-3.5 h-3.5" />
-                <span>{t('navigation.settings_subtabs.internationalization', 'Internationalisation')}</span>
-                {!isAdmin && <Lock className="w-3 h-3 ml-0.5" />}
-              </button>
+              {/* 6. Internationalisation (en marron - réservé aux administrateurs) */}
+              {isAdmin && (
+                <button
+                  onClick={() => {
+                    setActiveTab('internationalization');
+                    setLastSettingsTab('internationalization');
+                  }}
+                  className={`px-3 py-1.5 rounded-t-xl border-t-2 border-x-2 border-b-0 text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer whitespace-nowrap ${
+                    activeTab === 'internationalization'
+                      ? 'bg-[#5d4037] text-white border-[#5d4037] shadow-xs -mb-[1px] pb-[7px]'
+                      : 'bg-[#efebe9]/90 hover:bg-[#d7ccc8] text-[#4e342e] border-[#bcaaa4] hover:border-[#8d6e63]'
+                  }`}
+                >
+                  <Globe className="w-3.5 h-3.5" />
+                  <span>{t('navigation.settings_subtabs.internationalization', 'Internationalisation')}</span>
+                </button>
+              )}
             </div>
           </div>
         )}
@@ -1096,7 +1106,7 @@ function Dashboard() {
       {/* Contenu principal (Pleine largeur fluide) */}
       <main
         className={`flex-1 w-full px-4 sm:px-6 lg:px-8 ${
-          isProjectsTableTab
+          isFullHeightTab
             ? 'py-3 sm:py-3.5 flex flex-col min-h-0 overflow-hidden'
             : 'py-6 space-y-6'
         }`}
@@ -1126,6 +1136,8 @@ function Dashboard() {
             setSortColumn={setProjectsSortColumn}
             sortDirection={projectsSortDirection}
             setSortDirection={setProjectsSortDirection}
+            showCriteriaDetails={showCriteriaDetails}
+            setShowCriteriaDetails={setShowCriteriaDetails}
           />
         )}
 
@@ -1287,14 +1299,30 @@ function Dashboard() {
           </div>
         )}
 
-        {/* Onglet 7 : Internationalisation & Traductions (sous-onglet marron de Paramètres) */}
+        {/* Onglet Internationalisation & Traductions (réservé aux administrateurs) */}
         {activeTab === 'internationalization' && (
-          <div className="space-y-6">
-            <InternationalizationTable
-              isAdmin={isAdmin}
-              currentUserEmail={activeUser?.email || ''}
-            />
-          </div>
+          isAdmin ? (
+            <div className="flex-1 min-h-0 flex flex-col">
+              <InternationalizationTable
+                isAdmin={isAdmin}
+                currentUserEmail={activeUser?.email || ''}
+              />
+            </div>
+          ) : (
+            <div className="space-y-6">
+              <div className="bg-white p-8 rounded-xl border border-slate-200 text-center max-w-lg mx-auto shadow-xs">
+                <div className="w-12 h-12 bg-amber-50 text-amber-600 rounded-full flex items-center justify-center mx-auto mb-3">
+                  <Lock className="w-6 h-6" />
+                </div>
+                <h3 className="text-base font-bold text-slate-900 mb-1">
+                  {t('settings.access_restricted.title', 'Accès restreint')}
+                </h3>
+                <p className="text-xs text-slate-600 mb-4">
+                  {t('settings.access_restricted.desc', { role: getRoleLabel(effectiveRole, t) || effectiveRole })}
+                </p>
+              </div>
+            </div>
+          )
         )}
 
         {/* Onglet 7 : Gestion des utilisateurs */}

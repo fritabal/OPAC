@@ -5,21 +5,38 @@ import { en } from './locales/en';
 import { it } from './locales/it';
 import { de } from './locales/de';
 
-export const SUPPORTED_LANGUAGES = [
-  { code: 'fr', label: 'Français', flag: '🇫🇷', abbr: 'FR' },
-  { code: 'en', label: 'English', flag: '🇬🇧', abbr: 'EN' },
-  { code: 'it', label: 'Italiano', flag: '🇮🇹', abbr: 'IT' },
-  { code: 'de', label: 'Deutsch', flag: '🇩🇪', abbr: 'DE' },
-] as const;
+import {
+  LanguageItem,
+  getActiveLanguageItems,
+  getSavedActiveLanguageCodes,
+} from './languages';
 
-export type SupportedLanguage = (typeof SUPPORTED_LANGUAGES)[number]['code'];
+export {
+  AVAILABLE_LANGUAGES_CATALOG,
+  DEFAULT_LANGUAGE_CODES,
+  LOCAL_STORAGE_ACTIVE_LANGUAGES_KEY,
+  LANGUAGES_CHANGED_EVENT,
+  getActiveLanguageItems,
+  getSavedActiveLanguageCodes,
+  setSavedActiveLanguageCodes,
+  getAvailableLanguagesToAdd,
+  getLocalizedLanguageName,
+} from './languages';
+export type { LanguageItem } from './languages';
+
+export const SUPPORTED_LANGUAGES: readonly LanguageItem[] = getActiveLanguageItems();
+
+export type SupportedLanguage = string;
 
 // Récupération de la langue sauvegardée dans localStorage ou par défaut 'fr'
 const getSavedLanguage = (): SupportedLanguage => {
   try {
     const saved = localStorage.getItem('app_language');
-    if (saved === 'fr' || saved === 'en' || saved === 'it' || saved === 'de') {
-      return saved;
+    if (saved && typeof saved === 'string') {
+      const activeCodes = getSavedActiveLanguageCodes();
+      if (activeCodes.includes(saved)) {
+        return saved;
+      }
     }
   } catch {
     // Si localStorage non disponible

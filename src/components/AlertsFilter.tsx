@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ChevronDown, AlertTriangle } from 'lucide-react';
+import { getFilterDropdownButtonClass } from '../constants/ui';
 
 interface AlertsFilterProps {
   filterCapacityOverruns: boolean;
@@ -97,13 +98,7 @@ export const AlertsFilter: React.FC<AlertsFilterProps> = ({
       <button
         type="button"
         onClick={() => setIsOpen((prev) => !prev)}
-        className={`w-full px-3 py-2 border rounded-lg text-xs bg-white text-left flex items-center justify-between gap-2 transition-all cursor-pointer ${
-          isOpen
-            ? 'border-indigo-500 ring-2 ring-indigo-100'
-            : isFilterActive
-            ? 'border-rose-400 bg-rose-50/40 text-rose-900 font-medium'
-            : 'border-slate-300 hover:border-slate-400 text-slate-700'
-        }`}
+        className={getFilterDropdownButtonClass(isOpen, isFilterActive, 'border-rose-400', 'bg-rose-50/40', 'text-rose-900')}
         title={t('filters.filter_prefix', { label: buttonLabel })}
       >
         <span className="truncate flex items-center gap-1.5 font-normal">

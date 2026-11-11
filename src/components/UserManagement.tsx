@@ -51,6 +51,7 @@ import {
   isGmailAuthorized,
 } from '../services/emailService';
 import { Tooltip } from './Tooltip';
+import { SearchFilterInput } from './SearchFilterInput';
 import {
   CREATE_ITEM_BUTTON_CLASS,
   CHECKBOX_INPUT_CLASS,
@@ -68,6 +69,7 @@ import {
   MODAL_CLOSE_BUTTON_CLASS,
   MODAL_TITLE_CLASS,
   TAB_TITLE_CLASS,
+  INPUT_BASE_CLASS,
 } from '../constants/ui';
 
 interface UserManagementProps {
@@ -917,49 +919,29 @@ export const UserManagement: React.FC<UserManagementProps> = ({
               </span>
             </div>
 
-            <div className="flex items-center gap-2 flex-1 max-w-md">
-              <div className="relative flex-1">
-                <input
-                  type="text"
-                  value={nameSearchInput}
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    setNameSearchInput(val);
-                    if (val.trim() === '') {
-                      setAppliedNameSearch('');
-                    }
-                  }}
-                  placeholder={t('users.search_placeholder')}
-                  className="w-full px-3 py-1.5 text-xs bg-slate-50 border border-slate-300 rounded-lg text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all pr-7"
-                />
-                {nameSearchInput && (
-                  <button
-                    type="button"
-                    onClick={handleClearSearch}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer p-0.5"
-                    title="Effacer la recherche"
-                    aria-label="Effacer la recherche"
-                  >
-                    <X className="w-3.5 h-3.5" />
-                  </button>
-                )}
-              </div>
-
-              <button
-                type="submit"
-                className="p-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors shadow-2xs cursor-pointer shrink-0 inline-flex items-center justify-center"
-                title="Rechercher"
-                aria-label="Rechercher"
-              >
-                <Search className="w-4 h-4" />
-              </button>
+            <div className="flex-1 max-w-md">
+              <SearchFilterInput
+                value={nameSearchInput}
+                onChange={(val) => {
+                  setNameSearchInput(val);
+                  if (val.trim() === '') {
+                    setAppliedNameSearch('');
+                  }
+                }}
+                onSubmit={() => handleSearchSubmit()}
+                onClear={handleClearSearch}
+                placeholder={t('users.search_placeholder')}
+                showSearchButton
+                searchButtonTitle={t('common.search', 'Rechercher')}
+                clearButtonTitle="Effacer la recherche"
+              />
             </div>
           </form>
         </div>
       </div>
 
       {/* Tableau des utilisateurs avec tri et sans redondance de colonne */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden">
+      <div className="bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden isolate relative z-0">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs border-collapse">
             <thead className={`sticky top-0 z-30 ${TABLE_HEADER_THEAD_CLASS}`}>
@@ -1622,7 +1604,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="utilisateur@entreprise.com"
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:bg-slate-100 disabled:text-slate-500"
+                  className={`w-full px-3 py-2 text-sm ${INPUT_BASE_CLASS} disabled:bg-slate-100 disabled:text-slate-500`}
                 />
                 {!editingUser && (
                   <p className="text-[11px] text-slate-500 mt-1">
@@ -1641,7 +1623,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({
                   value={displayName}
                   onChange={(e) => setDisplayName(e.target.value)}
                   placeholder={t('users.modal.name_placeholder')}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className={`w-full px-3 py-2 text-sm ${INPUT_BASE_CLASS}`}
                 />
               </div>
 

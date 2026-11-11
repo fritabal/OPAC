@@ -19,10 +19,9 @@ import {
   MoreHorizontal,
   Search,
   ChevronDown,
-  Pencil,
-  Eye,
   Lock,
 } from 'lucide-react';
+import { RichTextEditorModal } from './RichTextEditorModal';
 import { Project, ProjectFormData } from '../types/project';
 import { ProjectState } from '../types/lifecycle';
 import { BudgetLine } from '../types/budget';
@@ -238,11 +237,11 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
     setLongTextDraft(String(customParamValues[param.id] ?? ''));
   };
 
-  const handleSaveLongTextModal = () => {
+  const handleSaveLongTextModal = (htmlContent: string) => {
     if (longTextParamTarget) {
       setCustomParamValues((prev) => ({
         ...prev,
-        [longTextParamTarget.id]: longTextDraft,
+        [longTextParamTarget.id]: htmlContent,
       }));
     }
     setLongTextParamTarget(null);
@@ -915,29 +914,47 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
                         )}
 
                         {param.type === 'texte long' && (
-                          <div className="flex items-start gap-2">
-                            <textarea
-                              rows={2}
-                              disabled={isReadOnly}
-                              maxLength={1000}
-                              value={String(currentValue)}
-                              onChange={(e) =>
-                                setCustomParamValues((prev) => ({
-                                  ...prev,
-                                  [param.id]: e.target.value,
-                                }))
+                          <div className="relative group/longtext w-full">
+                            <div
+                              role="button"
+                              tabIndex={0}
+                              onDoubleClick={() => handleOpenLongTextModal(param)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter' || e.key === ' ') {
+                                  e.preventDefault();
+                                  handleOpenLongTextModal(param);
+                                }
+                              }}
+                              title={
+                                isReadOnly
+                                  ? t('modals.project.double_click_view', 'Double-cliquer pour consulter en plein format')
+                                  : t('modals.project.double_click_edit', 'Double-cliquer pour agrandir et mettre en page (1000 car. max)')
                               }
-                              placeholder={t('modals.project.long_text_modal_placeholder')}
-                              className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs leading-relaxed focus:ring-2 focus:ring-indigo-500 disabled:bg-slate-100 font-sans"
-                            />
-                            <button
-                              type="button"
-                              onClick={() => handleOpenLongTextModal(param)}
-                              className="p-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded-lg transition-colors cursor-pointer shrink-0"
-                              title={isReadOnly ? 'Consulter dans la mini-fenêtre' : 'Agrandir / Saisir dans la mini-fenêtre'}
+                              className={`w-full min-h-[58px] max-h-36 overflow-y-auto px-3 py-2 border rounded-lg text-xs leading-relaxed transition-all cursor-pointer select-text ${
+                                isReadOnly
+                                  ? 'bg-slate-50 border-slate-300 text-slate-700'
+                                  : 'bg-white border-slate-300 hover:border-indigo-400 focus:border-2 focus:border-indigo-600 focus:outline-none text-slate-800'
+                              }`}
                             >
-                              {isReadOnly ? <Eye className="w-4 h-4" /> : <Pencil className="w-4 h-4" />}
-                            </button>
+                              {currentValue ? (
+                                <div
+                                  className="break-words font-sans text-xs [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:my-1 [&_ol]:list-decimal [&_ol]:pl-5 [&_ol]:my-1 [&_li]:my-0.5"
+                                  dangerouslySetInnerHTML={{ __html: String(currentValue) }}
+                                />
+                              ) : (
+                                <div className="text-slate-400 italic flex items-center justify-between text-xs select-none">
+                                  <span>{t('modals.project.long_text_modal_placeholder', 'Saisissez ici le texte détaillé de ce paramètre...')}</span>
+                                  <span className="text-[10px] text-slate-400 not-italic ml-2 shrink-0">
+                                    ({t('modals.project.double_click_hint', 'Double-clic pour éditer')})
+                                  </span>
+                                </div>
+                              )}
+                            </div>
+                            {!isReadOnly && (
+                              <div className="pointer-events-none absolute right-2.5 bottom-2 opacity-0 group-hover/longtext:opacity-100 transition-opacity text-[10px] text-indigo-600 bg-indigo-50/95 px-1.5 py-0.5 rounded border border-indigo-200">
+                                {t('modals.project.double_click_badge', 'Double-clic pour mettre en page')}
+                              </div>
+                            )}
                           </div>
                         )}
 
@@ -1159,77 +1176,18 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
       </form>
 
         {/* ======================================================== */}
-        {/* MINI-FENÊTRE DE SAISIE POUR TEXTE LONG (1000 car. max) */}
+        {/* MINI-FENÊTRE DE SAISIE POUR TEXTE LONG ENRICHI */}
         {/* ======================================================== */}
         {longTextParamTarget && (
-          <div className="fixed inset-0 z-60 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in">
-            <div className="bg-white rounded-2xl shadow-2xl border border-slate-300 max-w-lg w-full p-6 animate-in zoom-in-95">
-              <div className="flex items-center justify-between pb-3 mb-3 border-b border-slate-200">
-                <div className="flex items-center gap-2">
-                  <div className="p-1.5 bg-sky-100 text-sky-500 rounded-lg border border-sky-200">
-                    <SlidersHorizontal className="w-4 h-4 text-sky-500" />
-                  </div>
-                  <div>
-                    <h5 className="font-bold text-sm text-slate-900">
-                      {t('modals.project.long_text_modal_title', { name: longTextParamTarget.name })}
-                    </h5>
-                    <p className="text-[11px] text-slate-500">{t('modals.project.long_text_modal_sub')}</p>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setLongTextParamTarget(null)}
-                  className="p-1 text-slate-400 hover:text-slate-600 rounded-lg cursor-pointer"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-
-              {longTextParamTarget.description && (
-                <div className="p-2.5 bg-indigo-50/70 border border-indigo-200 rounded-lg text-indigo-900 text-xs mb-3 flex items-start gap-2">
-                  <HelpCircle className="w-4 h-4 text-indigo-600 shrink-0 mt-0.5" />
-                  <span>{longTextParamTarget.description}</span>
-                </div>
-              )}
-
-              <div className="space-y-2">
-                <div className="flex items-center justify-between text-[11px]">
-                  <span className="text-slate-500">Contenu textuel détaillé :</span>
-                  <span className={`font-mono ${longTextDraft.length > 1000 ? 'text-red-600 font-bold' : 'text-slate-400'}`}>
-                    {longTextDraft.length} / 1000 car.
-                  </span>
-                </div>
-                <textarea
-                  rows={8}
-                  disabled={isReadOnly}
-                  maxLength={1000}
-                  value={longTextDraft}
-                  onChange={(e) => setLongTextDraft(e.target.value)}
-                  placeholder={t('modals.project.long_text_modal_placeholder')}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs leading-relaxed focus:ring-2 focus:ring-indigo-500 font-sans"
-                />
-              </div>
-
-              <div className="flex items-center justify-end gap-2.5 pt-4 mt-3 border-t border-slate-100">
-                <button
-                  type="button"
-                  onClick={() => setLongTextParamTarget(null)}
-                  className={MODAL_CANCEL_BUTTON_CLASS}
-                >
-                  {t('modals.common.cancel')}
-                </button>
-                {!isReadOnly && (
-                  <button
-                    type="button"
-                    onClick={handleSaveLongTextModal}
-                    className="px-4 py-1.5 text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors cursor-pointer shadow-xs"
-                  >
-                    {t('modals.common.validate')}
-                  </button>
-                )}
-              </div>
-            </div>
-          </div>
+          <RichTextEditorModal
+            isOpen={Boolean(longTextParamTarget)}
+            onClose={() => setLongTextParamTarget(null)}
+            onSave={handleSaveLongTextModal}
+            initialValue={longTextDraft}
+            paramName={longTextParamTarget.name}
+            paramDescription={longTextParamTarget.description}
+            isReadOnly={isReadOnly}
+          />
         )}
       </div>
     </div>

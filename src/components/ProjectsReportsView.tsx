@@ -15,6 +15,8 @@ import {
   Layers,
   Info,
   AlertTriangle,
+  Send,
+  Loader2,
 } from 'lucide-react';
 import { Project } from '../types/project';
 import { KeySkill } from '../types/skill';
@@ -32,12 +34,17 @@ import { getNextPeriodInfo, normalizePeriodKey } from '../utils/dateUtils';
 import { Tooltip } from './Tooltip';
 import { ProjectModal } from './ProjectModal';
 import { ConsolidatedCapacityHistoryCard } from './ConsolidatedCapacityHistoryCard';
+import { sendOutdatedProjectsReminderEmail } from '../services/emailService';
+import { getLocalizedLanguageName } from '../i18n/languages';
 import {
   TABLE_HEADER_DOUBLE_BOTTOM_CLASS,
   TABLE_HEADER_THEAD_CLASS,
   SEGMENT_SELECTOR_CONTAINER_CLASS,
   getSegmentSelectorButtonClass,
   TAB_TITLE_CLASS,
+  PRIMARY_ACTION_MODAL_BUTTON_CLASS,
+  MODAL_CANCEL_BUTTON_CLASS,
+  SEARCH_INPUT_BASE_CLASS,
 } from '../constants/ui';
 
 // Détection de contraste de couleur pour garantir la lisibilité du texte sur les étiquettes
@@ -689,118 +696,132 @@ export const ProjectsReportsView: React.FC<ProjectsReportsViewProps> = ({
     return result;
   }, [staffedProjects, nextMonthKey, users]);
 
+  // Modèle d'e-mail préparé dans la langue du chef de projet destinataire
+  interface EmailPreviewItem {
+    pmEmail: string;
+    pmName: string;
+    language: string;
+    subject: string;
+    body: string;
+    projectsCount: number;
+  }
+
   // État de la fenêtre modale de confirmation / prévisualisation de l'email
   const [emailModal, setEmailModal] = useState<{
     isOpen: boolean;
-    recipients: string[];
-    recipientLabel: string;
-    subject: string;
-    body: string;
+    emails: EmailPreviewItem[];
+    selectedPreviewIndex: number;
+    isSending: boolean;
+    sendSuccess: string | null;
+    sendError: string | null;
   } | null>(null);
 
   const [copiedText, setCopiedText] = useState(false);
   const [copiedEmails, setCopiedEmails] = useState(false);
 
-  // Déclenchement de l'envoi d'email
-  const triggerEmail = (
-    recipients: string[],
-    subject: string,
-    body: string,
-    recipientLabel: string
-  ) => {
-    const to = recipients.join(',');
-    const mailtoUrl = `mailto:${to}?subject=${encodeURIComponent(
-      subject
-    )}&body=${encodeURIComponent(body)}`;
-
-    // Ouverture automatique du client de messagerie
-    try {
-      const link = document.createElement('a');
-      link.href = mailtoUrl;
-      link.target = '_blank';
-      link.rel = 'noopener noreferrer';
-      link.click();
-    } catch (e) {
-      console.warn('Mailto link click failed:', e);
+  // Résolution de la langue préférée d'un chef de projet
+  const getPmLanguage = (email: string): string => {
+    if (!email) return 'fr';
+    const clean = email.trim().toLowerCase();
+    const u = users.find((usr) => usr.email.toLowerCase() === clean);
+    const lang = (u?.preferredLanguage || 'fr').toLowerCase();
+    if (lang === 'en' || lang === 'de' || lang === 'it' || lang === 'fr') {
+      return lang;
     }
+    return 'fr';
+  };
 
-    // Affichage simultané de la fenêtre modale avec prévisualisation et options de copie
-    setEmailModal({
-      isOpen: true,
-      recipients,
-      recipientLabel,
+  // Construction du message d'e-mail dans la langue spécifique du chef de projet
+  const buildPmReminderEmail = (pm: IncriminatedPm): EmailPreviewItem => {
+    const pmLang = getPmLanguage(pm.email);
+    const tRecipient = i18n.getFixedT(pmLang);
+    const periodLabel = getNextPeriodInfo(new Date(), pmLang).longLabel;
+
+    const projectListStr = pm.notUpdatedProjects
+      .map((p) =>
+        tRecipient('reports.outdated_projects.email.project_item', {
+          number: p.projectNumber,
+          name: p.name,
+        })
+      )
+      .join('\n');
+
+    const subject = tRecipient('reports.outdated_projects.email.subject', {
+      period: periodLabel,
+    });
+
+    const intro =
+      pm.notUpdatedProjects.length > 1
+        ? tRecipient('reports.outdated_projects.email.intro_other', { period: periodLabel })
+        : tRecipient('reports.outdated_projects.email.intro_one', { period: periodLabel });
+
+    const greeting = tRecipient('reports.outdated_projects.email.greeting', {
+      name: pm.name,
+    });
+    const cta = tRecipient('reports.outdated_projects.email.cta');
+    const linkLabel = tRecipient('reports.outdated_projects.email.link_label');
+    const signoff = tRecipient('reports.outdated_projects.email.signoff');
+
+    const body = `${greeting}
+
+${intro}
+
+${projectListStr}
+
+${cta}
+
+${linkLabel} ${window.location.origin}
+
+${signoff}`;
+
+    return {
+      pmEmail: pm.email,
+      pmName: pm.name,
+      language: pmLang,
       subject,
       body,
+      projectsCount: pm.notUpdatedProjects.length,
+    };
+  };
+
+  // Envoi individuel à un chef de projet (ouverture de la modale sans brouillon automatique)
+  const handleSendEmailToOnePm = (pm: IncriminatedPm) => {
+    const emailItem = buildPmReminderEmail(pm);
+    setEmailModal({
+      isOpen: true,
+      emails: [emailItem],
+      selectedPreviewIndex: 0,
+      isSending: false,
+      sendSuccess: null,
+      sendError: null,
     });
     setCopiedText(false);
     setCopiedEmails(false);
   };
 
-  // Envoi individuel à un chef de projet
-  const handleSendEmailToOnePm = (pm: IncriminatedPm) => {
-    const projectListStr = pm.notUpdatedProjects
-      .map((p) => `• Projet #${p.projectNumber} ${p.name}`)
-      .join('\n');
-
-    const subject = `Demande de mise à jour des compétences clé requises pour ${nextMonthLabel}`;
-    const body = `Bonjour ${pm.name},
-
-Sauf erreur de notre part, les demandes de compétences clés nécessaires pour la prochaine période (${nextMonthLabel}) n'ont pas encore été renseignées pour ${pm.notUpdatedProjects.length > 1 ? 'les projets staffés suivants' : 'le projet staffé suivant'} dont vous avez la responsabilité :
-
-${projectListStr}
-
-Merci de bien vouloir vous connecter à l'application et actualiser vos prévisions de compétences clés dans l'onglet Capacitaire.
-
-Lien d'accès à l'application : ${window.location.origin}
-
-Cordialement,
-Le PMO / Value Management Office`;
-
-    triggerEmail([pm.email], subject, body, pm.name);
-  };
-
-  // Envoi groupé à tous les chefs de projet concernés (clic sur l'enveloppe de l'en-tête de colonne)
+  // Envoi groupé à tous les chefs de projet concernés (ouverture de la modale sans brouillon automatique)
   const handleSendEmailToAllPms = () => {
     if (incriminatedPms.length === 0) return;
 
-    const allEmails = Array.from(new Set(incriminatedPms.map((pm) => pm.email)));
-    const subject = `Rappel : Demande de mise à jour des compétences clés nécessaires pour - ${nextMonthLabel}`;
-
-    const recapStr = incriminatedPms
-      .map((pm) => {
-        const projs = pm.notUpdatedProjects
-          .map((p) => `  - #${p.projectNumber} ${p.name}`)
-          .join('\n');
-        return `• ${pm.name} (${pm.notUpdatedProjects.length} ${pm.notUpdatedProjects.length > 1 ? 'projets en attente' : 'projet en attente'}) :\n${projs}`;
-      })
-      .join('\n\n');
-
-    const body = `Bonjour,
-
-Nous constatons que certains projets staffés n'ont pas encore exprimé leurs demandes de compétences clés nécessaires pour la prochaine période (${nextMonthLabel}).
-
-Récapitulatif des projets en attente de mise à jour :
-${recapStr}
-
-Merci à chaque chef de projet concerné de bien vouloir actualiser ses besoins en compétences clés dans l'onglet Capacitaire de l'application.
-
-Lien d'accès à l'application : ${window.location.origin}
-
-Cordialement,
-Le PMO / Value Management Office`;
-
-    triggerEmail(
-      allEmails,
-      subject,
-      body,
-      `Tous les chefs de projet concernés (${allEmails.length})`
-    );
+    const emailItems = incriminatedPms.map((pm) => buildPmReminderEmail(pm));
+    setEmailModal({
+      isOpen: true,
+      emails: emailItems,
+      selectedPreviewIndex: 0,
+      isSending: false,
+      sendSuccess: null,
+      sendError: null,
+    });
+    setCopiedText(false);
+    setCopiedEmails(false);
   };
 
   const handleCopyText = async () => {
-    if (!emailModal) return;
+    if (!emailModal || emailModal.emails.length === 0) return;
+    const currentEmail =
+      emailModal.emails[emailModal.selectedPreviewIndex] || emailModal.emails[0];
     try {
-      await navigator.clipboard.writeText(emailModal.body);
+      await navigator.clipboard.writeText(currentEmail.body);
       setCopiedText(true);
       setTimeout(() => setCopiedText(false), 2500);
     } catch (err) {
@@ -809,13 +830,78 @@ Le PMO / Value Management Office`;
   };
 
   const handleCopyEmails = async () => {
-    if (!emailModal) return;
+    if (!emailModal || emailModal.emails.length === 0) return;
+    const allEmails = Array.from(new Set(emailModal.emails.map((e) => e.pmEmail)));
     try {
-      await navigator.clipboard.writeText(emailModal.recipients.join(', '));
+      await navigator.clipboard.writeText(allEmails.join(', '));
       setCopiedEmails(true);
       setTimeout(() => setCopiedEmails(false), 2500);
     } catch (err) {
       console.error('Erreur lors de la copie des emails:', err);
+    }
+  };
+
+  // Envoi effectif direct des e-mails sans passer par le client de messagerie
+  const handleExecuteSendEmails = async () => {
+    if (!emailModal || emailModal.emails.length === 0 || emailModal.isSending) return;
+
+    setEmailModal((prev) =>
+      prev ? { ...prev, isSending: true, sendError: null, sendSuccess: null } : null
+    );
+
+    const errors: string[] = [];
+    let sentCount = 0;
+
+    for (const item of emailModal.emails) {
+      try {
+        const res = await sendOutdatedProjectsReminderEmail({
+          toEmail: item.pmEmail,
+          toName: item.pmName,
+          subject: item.subject,
+          bodyText: item.body,
+          language: item.language,
+          appUrl: window.location.origin,
+        });
+        if (res.success) {
+          sentCount++;
+        } else {
+          errors.push(`${item.pmName} (${item.pmEmail}) : ${res.error || 'Erreur'}`);
+        }
+      } catch (err: any) {
+        errors.push(`${item.pmName} (${item.pmEmail}) : ${err?.message || 'Erreur'}`);
+      }
+    }
+
+    if (errors.length === 0) {
+      const successMsg =
+        emailModal.emails.length === 1
+          ? t('reports.outdated_projects.modal.success_one', {
+              name: emailModal.emails[0].pmName,
+            })
+          : t('reports.outdated_projects.modal.success_other', { count: sentCount });
+
+      setEmailModal((prev) =>
+        prev ? { ...prev, isSending: false, sendSuccess: successMsg } : null
+      );
+
+      // Fermeture automatique après confirmation visuelle (2 secondes)
+      setTimeout(() => {
+        setEmailModal(null);
+      }, 2000);
+    } else {
+      setEmailModal((prev) =>
+        prev
+          ? {
+              ...prev,
+              isSending: false,
+              sendError: errors.join('\n'),
+              sendSuccess:
+                sentCount > 0
+                  ? `${sentCount} e-mail(s) envoyé(s), mais des erreurs sont survenues.`
+                  : null,
+            }
+          : null
+      );
     }
   };
 
@@ -1058,9 +1144,9 @@ Le PMO / Value Management Office`;
   }, [maxValue]);
 
   return (
-    <div className="space-y-6">
-      {/* En-tête de la section Rapports */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <div className="flex-1 min-h-0 flex flex-col space-y-3">
+      {/* En-tête de la section Rapports - FIGÉ EN HAUT */}
+      <div className="shrink-0 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h2 className={`${TAB_TITLE_CLASS} text-slate-900 flex items-center gap-2.5`}>
             <BarChart3 className="w-5 h-5 text-slate-700 shrink-0" />
@@ -1072,8 +1158,10 @@ Le PMO / Value Management Office`;
         </div>
       </div>
 
-      {/* Grille des indicateurs : encarts de même taille (largeur et hauteur) */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
+      {/* Zone défilante : tout le contenu défile exclusivement sous le titre de l'onglet */}
+      <div className="flex-1 min-h-0 overflow-y-auto space-y-6 pr-1 pb-4 [scrollbar-width:thin]">
+        {/* Grille des indicateurs : encarts de même taille (largeur et hauteur) */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
         {/* ======================================================== */}
         {/* ENCART INDICATEUR 1 : Projets non à jour (style selon croquis) */}
         {/* ======================================================== */}
@@ -1108,7 +1196,7 @@ Le PMO / Value Management Office`;
                   </span>
                 </div>
                 <span className="text-xs sm:text-sm font-semibold text-slate-500 mt-1">
-                  / {totalStaffedCount} {totalStaffedCount > 1 ? t('common.words.project_other') : t('common.words.project_one')} {t('common.total')}
+                  / {totalStaffedCount} {totalStaffedCount > 1 ? t('common.words.project_other') : t('common.words.project_one')} {t('common.in_total', t('common.total', 'au total'))}
                 </span>
               </div>
             </div>
@@ -1809,19 +1897,19 @@ Le PMO / Value Management Office`;
           <div className="flex items-center gap-2 self-start sm:self-auto flex-wrap">
             {/* Recherche rapide d'un projet */}
             <div className="relative">
-              <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+              <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
               <input
                 type="text"
                 placeholder={t('reports.matrix.filter_placeholder')}
                 value={matrixSearchQuery}
                 onChange={(e) => setMatrixSearchQuery(e.target.value)}
-                className="pl-8 pr-2.5 py-1 text-xs rounded-xl border border-slate-200 bg-slate-50/70 text-slate-800 focus:bg-white focus:outline-none focus:ring-1 focus:ring-violet-500 focus:border-violet-500 w-32 sm:w-36 transition-all"
+                className={`pl-8 pr-7 py-1 text-xs w-32 sm:w-36 ${SEARCH_INPUT_BASE_CLASS}`}
               />
               {matrixSearchQuery && (
                 <button
                   type="button"
                   onClick={() => setMatrixSearchQuery('')}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer p-0.5"
                 >
                   <X className="w-3 h-3" />
                 </button>
@@ -2398,140 +2486,239 @@ Le PMO / Value Management Office`;
         skills={skills}
         resources={resources}
       />
+      </div>
 
       {/* ======================================================== */}
       {/* MODALE : Prévisualisation & confirmation de l'email */}
       {/* ======================================================== */}
-      {emailModal?.isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-xs">
-          <div className="bg-white rounded-2xl max-w-xl w-full border border-slate-200 shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150">
-            {/* En-tête */}
-            <div className="px-5 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50/70">
-              <div className="flex items-center gap-2">
-                <div className="p-2 rounded-lg bg-blue-100 text-blue-700">
-                  <Mail className="w-4 h-4" />
+      {emailModal?.isOpen && (() => {
+        const currentEmail =
+          emailModal.emails[emailModal.selectedPreviewIndex] || emailModal.emails[0];
+        const isMulti = emailModal.emails.length > 1;
+        const allRecipientEmails = Array.from(
+          new Set(emailModal.emails.map((e) => e.pmEmail))
+        );
+
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-xs">
+            <div className="bg-white rounded-2xl max-w-xl w-full border border-slate-200 shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+              {/* En-tête */}
+              <div className="px-5 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50/70">
+                <div className="flex items-center gap-2.5">
+                  <div className="p-2 rounded-lg bg-blue-100 text-blue-700">
+                    <Mail className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-sm text-slate-900">
+                      {t('reports.outdated_projects.modal.title')}
+                    </h3>
+                    <p className="text-[11px] text-slate-500">
+                      {t('reports.outdated_projects.modal.subtitle')}
+                    </p>
+                  </div>
                 </div>
+                <button
+                  type="button"
+                  disabled={emailModal.isSending}
+                  onClick={() => setEmailModal(null)}
+                  className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer disabled:opacity-50"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Contenu */}
+              <div className="p-5 space-y-4 max-h-[70vh] overflow-y-auto text-xs">
+                {/* Message de succès */}
+                {emailModal.sendSuccess && (
+                  <div className="p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 flex items-center gap-2.5 animate-in fade-in duration-200">
+                    <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
+                    <span className="font-semibold text-xs">{emailModal.sendSuccess}</span>
+                  </div>
+                )}
+
+                {/* Message d'erreur */}
+                {emailModal.sendError && (
+                  <div className="p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 space-y-1 animate-in fade-in duration-200">
+                    <div className="flex items-center gap-2 font-bold text-xs">
+                      <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />
+                      <span>{t('reports.outdated_projects.modal.error_title')}</span>
+                    </div>
+                    <pre className="text-[11px] text-rose-700 whitespace-pre-wrap font-sans pl-6">
+                      {emailModal.sendError}
+                    </pre>
+                  </div>
+                )}
+
+                {/* Si multi-destinataires : sélecteur de prévisualisation */}
+                {isMulti && (
+                  <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="font-semibold text-slate-700 uppercase tracking-wider text-[11px]">
+                        {t('reports.outdated_projects.modal.preview_for')}
+                      </span>
+                      <span className="text-[11px] text-slate-500 font-mono">
+                        {emailModal.emails.length}{' '}
+                        {t('reports.outdated_projects.modal.recipients').toLowerCase()}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      {emailModal.emails.map((item, idx) => {
+                        const isSelected = idx === emailModal.selectedPreviewIndex;
+                        return (
+                          <button
+                            key={item.pmEmail}
+                            type="button"
+                            onClick={() =>
+                              setEmailModal((prev) =>
+                                prev ? { ...prev, selectedPreviewIndex: idx } : null
+                              )
+                            }
+                            className={`px-2.5 py-1 rounded-md text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${
+                              isSelected
+                                ? 'bg-indigo-600 text-white shadow-2xs'
+                                : 'bg-white hover:bg-slate-100 text-slate-700 border border-slate-200'
+                            }`}
+                          >
+                            <span>{item.pmName}</span>
+                            <span
+                              className={`text-[10px] font-mono font-bold uppercase px-1 rounded ${
+                                isSelected
+                                  ? 'bg-indigo-700 text-indigo-100'
+                                  : 'bg-slate-100 text-slate-600'
+                              }`}
+                            >
+                              {item.language}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <p className="text-[11px] text-slate-500 italic">
+                      {t('reports.outdated_projects.modal.multi_recipients_notice')}
+                    </p>
+                  </div>
+                )}
+
+                {/* Destinataires */}
                 <div>
-                  <h3 className="font-bold text-sm text-slate-900">
-                    Demande de mise à jour par email
-                  </h3>
-                  <p className="text-[11px] text-slate-500">
-                    Client de messagerie sollicité pour l'envoi
-                  </p>
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="font-semibold text-slate-700 uppercase tracking-wider text-[11px]">
+                      {isMulti
+                        ? t('reports.outdated_projects.modal.recipients')
+                        : t('reports.outdated_projects.modal.recipient')}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={handleCopyEmails}
+                      className="inline-flex items-center gap-1 text-[11px] font-semibold text-blue-600 hover:text-blue-800 transition-colors cursor-pointer"
+                    >
+                      {copiedEmails ? (
+                        <>
+                          <Check className="w-3 h-3 text-emerald-600" />
+                          <span className="text-emerald-600">
+                            {t('reports.outdated_projects.modal.emails_copied')}
+                          </span>
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="w-3 h-3" />
+                          <span>{t('reports.outdated_projects.modal.copy_emails')}</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                  <div className="p-2.5 bg-slate-50 rounded-lg border border-slate-200 text-slate-800 font-mono text-[11px] break-all max-h-24 overflow-y-auto">
+                    {allRecipientEmails.join(', ')}
+                  </div>
                 </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setEmailModal(null)}
-                className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
 
-            {/* Contenu */}
-            <div className="p-5 space-y-4 max-h-[70vh] overflow-y-auto text-xs">
-              {/* Destinataires */}
-              <div>
-                <div className="flex items-center justify-between mb-1">
-                  <span className="font-semibold text-slate-700 uppercase tracking-wider text-[11px]">
-                    {emailModal.recipients.length > 1 ? 'Destinataires' : 'Destinataire'}
+                {/* Indication de la langue du destinataire */}
+                <div className="flex items-center gap-2 text-[11px] text-slate-600 bg-blue-50/70 border border-blue-200/80 px-3 py-2 rounded-lg">
+                  <Info className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+                  <span>
+                    {t('reports.outdated_projects.modal.recipient_lang_notice', {
+                      lang: getLocalizedLanguageName(currentEmail.language, t),
+                    })}
                   </span>
-                  <button
-                    type="button"
-                    onClick={handleCopyEmails}
-                    className="inline-flex items-center gap-1 text-[11px] font-semibold text-blue-600 hover:text-blue-800 transition-colors cursor-pointer"
-                  >
-                    {copiedEmails ? (
-                      <>
-                        <Check className="w-3 h-3 text-emerald-600" />
-                        <span className="text-emerald-600">Adresses copiées !</span>
-                      </>
-                    ) : (
-                      <>
-                        <Copy className="w-3 h-3" />
-                        <span>Copier les adresses</span>
-                      </>
-                    )}
-                  </button>
                 </div>
-                <div className="p-2.5 bg-slate-50 rounded-lg border border-slate-200 text-slate-800 font-mono text-[11px] break-all max-h-24 overflow-y-auto">
-                  {emailModal.recipients.join(', ')}
-                </div>
-              </div>
 
-              {/* Objet */}
-              <div>
-                <span className="font-semibold text-slate-700 uppercase tracking-wider text-[11px] block mb-1">
-                  Objet
-                </span>
-                <div className="p-2.5 bg-slate-50 rounded-lg border border-slate-200 text-slate-800 font-medium">
-                  {emailModal.subject}
-                </div>
-              </div>
-
-              {/* Message */}
-              <div>
-                <div className="flex items-center justify-between mb-1">
-                  <span className="font-semibold text-slate-700 uppercase tracking-wider text-[11px]">
-                    Corps de l'email
+                {/* Objet */}
+                <div>
+                  <span className="font-semibold text-slate-700 uppercase tracking-wider text-[11px] block mb-1">
+                    {t('reports.outdated_projects.modal.subject')}
                   </span>
-                  <button
-                    type="button"
-                    onClick={handleCopyText}
-                    className="inline-flex items-center gap-1 text-[11px] font-semibold text-blue-600 hover:text-blue-800 transition-colors cursor-pointer"
-                  >
-                    {copiedText ? (
-                      <>
-                        <Check className="w-3 h-3 text-emerald-600" />
-                        <span className="text-emerald-600">Texte copié !</span>
-                      </>
-                    ) : (
-                      <>
-                        <Copy className="w-3 h-3" />
-                        <span>Copier le texte</span>
-                      </>
-                    )}
-                  </button>
+                  <div className="p-2.5 bg-slate-50 rounded-lg border border-slate-200 text-slate-800 font-medium">
+                    {currentEmail.subject}
+                  </div>
                 </div>
-                <pre className="p-3 bg-slate-50 rounded-lg border border-slate-200 text-slate-800 font-sans whitespace-pre-wrap leading-relaxed text-[11px] max-h-60 overflow-y-auto">
-                  {emailModal.body}
-                </pre>
+
+                {/* Message */}
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="font-semibold text-slate-700 uppercase tracking-wider text-[11px]">
+                      {t('reports.outdated_projects.modal.body')}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={handleCopyText}
+                      className="inline-flex items-center gap-1 text-[11px] font-semibold text-blue-600 hover:text-blue-800 transition-colors cursor-pointer"
+                    >
+                      {copiedText ? (
+                        <>
+                          <Check className="w-3 h-3 text-emerald-600" />
+                          <span className="text-emerald-600">
+                            {t('reports.outdated_projects.modal.body_copied')}
+                          </span>
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="w-3 h-3" />
+                          <span>{t('reports.outdated_projects.modal.copy_body')}</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                  <pre className="p-3 bg-slate-50 rounded-lg border border-slate-200 text-slate-800 font-sans whitespace-pre-wrap leading-relaxed text-[11px] max-h-60 overflow-y-auto">
+                    {currentEmail.body}
+                  </pre>
+                </div>
               </div>
 
-              <div className="p-3 rounded-lg bg-blue-50 border border-blue-200 text-blue-800 text-[11px] leading-relaxed">
-                Votre logiciel ou webmail par défaut s'ouvre avec ces informations pré-remplies. Vous pouvez également copier le texte ou les adresses d'un simple clic ci-dessus.
+              {/* Pied de modale */}
+              <div className="px-5 py-3 border-t border-slate-200 bg-slate-50 flex items-center justify-end gap-3">
+                <button
+                  type="button"
+                  disabled={emailModal.isSending}
+                  onClick={() => setEmailModal(null)}
+                  className={MODAL_CANCEL_BUTTON_CLASS}
+                >
+                  {t('reports.outdated_projects.modal.cancel')}
+                </button>
+
+                <button
+                  type="button"
+                  disabled={emailModal.isSending || Boolean(emailModal.sendSuccess)}
+                  onClick={handleExecuteSendEmails}
+                  className={`${PRIMARY_ACTION_MODAL_BUTTON_CLASS} bg-indigo-600 hover:bg-indigo-700 text-white`}
+                >
+                  {emailModal.isSending ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>{t('reports.outdated_projects.modal.sending')}</span>
+                    </>
+                  ) : (
+                    <>
+                      <Send className="w-4 h-4" />
+                      <span>{t('reports.outdated_projects.modal.send')}</span>
+                    </>
+                  )}
+                </button>
               </div>
-            </div>
-
-            {/* Pied de modale */}
-            <div className="px-5 py-3 border-t border-slate-200 bg-slate-50 flex items-center justify-between gap-3">
-              <button
-                type="button"
-                onClick={() => {
-                  const to = emailModal.recipients.join(',');
-                  const mailtoUrl = `mailto:${to}?subject=${encodeURIComponent(
-                    emailModal.subject
-                  )}&body=${encodeURIComponent(emailModal.body)}`;
-                  window.location.href = mailtoUrl;
-                }}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-lg border border-blue-200 transition-colors cursor-pointer"
-              >
-                <ExternalLink className="w-3.5 h-3.5" />
-                <span>Réouvrir mon client email</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setEmailModal(null)}
-                className="px-4 py-1.5 text-xs font-semibold text-slate-700 hover:text-slate-900 bg-white hover:bg-slate-100 rounded-lg border border-slate-300 transition-colors cursor-pointer shadow-2xs"
-              >
-                Fermer
-              </button>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* ======================================================== */}
       {/* MODALE : Détail du projet en lecture seule */}

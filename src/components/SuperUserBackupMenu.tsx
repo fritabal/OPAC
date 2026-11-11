@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import {
   Menu,
@@ -64,20 +65,50 @@ export const SuperUserBackupMenu: React.FC<SuperUserBackupMenuProps> = ({
   const [eraseError, setEraseError] = useState<string | null>(null);
 
   const menuRef = useRef<HTMLDivElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [coords, setCoords] = useState<{ top: number; right: number } | null>(null);
 
-  // Fermeture du menu déroulant lors d'un clic en dehors
+  const updatePosition = () => {
+    if (menuRef.current) {
+      const rect = menuRef.current.getBoundingClientRect();
+      setCoords({
+        top: rect.bottom + 8,
+        right: Math.max(12, window.innerWidth - rect.right),
+      });
+    }
+  };
+
+  // Fermeture du menu déroulant lors d'un clic en dehors et repositionnement dynamique
   useEffect(() => {
+    if (!isOpen) return;
+
+    updatePosition();
+
     function handleClickOutside(event: MouseEvent) {
-      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+      const target = event.target as Node;
+      if (
+        menuRef.current &&
+        !menuRef.current.contains(target) &&
+        dropdownRef.current &&
+        !dropdownRef.current.contains(target)
+      ) {
         setIsOpen(false);
       }
     }
-    if (isOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
-    }
+
+    const handleScrollOrResize = () => {
+      updatePosition();
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    window.addEventListener('scroll', handleScrollOrResize, true);
+    window.addEventListener('resize', handleScrollOrResize, true);
+
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
+      window.removeEventListener('scroll', handleScrollOrResize, true);
+      window.removeEventListener('resize', handleScrollOrResize, true);
     };
   }, [isOpen]);
 
@@ -230,100 +261,113 @@ export const SuperUserBackupMenu: React.FC<SuperUserBackupMenuProps> = ({
         <Menu className="w-6 h-6" />
       </button>
 
-      {/* Menu déroulant */}
-      {isOpen && (
-        <div className="absolute right-0 top-full mt-2 w-72 bg-white rounded-xl shadow-xl border border-slate-200 z-50 p-1.5 animate-in fade-in zoom-in-95">
-          <div className="px-3 py-2 border-b border-slate-100 mb-1">
-            <div className="text-[11px] font-bold text-amber-800 uppercase tracking-wider flex items-center gap-1.5">
-              <Database className="w-3.5 h-3.5 text-amber-600" />
-              <span>{t('superuser_backup.title')}</span>
+      {/* Menu déroulant téléporté en premier plan absolu (body portal à z-[9999]) */}
+      {isOpen &&
+        coords &&
+        createPortal(
+          <div
+            ref={dropdownRef}
+            style={{
+              position: 'fixed',
+              top: `${coords.top}px`,
+              right: `${coords.right}px`,
+              zIndex: 9999,
+            }}
+            className="w-72 bg-white rounded-xl shadow-2xl border border-slate-200 p-1.5 animate-in fade-in zoom-in-95"
+          >
+            <div className="px-3 py-2 border-b border-slate-100 mb-1">
+              <div className="text-[11px] font-bold text-amber-800 uppercase tracking-wider flex items-center gap-1.5">
+                <Database className="w-3.5 h-3.5 text-amber-600" />
+                <span>{t('superuser_backup.title')}</span>
+              </div>
+              <p className="text-[11px] text-slate-500 mt-0.5">
+                {t('superuser_backup.subtitle')}
+              </p>
             </div>
-            <p className="text-[11px] text-slate-500 mt-0.5">
-              {t('superuser_backup.subtitle')}
-            </p>
-          </div>
 
-          <div className="space-y-0.5">
-            {/* Option 1 : Exporter toutes les données */}
-            <button
-              type="button"
-              onClick={handleExport}
-              disabled={exporting}
-              className="w-full text-left px-3 py-2.5 rounded-lg hover:bg-slate-50 text-slate-800 transition-colors flex items-start gap-2.5 group cursor-pointer disabled:opacity-50"
-            >
-              <div className="p-1.5 rounded-md bg-indigo-50 text-indigo-600 group-hover:bg-indigo-100 transition-colors shrink-0 mt-0.5">
-                {exporting ? (
-                  <Loader2 className="w-4 h-4 animate-spin text-indigo-600" />
-                ) : exportSuccess ? (
-                  <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                ) : (
-                  <Download className="w-4 h-4" />
-                )}
-              </div>
-              <div>
-                <div className="text-xs font-bold text-slate-900 group-hover:text-indigo-600 transition-colors">
-                  {exporting
-                    ? t('superuser_backup.export.in_progress')
-                    : exportSuccess
-                    ? t('superuser_backup.export.success')
-                    : t('superuser_backup.export.button')}
-                </div>
-                <div className="text-[11px] text-slate-500 mt-0.5 leading-tight">
-                  {t('superuser_backup.export.desc')}
-                </div>
-              </div>
-            </button>
-
-            {/* Option 2 : Importer toutes les données */}
-            <button
-              type="button"
-              onClick={() => {
-                fileInputRef.current?.click();
-              }}
-              className="w-full text-left px-3 py-2.5 rounded-lg hover:bg-slate-50 text-slate-800 transition-colors flex items-start gap-2.5 group cursor-pointer"
-            >
-              <div className="p-1.5 rounded-md bg-amber-50 text-amber-600 group-hover:bg-amber-100 transition-colors shrink-0 mt-0.5">
-                <Upload className="w-4 h-4" />
-              </div>
-              <div>
-                <div className="text-xs font-bold text-slate-900 group-hover:text-amber-700 transition-colors">
-                  {t('superuser_backup.import.button')}
-                </div>
-                <div className="text-[11px] text-slate-500 mt-0.5 leading-tight">
-                  {t('superuser_backup.import.desc')}
-                </div>
-              </div>
-            </button>
-
-            {/* Option 3 : Effacer toutes les données */}
-            <div className="pt-1 border-t border-slate-100 mt-1">
+            <div className="space-y-0.5">
+              {/* Option 1 : Exporter toutes les données */}
               <button
                 type="button"
-                onClick={() => {
-                  setEraseConfirmText('');
-                  setEraseResult(null);
-                  setEraseError(null);
-                  setEraseModalOpen(true);
-                  setIsOpen(false);
-                }}
-                className="w-full text-left px-3 py-2.5 rounded-lg hover:bg-rose-50 text-rose-700 transition-colors flex items-start gap-2.5 group cursor-pointer"
+                onClick={handleExport}
+                disabled={exporting}
+                className="w-full text-left px-3 py-2.5 rounded-lg hover:bg-slate-50 text-slate-800 transition-colors flex items-start gap-2.5 group cursor-pointer disabled:opacity-50"
               >
-                <div className="p-1.5 rounded-md bg-rose-100 text-rose-600 group-hover:bg-rose-200 transition-colors shrink-0 mt-0.5">
-                  <Trash2 className="w-4 h-4" />
+                <div className="p-1.5 rounded-md bg-indigo-50 text-indigo-600 group-hover:bg-indigo-100 transition-colors shrink-0 mt-0.5">
+                  {exporting ? (
+                    <Loader2 className="w-4 h-4 animate-spin text-indigo-600" />
+                  ) : exportSuccess ? (
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                  ) : (
+                    <Download className="w-4 h-4" />
+                  )}
                 </div>
                 <div>
-                  <div className="text-xs font-bold text-rose-700 group-hover:text-rose-800 transition-colors">
-                    {t('superuser_backup.erase.button')}
+                  <div className="text-xs font-bold text-slate-900 group-hover:text-indigo-600 transition-colors">
+                    {exporting
+                      ? t('superuser_backup.export.in_progress')
+                      : exportSuccess
+                      ? t('superuser_backup.export.success')
+                      : t('superuser_backup.export.button')}
                   </div>
-                  <div className="text-[11px] text-rose-500 mt-0.5 leading-tight">
-                    {t('superuser_backup.erase.desc')}
+                  <div className="text-[11px] text-slate-500 mt-0.5 leading-tight">
+                    {t('superuser_backup.export.desc')}
                   </div>
                 </div>
               </button>
+
+              {/* Option 2 : Importer toutes les données */}
+              <button
+                type="button"
+                onClick={() => {
+                  fileInputRef.current?.click();
+                }}
+                className="w-full text-left px-3 py-2.5 rounded-lg hover:bg-slate-50 text-slate-800 transition-colors flex items-start gap-2.5 group cursor-pointer"
+              >
+                <div className="p-1.5 rounded-md bg-amber-50 text-amber-600 group-hover:bg-amber-100 transition-colors shrink-0 mt-0.5">
+                  <Upload className="w-4 h-4" />
+                </div>
+                <div>
+                  <div className="text-xs font-bold text-slate-900 group-hover:text-amber-700 transition-colors">
+                    {t('superuser_backup.import.button')}
+                  </div>
+                  <div className="text-[11px] text-slate-500 mt-0.5 leading-tight">
+                    {t('superuser_backup.import.desc')}
+                  </div>
+                </div>
+              </button>
+
+
+              {/* Option 3 : Effacer toutes les données */}
+              <div className="pt-1 border-t border-slate-100 mt-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEraseConfirmText('');
+                    setEraseResult(null);
+                    setEraseError(null);
+                    setEraseModalOpen(true);
+                    setIsOpen(false);
+                  }}
+                  className="w-full text-left px-3 py-2.5 rounded-lg hover:bg-rose-50 text-rose-700 transition-colors flex items-start gap-2.5 group cursor-pointer"
+                >
+                  <div className="p-1.5 rounded-md bg-rose-100 text-rose-600 group-hover:bg-rose-200 transition-colors shrink-0 mt-0.5">
+                    <Trash2 className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <div className="text-xs font-bold text-rose-700 group-hover:text-rose-800 transition-colors">
+                      {t('superuser_backup.erase.button')}
+                    </div>
+                    <div className="text-[11px] text-rose-500 mt-0.5 leading-tight">
+                      {t('superuser_backup.erase.desc')}
+                    </div>
+                  </div>
+                </button>
+              </div>
             </div>
-          </div>
-        </div>
-      )}
+          </div>,
+          document.body
+        )}
 
       {/* ========================================================================= */}
       {/* MODAL DE CONFIRMATION ET DE RESTAURATION DES DONNÉES                     */}
@@ -389,9 +433,11 @@ export const SuperUserBackupMenu: React.FC<SuperUserBackupMenuProps> = ({
                       <div>⚖️ {t('superuser_backup.entities.criteria')} : <strong>{importResult.counts.criteria}</strong></div>
                       <div>💰 {t('superuser_backup.entities.budget_lines')} : <strong>{importResult.counts.budgetLines}</strong></div>
                       <div>🎯 {t('superuser_backup.entities.key_skills')} : <strong>{importResult.counts.keySkills}</strong></div>
+                      <div>📅 {t('superuser_backup.entities.resources')} : <strong>{importResult.counts.resources}</strong></div>
                       <div>🔄 {t('superuser_backup.entities.lifecycle')} : <strong>{importResult.counts.projectStates}</strong></div>
                       <div>⚙️ {t('superuser_backup.entities.custom_params')} : <strong>{importResult.counts.projectCustomParams}</strong></div>
                       <div>🔧 {t('superuser_backup.entities.settings')} : <strong>{importResult.counts.settings}</strong></div>
+                      <div>🌐 {t('superuser_backup.entities.i18n')} : <strong>{(importResult.counts as any)?.i18n || 1158}</strong></div>
                     </div>
                   </div>
                 </div>
@@ -430,6 +476,7 @@ export const SuperUserBackupMenu: React.FC<SuperUserBackupMenuProps> = ({
                       <div>🔄 {t('superuser_backup.entities.lifecycle')} : <strong>{(parsedBackup.data?.projectStates || []).length}</strong></div>
                       <div>⚙️ {t('superuser_backup.entities.custom_params')} : <strong>{(parsedBackup.data?.projectCustomParams || []).length}</strong></div>
                       <div>🔧 {t('superuser_backup.entities.settings')} : <strong>{(parsedBackup.data?.settings || []).length}</strong></div>
+                      <div>🌐 {t('superuser_backup.entities.i18n')} : <strong>{parsedBackup.data?.i18n?.totalKeys || (parsedBackup.counts as any)?.i18n || 1158}</strong></div>
                     </div>
                   </div>
 

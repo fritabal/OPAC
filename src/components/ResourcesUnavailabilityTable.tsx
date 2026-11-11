@@ -29,9 +29,10 @@ import {
   TABLE_HEADER_THEAD_CLASS,
   TABLE_TH_BASE_CLASS,
   TABLE_TH_SORTABLE_CLASS,
-  TABLE_HEADER_DOUBLE_BOTTOM_CLASS,
   TAB_TITLE_CLASS,
+  SEARCH_INPUT_BASE_CLASS,
 } from '../constants/ui';
+import { SearchFilterInput } from './SearchFilterInput';
 import {
   addResource,
   updateResource,
@@ -380,14 +381,12 @@ export const ResourcesUnavailabilityTable: React.FC<ResourcesUnavailabilityTable
       <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-2xs space-y-3">
         <div className="grid grid-cols-1 sm:grid-cols-12 gap-3">
           {/* Recherche texte */}
-          <div className="sm:col-span-5 relative">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
-            <input
-              type="text"
+          <div className="sm:col-span-5">
+            <SearchFilterInput
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={setSearchQuery}
+              onClear={() => setSearchQuery('')}
               placeholder={t('unavailabilities.search_placeholder')}
-              className="w-full pl-9 pr-3 py-2 border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-rose-800 bg-white"
             />
           </div>
 
@@ -396,7 +395,7 @@ export const ResourcesUnavailabilityTable: React.FC<ResourcesUnavailabilityTable
             <select
               value={selectedSkillFilter}
               onChange={(e) => setSelectedSkillFilter(e.target.value)}
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs bg-white focus:ring-2 focus:ring-rose-800"
+              className={`w-full px-3 py-2 ${SEARCH_INPUT_BASE_CLASS}`}
             >
               <option value="all">
                 {t('unavailabilities.all_skills_filter')} ({skills.length})
@@ -428,7 +427,7 @@ export const ResourcesUnavailabilityTable: React.FC<ResourcesUnavailabilityTable
       </div>
 
       {/* Grille principale des indisponibilités (12 mois glissants) */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-2xs overflow-hidden">
+      <div className="bg-white rounded-xl border border-slate-200 shadow-2xs overflow-hidden isolate relative z-0">
         <div className="overflow-x-auto">
           <table className="w-full text-xs text-left border-collapse">
             <thead className={`sticky top-0 z-20 ${TABLE_HEADER_THEAD_CLASS}`}>

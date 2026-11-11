@@ -57,11 +57,11 @@ export const UNSAVED_CHANGES_TEXT_CLASS =
 
 // Style global pour le bouton Enregistrer lorsqu'il est actif (modifications en attente d'enregistrement)
 export const SAVE_BUTTON_ACTIVE_CLASS =
-  'bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg shadow-xs cursor-pointer transition-all';
+  `${PRIMARY_ACTION_BLUE_BG} ${PRIMARY_ACTION_BLUE_TEXT} rounded-lg shadow-xs cursor-pointer transition-all`;
 
 // Style global pour le bouton Enregistrer lorsqu'il est inactif / grisé (aucune modification)
 export const SAVE_BUTTON_INACTIVE_CLASS =
-  'bg-slate-100 text-slate-400 border border-slate-200 font-semibold rounded-lg cursor-not-allowed opacity-80 transition-all';
+  'bg-slate-100 text-slate-400 border border-slate-200 text-xs font-semibold rounded-lg cursor-not-allowed opacity-80 transition-all';
 
 // Helper global retournant la classe CSS active ou inactive pour le bouton Enregistrer
 export const getSaveButtonStateClass = (isEligibleToSave: boolean, isSaving: boolean = false): string =>
@@ -72,10 +72,11 @@ export const getSaveButtonStateClass = (isEligibleToSave: boolean, isSaving: boo
 // =========================================================================
 
 // Style global pour les boutons filtres actifs et inactifs (utilise la même couleur bleue standard que le bouton Créer)
+// Note: h-9 box-border pour une hauteur standardisée de 36px parfaitement alignée avec les champs de recherche et listes déroulantes
 export const FILTER_BUTTON_ACTIVE_CLASS =
-  `${CREATE_ITEM_BUTTON_BG} text-white border-blue-600 shadow-2xs`;
+  `${CREATE_ITEM_BUTTON_BG} text-white border-blue-600 shadow-2xs h-9 box-border`;
 export const FILTER_BUTTON_INACTIVE_CLASS =
-  'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200';
+  'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200 h-9 box-border';
 
 // Alias pour compatibilité ascendante
 export const MY_FILTER_BUTTON_ACTIVE_CLASS = FILTER_BUTTON_ACTIVE_CLASS;
@@ -84,14 +85,17 @@ export const MY_FILTER_BUTTON_INACTIVE_CLASS = FILTER_BUTTON_INACTIVE_CLASS;
 // =========================================================================
 // SÉLECTEURS SEGMENTÉS GLOBAUX (Périmètres "Tous / Staffés", Périodes "6 mois / 12 mois", etc.)
 // =========================================================================
+// Hauteur standardisée des sélecteurs segmentés appliquée à l'ensemble de l'application
+export const SEGMENT_SELECTOR_HEIGHT_CLASS = 'h-8';
+
 export const SEGMENT_SELECTOR_CONTAINER_CLASS =
-  'flex items-center gap-1 p-1 bg-blue-50 rounded-xl border border-blue-200 shrink-0';
+  `flex items-center gap-1 p-0.5 bg-blue-50 rounded-xl border border-blue-200 shrink-0 box-border ${SEGMENT_SELECTOR_HEIGHT_CLASS}`;
 
 export const SEGMENT_SELECTOR_BUTTON_ACTIVE_CLASS =
-  'px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer bg-blue-600 text-white shadow-2xs font-bold';
+  'h-full flex items-center justify-center px-2.5 rounded-lg text-xs font-bold transition-all cursor-pointer bg-blue-600 text-white shadow-2xs whitespace-nowrap';
 
 export const SEGMENT_SELECTOR_BUTTON_INACTIVE_CLASS =
-  'px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer text-blue-700 hover:text-blue-900';
+  'h-full flex items-center justify-center px-2.5 rounded-lg text-xs font-semibold transition-all cursor-pointer text-blue-700 hover:text-blue-900 whitespace-nowrap';
 
 export const getSegmentSelectorButtonClass = (isActive: boolean): string =>
   isActive ? SEGMENT_SELECTOR_BUTTON_ACTIVE_CLASS : SEGMENT_SELECTOR_BUTTON_INACTIVE_CLASS;
@@ -227,4 +231,109 @@ export const MODAL_TITLE_CLASS = MAIN_TITLE_CLASS;
 export const PROJECT_TITLE_FONT_SIZE_CLASS = 'text-xl';
 export const PROJECT_TITLE_FONT_WEIGHT_CLASS = 'font-bold';
 export const PROJECT_TITLE_CLASS = `${PROJECT_TITLE_FONT_SIZE_CLASS} ${PROJECT_TITLE_FONT_WEIGHT_CLASS} text-black`;
+
+// =========================================================================
+// STANDARD UNIFIÉ DES FILETS DE SAISIE ET DE FILTRAGE (COULEUR ET ÉPAISSEUR)
+// Épaisseur standardisée : 1px sans focus (au repos), 2px au focus
+// Couleur repos : border-slate-300 (gris léger)
+// Couleur focus / actif : border-indigo-600 (bleu plus soutenu)
+// Type de filet : filet simple unique sans double contour ni ring
+// =========================================================================
+
+// 1. Filet sans focus : 1px gris léger (standardisé au repos)
+export const INPUT_BORDER_THICKNESS_REST = 'border';
+export const INPUT_BORDER_THICKNESS_FOCUS = 'border-2';
+export const SEARCH_INPUT_BORDER_CLASS = 'border border-slate-300';
+export const INPUT_BORDER_REST_CLASS = SEARCH_INPUT_BORDER_CLASS;
+
+// 2. Fond très clair : blanc immaculé (comme dans l'onglet priorités)
+export const SEARCH_INPUT_BG_CLASS = 'bg-white text-slate-800 placeholder-slate-400';
+
+// 3. Filet au focus : filet simple unique 2px (sans double contour ni ring), bleu plus soutenu (indigo-600)
+export const SEARCH_INPUT_FOCUS_BORDER_COLOR = 'border-indigo-600';
+export const SEARCH_INPUT_FOCUS_CLASS =
+  'focus:outline-none focus:border-2 focus:border-indigo-600 focus:ring-0';
+export const GLOBAL_INPUT_FOCUS_CLASS = SEARCH_INPUT_FOCUS_CLASS;
+export const INPUT_FOCUS_CLASS = GLOBAL_INPUT_FOCUS_CLASS;
+
+// Style de base unifié de la boîte de saisie (filet 1px gris léger au repos, fond clair, filet 2px simple bleu soutenu au focus)
+// Note: h-9 box-border garantit une hauteur externe strictement fixe de 36px au repos comme au focus (aucun décalage de 2px)
+export const SEARCH_INPUT_BASE_CLASS =
+  `${SEARCH_INPUT_BORDER_CLASS} ${SEARCH_INPUT_BG_CLASS} ${SEARCH_INPUT_FOCUS_CLASS} rounded-lg text-xs h-9 box-border transition-all`;
+
+export const GLOBAL_INPUT_BASE_CLASS = SEARCH_INPUT_BASE_CLASS;
+export const INPUT_BASE_CLASS = GLOBAL_INPUT_BASE_CLASS;
+
+// Style pour boîte de saisie avec pictogramme loupe à gauche
+export const SEARCH_INPUT_WITH_ICON_CLASS =
+  `w-full pl-9 pr-8 ${SEARCH_INPUT_BASE_CLASS}`;
+
+// Style pour boîte de saisie sans pictogramme à gauche ou avec bouton de validation séparé
+export const SEARCH_INPUT_STANDALONE_CLASS =
+  `w-full pl-3 pr-8 ${SEARCH_INPUT_BASE_CLASS}`;
+
+// Bouton de validation de recherche (bleu soutenu comme dans l'onglet utilisateurs)
+export const SEARCH_BUTTON_CLASS =
+  'h-9 px-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors shadow-2xs cursor-pointer shrink-0 inline-flex items-center justify-center box-border disabled:opacity-50 disabled:cursor-not-allowed';
+
+// Bouton croix d'effacement de la recherche
+export const SEARCH_CLEAR_BUTTON_CLASS =
+  'text-slate-400 hover:text-slate-600 cursor-pointer p-0.5 rounded transition-colors';
+
+// =========================================================================
+// ZONES DE SÉLECTION DE FILTRES D'ONGLETS (États, Lignes budgétaires, Alertes, etc.)
+// Filet 1px au repos, filet simple unique 2px au focus ou à l'ouverture
+// (aucun double filet ni ring), même bleu soutenu que les zones de recherche
+// =========================================================================
+
+export const FILTER_DROPDOWN_BUTTON_BASE_CLASS =
+  'w-full px-3 h-9 box-border rounded-lg text-xs bg-white text-left flex items-center justify-between gap-2 transition-all cursor-pointer focus:outline-none focus:border-2 focus:border-indigo-600 focus:ring-0';
+
+export const getFilterDropdownButtonClass = (
+  isOpen: boolean,
+  isFilterActive: boolean,
+  activeBorderColor = 'border-indigo-500',
+  activeBgColor = 'bg-indigo-50/20',
+  activeTextColor = 'text-slate-800'
+): string => {
+  if (isOpen) {
+    // Ouvert / actif avec focus : simple filet 2px bleu soutenu, aucun double ring
+    return `${FILTER_DROPDOWN_BUTTON_BASE_CLASS} border-2 border-indigo-600 text-slate-900 shadow-2xs`;
+  }
+  if (isFilterActive) {
+    // Filtre actif au repos : filet 1px avec teinte douce
+    return `${FILTER_DROPDOWN_BUTTON_BASE_CLASS} border ${activeBorderColor} ${activeBgColor} ${activeTextColor} font-medium`;
+  }
+  // Inactif au repos : filet 1px gris léger avec survol gris soutenu
+  return `${FILTER_DROPDOWN_BUTTON_BASE_CLASS} border border-slate-300 hover:border-slate-400 text-slate-700`;
+};
+
+// =========================================================================
+// COULEURS STANDARDISÉES DES CRITÈRES DE PRIORISATION (VALEUR & COÛT)
+// Vert émeraude (bg-emerald-50, text-emerald-700, border-emerald-200) pour VALEUR
+// Jaune ambré (bg-amber-50, text-amber-700, border-amber-200) pour COÛT
+// =========================================================================
+
+export const CRITERION_VALEUR_BG = 'bg-emerald-50';
+export const CRITERION_VALEUR_TEXT = 'text-emerald-700';
+export const CRITERION_VALEUR_BORDER = 'border-emerald-200';
+export const CRITERION_VALEUR_BADGE_CLASS =
+  `${CRITERION_VALEUR_BG} ${CRITERION_VALEUR_TEXT} border ${CRITERION_VALEUR_BORDER}`;
+
+export const CRITERION_COST_BG = 'bg-amber-50';
+export const CRITERION_COST_TEXT = 'text-amber-700';
+export const CRITERION_COST_BORDER = 'border-amber-200';
+export const CRITERION_COST_BADGE_CLASS =
+  `${CRITERION_COST_BG} ${CRITERION_COST_TEXT} border ${CRITERION_COST_BORDER}`;
+
+// En-têtes de colonnes détaillées de critères dans les tableaux
+export const CRITERION_HEADER_VALEUR_CLASS =
+  'bg-emerald-50/70 hover:bg-emerald-100/80 text-emerald-800';
+export const CRITERION_HEADER_COST_CLASS =
+  'bg-amber-50/70 hover:bg-amber-100/80 text-amber-800';
+
+// Fond de colonne dans les lignes de tableau
+export const CRITERION_CELL_VALEUR_BG = 'bg-emerald-50/20';
+export const CRITERION_CELL_COST_BG = 'bg-amber-50/20';
+
 

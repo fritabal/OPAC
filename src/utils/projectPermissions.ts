@@ -109,9 +109,9 @@ export function canEditProject(project: Project, ctx: ProjectPermissionContext):
 /**
  * Droit de visualisation d'un projet confidentiel :
  * - Chef de projet et adjoint désignés sur le projet ont toujours accès.
- * - Super User a toujours accès.
- * - En tant que Value Management Officer : masqué par défaut (pour partage d'écran),
- *   sauf si la case "Afficher projets confidentiels" est cochée.
+ * - Super User et Value Management Officer : masqué par défaut (même en tant que super user,
+ *   afin de garantir la confidentialité et la discrétion lors des partages d'écran),
+ *   sauf si la case "Afficher les projets confidentiels" est explicitement cochée.
  * - Tout autre utilisateur n'a pas accès.
  */
 export function canViewConfidentialProject(
@@ -119,15 +119,14 @@ export function canViewConfidentialProject(
   ctx: ProjectPermissionContext
 ): boolean {
   if (!project.isConfidential) return true;
-  if (ctx.isSuperUser) return true;
-  if (ctx.isValueManagementOfficer) {
-    return Boolean(ctx.showConfidentialProjects);
-  }
   if (isUserProjectManagerOfProject(project, ctx.activeUser)) {
     return true;
   }
+  if (ctx.isSuperUser || ctx.isValueManagementOfficer) {
+    return Boolean(ctx.showConfidentialProjects);
+  }
   if (!ctx.effectiveRole && ctx.activeUser?.email && isSuperAdminEmail(ctx.activeUser.email)) {
-    return true;
+    return Boolean(ctx.showConfidentialProjects);
   }
   return false;
 }

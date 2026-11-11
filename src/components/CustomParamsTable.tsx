@@ -218,7 +218,7 @@ export const CustomParamsTable: React.FC<CustomParamsTableProps> = ({
       )}
 
       {/* Tableau des paramètres personnalisés */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden">
+      <div className="bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden isolate relative z-0">
         {loading ? (
           <div className="p-12 text-center text-slate-500 text-xs">
             {t('settings.common.loading')}

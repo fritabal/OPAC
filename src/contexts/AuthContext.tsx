@@ -1,9 +1,9 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState, useRef } from 'react';
 import { User, onAuthStateChanged } from 'firebase/auth';
 import { auth, googleProvider, signInWithPopup, signOut, testConnection } from '../lib/firebase';
 import { AppUser, UserRole } from '../types/user';
 import { subscribeToUsers, SUPER_ADMIN_EMAIL, isSuperAdminEmail } from '../services/userService';
-import { changeAppLanguage, SupportedLanguage } from '../i18n';
+import i18n, { changeAppLanguage, SupportedLanguage } from '../i18n';
 
 interface AuthContextType {
   firebaseUser: User | null;
@@ -158,6 +158,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const activeUser = impersonatedUser || realUser;
   const isImpersonating = Boolean(impersonatedUser);
 
+  const realUserRef = useRef<AppUser | null>(null);
+
+  useEffect(() => {
+    realUserRef.current = realUser;
+  }, [realUser]);
+
   useEffect(() => {
     testConnection().then((connected) => {
       setDbConnected(connected);
@@ -170,38 +176,37 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const unsubscribeUsers = subscribeToUsers((users) => {
       setAllUsers(users);
 
-      setRealUser((prev) => {
-        // 1. Si l'utilisateur est déjà connecté dans l'état React actuel, mettre à jour ses données
-        if (prev) {
-          const updated = users.find(
-            (u) => u.id === prev.id || u.email.toLowerCase() === prev.email.toLowerCase()
-          );
-          if (updated) {
-            if (
-              updated.preferredLanguage &&
-              (updated.preferredLanguage === 'fr' ||
-                updated.preferredLanguage === 'en' ||
-                updated.preferredLanguage === 'it' ||
-                updated.preferredLanguage === 'de')
-            ) {
-              changeAppLanguage(updated.preferredLanguage as SupportedLanguage);
-            }
-            return updated;
-          }
-        }
+      const prev = realUserRef.current;
+      let resolvedUser: AppUser | null = null;
+      let resolvedAuth = false;
+      let resolvedConception = false;
 
-        // 2. Si l'utilisateur est authentifié avec Firebase Auth (connexion Google), respecter son compte
-        if (auth.currentUser?.email) {
-          const match = users.find(
-            (u) => u.email.toLowerCase() === auth.currentUser?.email?.toLowerCase()
-          );
-          if (match && match.isActive !== false) {
-            setIsAuthenticated(true);
-            return match;
-          }
+      // 1. Si l'utilisateur est déjà connecté dans l'état React actuel, mettre à jour ses données
+      if (prev) {
+        const updated = users.find(
+          (u) => u.id === prev.id || u.email.toLowerCase() === prev.email.toLowerCase()
+        );
+        if (updated) {
+          resolvedUser = updated;
+          resolvedAuth = true;
+          resolvedConception = isSuperAdminEmail(updated.email);
         }
+      }
 
-        // 3. Vérifier si une session active est stockée dans sessionStorage pour cet onglet
+      // 2. Si l'utilisateur est authentifié avec Firebase Auth (connexion Google), respecter son compte
+      if (!resolvedUser && auth.currentUser?.email) {
+        const match = users.find(
+          (u) => u.email.toLowerCase() === auth.currentUser?.email?.toLowerCase()
+        );
+        if (match && match.isActive !== false) {
+          resolvedUser = match;
+          resolvedAuth = true;
+          resolvedConception = isSuperAdminEmail(match.email);
+        }
+      }
+
+      // 3. Vérifier si une session active est stockée dans sessionStorage pour cet onglet
+      if (!resolvedUser) {
         try {
           const sessionEmail = sessionStorage.getItem(SESSION_EMAIL_KEY);
           if (sessionEmail) {
@@ -209,77 +214,83 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               (u) => u.email.toLowerCase() === sessionEmail.toLowerCase()
             );
             if (match && match.isActive !== false) {
-              setIsAuthenticated(true);
-              setIsConceptionMode(isSuperAdminEmail(match.email));
-              return match;
+              resolvedUser = match;
+              resolvedAuth = true;
+              resolvedConception = isSuperAdminEmail(match.email);
             }
           }
 
-          const savedConception = sessionStorage.getItem(CONCEPTION_MODE_KEY) === 'true';
-          if (savedConception) {
-            const superUser = users.find((u) => isSuperAdminEmail(u.email));
-            if (superUser) {
-              setIsAuthenticated(true);
-              setIsConceptionMode(true);
-              return superUser;
+          if (!resolvedUser) {
+            const savedConception = sessionStorage.getItem(CONCEPTION_MODE_KEY) === 'true';
+            if (savedConception) {
+              const superUser = users.find((u) => isSuperAdminEmail(u.email));
+              if (superUser) {
+                resolvedUser = superUser;
+                resolvedAuth = true;
+                resolvedConception = true;
+              }
             }
           }
         } catch {
           // ignore
         }
+      }
 
-        // 4. En mode création (développement / sandbox AI Studio), auto-connexion avec le compte de conception (stephane.labati@goood.com)
-        // dès lors qu'il possède bien le rôle super user et n'a pas fait de déconnexion explicite dans cet onglet.
-        if (isConceptionEnvironment()) {
-          try {
-            const explicitLogout = sessionStorage.getItem(EXPLICIT_LOGOUT_KEY) === 'true';
-            if (!explicitLogout) {
-              const designerUser = users.find((u) => isSuperAdminEmail(u.email));
-              const hasSuperUserRole =
-                designerUser &&
-                (designerUser.roles?.includes('super user') ||
-                  designerUser.role === 'super user' ||
-                  designerUser.isSuperAdmin === true);
+      // 4. En mode création (développement / sandbox AI Studio), auto-connexion avec le compte de conception (stephane.labati@goood.com)
+      if (!resolvedUser && isConceptionEnvironment()) {
+        try {
+          const explicitLogout = sessionStorage.getItem(EXPLICIT_LOGOUT_KEY) === 'true';
+          if (!explicitLogout) {
+            const designerUser = users.find((u) => isSuperAdminEmail(u.email));
+            const hasSuperUserRole =
+              designerUser &&
+              (designerUser.roles?.includes('super user') ||
+                designerUser.role === 'super user' ||
+                designerUser.isSuperAdmin === true);
 
-              if (designerUser && hasSuperUserRole && designerUser.isActive !== false) {
-                setIsAuthenticated(true);
-                setIsConceptionMode(true);
-                sessionStorage.setItem(SESSION_EMAIL_KEY, designerUser.email.toLowerCase());
-                sessionStorage.setItem(CONCEPTION_MODE_KEY, 'true');
-                if (
-                  designerUser.preferredLanguage &&
-                  (designerUser.preferredLanguage === 'fr' ||
-                    designerUser.preferredLanguage === 'en' ||
-                    designerUser.preferredLanguage === 'it' ||
-                    designerUser.preferredLanguage === 'de')
-                ) {
-                  changeAppLanguage(designerUser.preferredLanguage as SupportedLanguage);
-                }
-                return designerUser;
-              }
+            if (designerUser && hasSuperUserRole && designerUser.isActive !== false) {
+              resolvedUser = designerUser;
+              resolvedAuth = true;
+              resolvedConception = true;
+              sessionStorage.setItem(SESSION_EMAIL_KEY, designerUser.email.toLowerCase());
+              sessionStorage.setItem(CONCEPTION_MODE_KEY, 'true');
             }
-          } catch {
-            // ignore
           }
+        } catch {
+          // ignore
         }
+      }
 
-        // 5. Par défaut (ex: environnement de production publié opac-v1-1.ai.studio ou déconnexion explicite) : afficher la mire de login !
-        setIsAuthenticated(false);
-        setIsConceptionMode(false);
-        return null;
-      });
+      // Mettre à jour les états principaux de manière atomique au niveau du callback
+      realUserRef.current = resolvedUser;
+      setRealUser(resolvedUser);
+      setIsAuthenticated(resolvedAuth);
+      setIsConceptionMode(resolvedConception);
 
       // Synchroniser également l'utilisateur usurpé si ses données changent
-      setImpersonatedUser((prev) => {
-        if (!prev) return null;
+      setImpersonatedUser((prevImp) => {
+        if (!prevImp) return null;
         return (
           users.find(
-            (u) => u.id === prev.id || u.email.toLowerCase() === prev.email.toLowerCase()
-          ) || prev
+            (u) => u.id === prevImp.id || u.email.toLowerCase() === prevImp.email.toLowerCase()
+          ) || prevImp
         );
       });
 
       setLoading(false);
+
+      // Appliquer la langue préférée de l'utilisateur résolu si elle diffère de la langue active
+      if (
+        resolvedUser?.preferredLanguage &&
+        (resolvedUser.preferredLanguage === 'fr' ||
+          resolvedUser.preferredLanguage === 'en' ||
+          resolvedUser.preferredLanguage === 'it' ||
+          resolvedUser.preferredLanguage === 'de')
+      ) {
+        if (i18n.language !== resolvedUser.preferredLanguage) {
+          changeAppLanguage(resolvedUser.preferredLanguage as SupportedLanguage);
+        }
+      }
     });
 
     return () => {
