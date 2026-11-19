@@ -95,6 +95,9 @@ export function subscribeToProjects(
           staffingPlan: data.staffingPlan || {},
           remainingToComplete: data.remainingToComplete || {},
           staffingPlanValidatedMonths: data.staffingPlanValidatedMonths || {},
+          isRatValidated: data.isRatValidated !== undefined ? Boolean(data.isRatValidated) : undefined,
+          ratValidatedMonth: data.ratValidatedMonth || null,
+          ratHistory: data.ratHistory || {},
           isStaffed: data.isStaffed !== undefined ? Boolean(data.isStaffed) : undefined,
           createdAt: data.createdAt?.toDate?.()?.toISOString() || data.createdAt,
           updatedAt: data.updatedAt?.toDate?.()?.toISOString() || data.updatedAt,
@@ -155,6 +158,12 @@ export async function createProject(formData: ProjectFormData): Promise<Project>
       capacityUpdatedMonth: formData.capacityUpdatedMonth || null,
       capacityDaysPerSkill: formData.capacityDaysPerSkill || {},
       capacityHistory: formData.capacityHistory || {},
+      staffingPlan: formData.staffingPlan || {},
+      remainingToComplete: formData.remainingToComplete || {},
+      staffingPlanValidatedMonths: formData.staffingPlanValidatedMonths || {},
+      isRatValidated: formData.isRatValidated !== undefined ? Boolean(formData.isRatValidated) : false,
+      ratValidatedMonth: formData.ratValidatedMonth || null,
+      ratHistory: formData.ratHistory || {},
       isStaffed: formData.isStaffed !== undefined ? Boolean(formData.isStaffed) : true,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
@@ -241,6 +250,14 @@ export async function updateProject(id: string, formData: Partial<ProjectFormDat
     if (formData.capacityUpdatedMonth !== undefined) payload.capacityUpdatedMonth = formData.capacityUpdatedMonth;
     if (formData.capacityDaysPerSkill !== undefined) payload.capacityDaysPerSkill = formData.capacityDaysPerSkill;
     if (formData.capacityHistory !== undefined) payload.capacityHistory = formData.capacityHistory;
+    if (formData.staffingPlan !== undefined) payload.staffingPlan = formData.staffingPlan;
+    if (formData.remainingToComplete !== undefined) payload.remainingToComplete = formData.remainingToComplete;
+    if (formData.staffingPlanValidatedMonths !== undefined) {
+      payload.staffingPlanValidatedMonths = formData.staffingPlanValidatedMonths;
+    }
+    if (formData.isRatValidated !== undefined) payload.isRatValidated = Boolean(formData.isRatValidated);
+    if (formData.ratValidatedMonth !== undefined) payload.ratValidatedMonth = formData.ratValidatedMonth;
+    if (formData.ratHistory !== undefined) payload.ratHistory = formData.ratHistory;
     if (formData.isStaffed !== undefined) payload.isStaffed = Boolean(formData.isStaffed);
 
     const cleanPayload: Record<string, any> = {};
@@ -267,7 +284,9 @@ export async function updateProject(id: string, formData: Partial<ProjectFormDat
     } else if (
       formData.capacityDaysPerSkill !== undefined ||
       formData.isStaffed !== undefined ||
-      formData.capacityUpdatedMonth !== undefined
+      formData.capacityUpdatedMonth !== undefined ||
+      formData.staffingPlan !== undefined ||
+      formData.remainingToComplete !== undefined
     ) {
       broadcastCollaborationChange({
         category: 'project_staffing',

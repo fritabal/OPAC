@@ -171,7 +171,7 @@ export const ProjectsImportModal: React.FC<ProjectsImportModalProps> = ({
             <div className="space-y-1">
               <p className="font-semibold text-slate-900">Format d'importation attendu</p>
               <p className="text-slate-600">
-                Les colonnes utilisent les noms de vos critères, lignes budgétaires, compétences, etc.
+                Les colonnes utilisent les noms de vos critères, lignes budgétaires, compétences, etc. Les demandes capacitaires (historique des 12 derniers mois, plan de staffing sur 12 mois et Reste à Terminaison) sont incluses ; tout mois antérieur à (mois en cours - 12 mois) est automatiquement ignoré.
               </p>
             </div>
             <button

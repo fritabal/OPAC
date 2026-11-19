@@ -1027,6 +1027,33 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
     );
   };
 
+  // Comparateur réutilisable par priorité (états à prioriser d'abord en desc, puis ROI, puis #ID)
+  const compareByPriorityAndRoi = (a: Project, b: Project, dir: SortDirection): number => {
+    const isPrioritizedA = isProjectStatePrioritized(a.stateId);
+    const isPrioritizedB = isProjectStatePrioritized(b.stateId);
+
+    // Les projets dont l'état est à prioriser (avec numéro de priorité) viennent en premier en ordre décroissant (du n°1 au dernier),
+    // puis tous les projets non priorisés par ordre décroissant de ROI (inversé en ordre croissant)
+    if (isPrioritizedA !== isPrioritizedB) {
+      return dir === 'asc' ? (isPrioritizedA ? 1 : -1) : (isPrioritizedA ? -1 : 1);
+    }
+
+    const roiA = getProjectEffectiveRoi(a);
+    const roiB = getProjectEffectiveRoi(b);
+
+    if (roiA === null && roiB === null) {
+      return (a.projectNumber || 0) - (b.projectNumber || 0);
+    }
+    if (roiA === null) return 1;
+    if (roiB === null) return -1;
+
+    const diff = roiA - roiB;
+    if (diff !== 0) {
+      return dir === 'asc' ? diff : -diff;
+    }
+    return (a.projectNumber || 0) - (b.projectNumber || 0);
+  };
+
   // Projets filtrés et triés
   const sortedProjects = useMemo(() => {
     const list = [...filteredProjects];
@@ -1037,29 +1064,7 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
           comparison = (a.projectNumber || 0) - (b.projectNumber || 0);
           break;
         case 'roi': {
-          const isPrioritizedA = isProjectStatePrioritized(a.stateId);
-          const isPrioritizedB = isProjectStatePrioritized(b.stateId);
-
-          // Les projets dont l'état est à prioriser (avec numéro de priorité) viennent en premier (du numéro 1 au dernier),
-          // puis tous les projets non priorisés par ordre décroissant de ROI
-          if (isPrioritizedA !== isPrioritizedB) {
-            return sortDirection === 'asc' ? (isPrioritizedA ? 1 : -1) : (isPrioritizedA ? -1 : 1);
-          }
-
-          const roiA = getProjectEffectiveRoi(a);
-          const roiB = getProjectEffectiveRoi(b);
-
-          if (roiA === null && roiB === null) {
-            return (a.projectNumber || 0) - (b.projectNumber || 0);
-          }
-          if (roiA === null) return 1;
-          if (roiB === null) return -1;
-
-          const diff = roiA - roiB;
-          if (diff !== 0) {
-            return sortDirection === 'asc' ? diff : -diff;
-          }
-          return (a.projectNumber || 0) - (b.projectNumber || 0);
+          return compareByPriorityAndRoi(a, b, sortDirection);
         }
         case 'name':
           comparison = a.name.localeCompare(b.name, 'fr', { sensitivity: 'base' });
@@ -1098,10 +1103,24 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
 
             const numA = hasA ? (valA as number) : -1;
             const numB = hasB ? (valB as number) : -1;
-            comparison = numA - numB;
-            if (comparison === 0) {
-              comparison = (a.projectNumber || 0) - (b.projectNumber || 0);
+            const primaryDiff = numA - numB;
+            if (primaryDiff !== 0) {
+              return sortDirection === 'asc' ? primaryDiff : -primaryDiff;
             }
+
+            // Seconde clé de tri systématique : la priorité (ROI)
+            // 1) Critère de VALEUR en ordre décroissant OU critère de COÛT en ordre croissant -> ROI décroissant (priorité la plus forte en premier)
+            // 2) Critère de VALEUR en ordre croissant OU critère de COÛT en ordre décroissant -> ROI croissant (priorité la plus faible en premier)
+            const critObj = criteria.find((c) => c.id === critId);
+            const isCost = critObj?.type === 'COÛT';
+            const secondaryRoiDirection: SortDirection = isCost
+              ? sortDirection === 'asc'
+                ? 'desc'
+                : 'asc'
+              : sortDirection === 'desc'
+                ? 'desc'
+                : 'asc';
+            return compareByPriorityAndRoi(a, b, secondaryRoiDirection);
           } else if (sortColumn.startsWith('cp_')) {
             const cpId = sortColumn.replace('cp_', '');
             const cp = customParams.find((c) => c.id === cpId);

@@ -153,12 +153,67 @@ export function downloadFile(content: string, filename: string, mimeType = 'text
   URL.revokeObjectURL(url);
 }
 
+function formatYearMonth(date: Date): string {
+  const y = date.getFullYear();
+  const m = date.getMonth() + 1;
+  return `${y}-${String(m).padStart(2, '0')}`;
+}
+
+/**
+ * Calcule les fenêtres de périodes capacitaires à partir d'une date de référence :
+ * - currentMonthKey : mois en cours (M0)
+ * - nextMonthKey : mois prochain (M+1)
+ * - minAllowedMonthKey : borne minimale autorisée à l'import (M-12 = ce mois-ci - 12 mois)
+ * - historyMonths : les 12 derniers mois (M-12 à M-1)
+ * - futureMonths : mois en cours + 12 prochains mois (M0 à M+12)
+ */
+export function getCapacityPeriodWindows(baseDate: Date = new Date()): {
+  currentMonthKey: string;
+  nextMonthKey: string;
+  minAllowedMonthKey: string;
+  historyMonths: string[];
+  futureMonths: string[];
+} {
+  const year = baseDate.getFullYear();
+  const month = baseDate.getMonth();
+
+  const currentMonthKey = formatYearMonth(new Date(year, month, 1));
+  const nextMonthKey = formatYearMonth(new Date(year, month + 1, 1));
+  const minAllowedMonthKey = formatYearMonth(new Date(year, month - 12, 1));
+
+  const historyMonths: string[] = [];
+  for (let i = -12; i <= -1; i++) {
+    historyMonths.push(formatYearMonth(new Date(year, month + i, 1)));
+  }
+
+  const futureMonths: string[] = [];
+  for (let i = 0; i <= 12; i++) {
+    futureMonths.push(formatYearMonth(new Date(year, month + i, 1)));
+  }
+
+  return {
+    currentMonthKey,
+    nextMonthKey,
+    minAllowedMonthKey,
+    historyMonths,
+    futureMonths,
+  };
+}
+
 /**
  * Exporte tous les projets au format CSV avec séparateur '|'
- * et clés visibles humaines (noms de critères, lignes, états, compétences, etc.).
+ * et clés visibles humaines (noms de critères, lignes, états, compétences, etc.),
+ * incluant les demandes mensuelles des 12 derniers mois (historique),
+ * le plan de staffing des 12 prochains mois et le Reste à Terminaison (RAT).
  */
-export function exportProjectsToCsv(projects: Project[], refs: ReferenceData): string {
+export function exportProjectsToCsv(
+  projects: Project[],
+  refs: ReferenceData,
+  baseDate: Date = new Date()
+): string {
   const { projectStates, budgetLines, criteria, customParams, skills } = refs;
+  const { currentMonthKey, nextMonthKey, historyMonths, futureMonths } =
+    getCapacityPeriodWindows(baseDate);
 
   // 1. Définition des en-têtes
   const headers: string[] = [
@@ -187,9 +242,29 @@ export function exportProjectsToCsv(projects: Project[], refs: ReferenceData): s
     headers.push(`Paramètre: ${cp.name}`);
   }
 
-  // Besoins en compétences clés
+  // Besoins en compétences clés (mois à venir - compatibilité directe)
   for (const sk of skills) {
     headers.push(`Compétence: ${sk.name}`);
+  }
+
+  // Métadonnées de validation capacitaire & Reste à Terminaison (RAT)
+  headers.push('Mois staffing validés', 'RAT validé', 'Mois validation RAT');
+  for (const sk of skills) {
+    headers.push(`RAT: ${sk.name}`);
+  }
+
+  // Historique des demandes mensuelles sur les 12 derniers mois (M-12 à M-1)
+  for (const mKey of historyMonths) {
+    for (const sk of skills) {
+      headers.push(`Historique ${mKey}: ${sk.name}`);
+    }
+  }
+
+  // Plan de staffing prévisionnel (mois en cours M0 + 12 prochains mois M+1 à M+12)
+  for (const mKey of futureMonths) {
+    for (const sk of skills) {
+      headers.push(`Staffing ${mKey}: ${sk.name}`);
+    }
   }
 
   // 2. Génération des lignes de données
@@ -272,13 +347,72 @@ export function exportProjectsToCsv(projects: Project[], refs: ReferenceData): s
       }
     }
 
-    // Compétences clés (jours demandés)
+    // Compétences clés (jours demandés pour le mois à venir)
     for (const sk of skills) {
-      const days = p.capacityDaysPerSkill?.[sk.id];
+      const days = p.capacityDaysPerSkill?.[sk.id] ?? p.staffingPlan?.[nextMonthKey]?.[sk.id];
       if (days !== undefined && days !== null) {
         row.push(String(days));
       } else {
         row.push('');
+      }
+    }
+
+    // Mois staffing validés (hors clé 'rat')
+    const validatedMonthKeys = Object.entries(p.staffingPlanValidatedMonths || {})
+      .filter(([key, val]) => key !== 'rat' && val === true)
+      .map(([key]) => normalizePeriodKey(key) || key)
+      .filter(Boolean)
+      .sort();
+    row.push(validatedMonthKeys.join(', '));
+
+    // RAT validé & mois de validation RAT
+    const isRatVal = Boolean(p.staffingPlanValidatedMonths?.['rat'] ?? p.isRatValidated);
+    row.push(isRatVal ? 'Oui' : 'Non');
+    row.push(p.ratValidatedMonth || '');
+
+    // Reste à Terminaison (RAT) par compétence
+    for (const sk of skills) {
+      const ratDays = p.remainingToComplete?.[sk.id];
+      if (ratDays !== undefined && ratDays !== null) {
+        row.push(String(ratDays));
+      } else {
+        row.push('');
+      }
+    }
+
+    // Historique des 12 derniers mois (M-12 à M-1)
+    for (const mKey of historyMonths) {
+      const monthHist = p.capacityHistory?.[mKey];
+      for (const sk of skills) {
+        const val = monthHist?.[sk.id];
+        if (val !== undefined && val !== null) {
+          row.push(String(val));
+        } else {
+          row.push('');
+        }
+      }
+    }
+
+    // Plan de staffing prévisionnel (M0 + 12 prochains mois)
+    for (const mKey of futureMonths) {
+      const monthPlan = p.staffingPlan?.[mKey];
+      for (const sk of skills) {
+        let val = monthPlan?.[sk.id];
+        if (
+          (val === undefined || val === null) &&
+          mKey === nextMonthKey &&
+          (!p.capacityUpdatedMonth || p.capacityUpdatedMonth === nextMonthKey)
+        ) {
+          val = p.capacityDaysPerSkill?.[sk.id];
+        }
+        if ((val === undefined || val === null) && mKey === currentMonthKey) {
+          val = p.capacityHistory?.[mKey]?.[sk.id];
+        }
+        if (val !== undefined && val !== null) {
+          row.push(String(val));
+        } else {
+          row.push('');
+        }
       }
     }
 
@@ -293,8 +427,13 @@ export function exportProjectsToCsv(projects: Project[], refs: ReferenceData): s
 /**
  * Génère un modèle CSV vierge avec les colonnes et un projet d'exemple commenté.
  */
-export function generateProjectsCsvTemplate(refs: ReferenceData): string {
+export function generateProjectsCsvTemplate(
+  refs: ReferenceData,
+  baseDate: Date = new Date()
+): string {
   const { projectStates, budgetLines, criteria, customParams, skills } = refs;
+  const { currentMonthKey, nextMonthKey, historyMonths, futureMonths } =
+    getCapacityPeriodWindows(baseDate);
 
   const headers: string[] = [
     'Numéro',
@@ -322,6 +461,21 @@ export function generateProjectsCsvTemplate(refs: ReferenceData): string {
     headers.push(`Compétence: ${sk.name}`);
   }
 
+  headers.push('Mois staffing validés', 'RAT validé', 'Mois validation RAT');
+  for (const sk of skills) {
+    headers.push(`RAT: ${sk.name}`);
+  }
+  for (const mKey of historyMonths) {
+    for (const sk of skills) {
+      headers.push(`Historique ${mKey}: ${sk.name}`);
+    }
+  }
+  for (const mKey of futureMonths) {
+    for (const sk of skills) {
+      headers.push(`Staffing ${mKey}: ${sk.name}`);
+    }
+  }
+
   // Ligne d'exemple
   const sampleRow: string[] = [
     '1',
@@ -335,7 +489,7 @@ export function generateProjectsCsvTemplate(refs: ReferenceData): string {
     budgetLines[0]?.name || 'Build IT',
     '75',
     '2',
-    '2026-11',
+    nextMonthKey,
     'Oui',
   ];
 
@@ -349,8 +503,23 @@ export function generateProjectsCsvTemplate(refs: ReferenceData): string {
     else if (cp.type === 'liste de valeurs' && cp.options?.length) sampleRow.push(cp.options[0]);
     else sampleRow.push('Valeur exemple');
   }
-  for (const sk of skills) {
+  for (const _sk of skills) {
     sampleRow.push('10');
+  }
+
+  sampleRow.push(`${currentMonthKey}, ${nextMonthKey}`, 'Oui', currentMonthKey);
+  for (const _sk of skills) {
+    sampleRow.push('45');
+  }
+  for (const _mKey of historyMonths) {
+    for (const _sk of skills) {
+      sampleRow.push('5');
+    }
+  }
+  for (const _mKey of futureMonths) {
+    for (const _sk of skills) {
+      sampleRow.push('10');
+    }
   }
 
   const csvBody = [headers, sampleRow].map((r) => r.map(escapeCsvPipeCell).join('|')).join('\r\n');
@@ -366,9 +535,11 @@ export async function importProjectsFromCsv(
   mode: ImportMode,
   refs: ReferenceData,
   currentProjects: Project[],
-  currentUserEmail: string
+  currentUserEmail: string,
+  baseDate: Date = new Date()
 ): Promise<ImportResult> {
   const { projectStates, budgetLines, criteria, customParams, skills, users, bonusConfig } = refs;
+  const { currentMonthKey, nextMonthKey, minAllowedMonthKey } = getCapacityPeriodWindows(baseDate);
 
   const parsedMatrix = parseCsvPipe(csvText);
   if (parsedMatrix.length < 2) {
@@ -381,10 +552,14 @@ export async function importProjectsFromCsv(
   // Normalisation des en-têtes
   const cleanHeaders = rawHeaders.map((h) => h.trim().toLowerCase());
 
-  // Index des colonnes standard
-  const findHeaderIdx = (patterns: string[]): number => {
+  // Index des colonnes standard (correspondance exacte prioritaire pour éviter toute collision avec les colonnes mensuelles)
+  const findHeaderIdx = (patterns: string[], exactOnlyPatterns: string[] = []): number => {
+    const exactIdx = cleanHeaders.findIndex(
+      (h) => patterns.includes(h) || exactOnlyPatterns.includes(h)
+    );
+    if (exactIdx !== -1) return exactIdx;
     return cleanHeaders.findIndex((h) =>
-      patterns.some((p) => h === p || h.startsWith(p + ' ') || h.startsWith(p + ':'))
+      patterns.some((p) => h.startsWith(p + ' ') || h.startsWith(p + ':'))
     );
   };
 
@@ -399,8 +574,16 @@ export async function importProjectsFromCsv(
   const colIdxBudgetLine = findHeaderIdx(['ligne budgétaire', 'ligne budgetaire', 'enveloppe', 'budget line']);
   const colIdxBudget = findHeaderIdx(['budget estimé', 'budget estime', 'budget']);
   const colIdxBonus = findHeaderIdx(['points bonus', 'bonus']);
-  const colIdxMonth = findHeaderIdx(['mois capacitaire', 'mois de mise à jour', 'mois']);
-  const colIdxStaffed = findHeaderIdx(['staffé', 'staffe', 'staffé (capacitaire)', 'staffing']);
+  const colIdxMonth = findHeaderIdx(['mois capacitaire', 'mois de mise à jour'], ['mois']);
+  const colIdxStaffed = findHeaderIdx(['staffé (capacitaire)', 'staffé', 'staffe'], ['staffing']);
+  const colIdxValidatedMonths = findHeaderIdx([
+    'mois staffing validés',
+    'mois staffing valides',
+    'mois validés',
+    'mois valides',
+  ]);
+  const colIdxRatValidated = findHeaderIdx(['rat validé', 'rat valide']);
+  const colIdxRatValidatedMonth = findHeaderIdx(['mois validation rat']);
 
   if (colIdxName === -1) {
     throw new Error('La colonne « Nom » du projet est obligatoire et introuvable dans les en-têtes du fichier CSV.');
@@ -438,7 +621,7 @@ export async function importProjectsFromCsv(
     }
   }
 
-  // Rapprochement des colonnes Compétences clés
+  // Rapprochement des colonnes Compétences clés (mois à venir)
   const skillsColMap: { skill: KeySkill; colIdx: number }[] = [];
   for (const sk of skills) {
     const skNameLower = sk.name.trim().toLowerCase();
@@ -454,6 +637,69 @@ export async function importProjectsFromCsv(
       skillsColMap.push({ skill: sk, colIdx: idx });
     }
   }
+
+  // Index des compétences par nom normalisé
+  const skillsByNameLower = new Map<string, KeySkill>();
+  for (const sk of skills) {
+    skillsByNameLower.set(sk.name.trim().toLowerCase(), sk);
+  }
+
+  // Rapprochement des colonnes RAT, Historique (12 derniers mois) et Plan de staffing (12 prochains mois)
+  const ratColMap: { skill: KeySkill; colIdx: number }[] = [];
+  const historyColMap: { monthKey: string; skill: KeySkill; colIdx: number }[] = [];
+  const staffingColMap: { monthKey: string; skill: KeySkill; colIdx: number }[] = [];
+  const ignoredObsoleteMonthsInHeaders = new Set<string>();
+
+  for (let colIdx = 0; colIdx < rawHeaders.length; colIdx++) {
+    const header = rawHeaders[colIdx].trim();
+    if (!header) continue;
+
+    // 1. Colonnes RAT: <Compétence>
+    const ratMatch = header.match(/^(?:rat|reste\s+[àa]\s+terminaison)\s*:\s*(.+)$/i);
+    if (ratMatch) {
+      const sk = skillsByNameLower.get(ratMatch[1].trim().toLowerCase());
+      if (sk) {
+        ratColMap.push({ skill: sk, colIdx });
+      }
+      continue;
+    }
+
+    // 2. Colonnes Historique <YYYY-MM>: <Compétence>
+    const histMatch = header.match(/^historique\s+([^:]+?)\s*:\s*(.+)$/i);
+    if (histMatch) {
+      const normalizedMonth = normalizePeriodKey(histMatch[1].trim());
+      const sk = skillsByNameLower.get(histMatch[2].trim().toLowerCase());
+      if (normalizedMonth && sk) {
+        if (normalizedMonth < minAllowedMonthKey) {
+          ignoredObsoleteMonthsInHeaders.add(normalizedMonth);
+        } else {
+          historyColMap.push({ monthKey: normalizedMonth, skill: sk, colIdx });
+        }
+      }
+      continue;
+    }
+
+    // 3. Colonnes Staffing <YYYY-MM>: <Compétence>
+    const staffMatch = header.match(/^staffing\s+([^:]+?)\s*:\s*(.+)$/i);
+    if (staffMatch) {
+      const normalizedMonth = normalizePeriodKey(staffMatch[1].trim());
+      const sk = skillsByNameLower.get(staffMatch[2].trim().toLowerCase());
+      if (normalizedMonth && sk) {
+        if (normalizedMonth < minAllowedMonthKey) {
+          ignoredObsoleteMonthsInHeaders.add(normalizedMonth);
+        } else {
+          staffingColMap.push({ monthKey: normalizedMonth, skill: sk, colIdx });
+        }
+      }
+      continue;
+    }
+  }
+
+  const hasHistoryColumns =
+    historyColMap.length > 0 || ignoredObsoleteMonthsInHeaders.size > 0;
+  const hasStaffingColumns =
+    staffingColMap.length > 0 || ignoredObsoleteMonthsInHeaders.size > 0;
+  const hasRatColumns = ratColMap.length > 0;
 
   const logRows: ImportLogRow[] = [];
   let successCount = 0;
@@ -683,13 +929,20 @@ export async function importProjectsFromCsv(
       }
     }
 
-    // 12. Mois capacitaire
+    // 12. Mois capacitaire (en ignorant tout mois antérieur à ce mois-ci - 12 mois)
     let capacityUpdatedMonth: string | null = null;
     if (colIdxMonth !== -1 && row[colIdxMonth]) {
       const rawM = row[colIdxMonth].trim();
       const normalized = normalizePeriodKey(rawM);
       if (normalized) {
-        capacityUpdatedMonth = normalized;
+        if (normalized < minAllowedMonthKey) {
+          rowHasWarnings = true;
+          rowDetails.push(
+            `Avertissement : Le mois capacitaire « ${normalized} » est antérieur à ${minAllowedMonthKey} (ce mois-ci - 12 mois) et a été ignoré.`
+          );
+        } else {
+          capacityUpdatedMonth = normalized;
+        }
       }
     }
 
@@ -778,7 +1031,7 @@ export async function importProjectsFromCsv(
       rowDetails.push(`Paramètres personnalisés valorisés : ${paramsValuedCount}/${customParams.length}`);
     }
 
-    // 16. Compétences clés
+    // 16. Compétences clés (mois à venir)
     const capacityDaysPerSkill: Record<string, number | null> = {};
     let skillsValuedCount = 0;
     for (const { skill, colIdx } of skillsColMap) {
@@ -786,12 +1039,201 @@ export async function importProjectsFromCsv(
       if (!rawVal) continue;
       const parsedDays = parseFloat(rawVal.replace(',', '.'));
       if (!isNaN(parsedDays) && parsedDays >= 0) {
-        capacityDaysPerSkill[skill.id] = parsedDays;
+        capacityDaysPerSkill[skill.id] = Math.round(parsedDays * 10) / 10;
         skillsValuedCount++;
+      } else {
+        rowHasWarnings = true;
+        rowDetails.push(
+          `Avertissement : Valeur invalide « ${rawVal} » pour la compétence « ${skill.name} » (ignorée).`
+        );
       }
     }
     if (skills.length > 0) {
       rowDetails.push(`Besoins en compétences clés renseignés : ${skillsValuedCount}`);
+    }
+
+    // 16b. Mois staffing validés, RAT validé et Mois validation RAT
+    const ignoredRowObsoleteMonths = new Set<string>(ignoredObsoleteMonthsInHeaders);
+    const importedValidatedMonths: Record<string, boolean> = {};
+    if (colIdxValidatedMonths !== -1 && row[colIdxValidatedMonths]) {
+      const tokens = row[colIdxValidatedMonths]
+        .split(/[,;]/)
+        .map((s) => s.trim())
+        .filter(Boolean);
+      for (const tok of tokens) {
+        const normM = normalizePeriodKey(tok);
+        if (normM) {
+          if (normM < minAllowedMonthKey) {
+            ignoredRowObsoleteMonths.add(normM);
+          } else {
+            importedValidatedMonths[normM] = true;
+          }
+        }
+      }
+    }
+
+    let importedIsRatValidated: boolean | undefined = undefined;
+    if (colIdxRatValidated !== -1 && row[colIdxRatValidated]) {
+      const rawRatVal = row[colIdxRatValidated].trim().toLowerCase();
+      if (['oui', 'vrai', 'true', '1', 'yes'].includes(rawRatVal)) {
+        importedIsRatValidated = true;
+        importedValidatedMonths['rat'] = true;
+      } else if (['non', 'faux', 'false', '0', 'no'].includes(rawRatVal)) {
+        importedIsRatValidated = false;
+        importedValidatedMonths['rat'] = false;
+      }
+    }
+
+    let importedRatValidatedMonth: string | null | undefined = undefined;
+    if (colIdxRatValidatedMonth !== -1) {
+      const rawRatMonth = row[colIdxRatValidatedMonth]?.trim() || '';
+      if (rawRatMonth) {
+        const normRatMonth = normalizePeriodKey(rawRatMonth);
+        if (normRatMonth) {
+          if (normRatMonth < minAllowedMonthKey) {
+            ignoredRowObsoleteMonths.add(normRatMonth);
+            importedRatValidatedMonth = null;
+          } else {
+            importedRatValidatedMonth = normRatMonth;
+          }
+        }
+      } else {
+        importedRatValidatedMonth = null;
+      }
+    }
+
+    // 16c. Reste à Terminaison (RAT) par compétence
+    const importedRat: Record<string, number | null> = {};
+    let ratSkillsValuedCount = 0;
+    for (const { skill, colIdx } of ratColMap) {
+      const rawVal = row[colIdx]?.trim();
+      if (!rawVal) continue;
+      const parsedDays = parseFloat(rawVal.replace(',', '.'));
+      if (!isNaN(parsedDays) && parsedDays >= 0) {
+        importedRat[skill.id] = Math.round(parsedDays * 10) / 10;
+        ratSkillsValuedCount++;
+      } else {
+        rowHasWarnings = true;
+        rowDetails.push(
+          `Avertissement : Valeur RAT invalide « ${rawVal} » pour la compétence « ${skill.name} » (ignorée).`
+        );
+      }
+    }
+    if (hasRatColumns) {
+      rowDetails.push(`Reste à Terminaison (RAT) renseigné : ${ratSkillsValuedCount} compétence(s)`);
+    }
+
+    // 16d. Historique capacitaire des 12 derniers mois (uniquement >= minAllowedMonthKey)
+    const rawHistoryByMonth: Record<string, Record<string, number>> = {};
+    const historyHasNumericValueByMonth: Record<string, boolean> = {};
+    for (const { monthKey, skill, colIdx } of historyColMap) {
+      const rawVal = row[colIdx]?.trim();
+      if (!rawVal) continue;
+      const parsedDays = parseFloat(rawVal.replace(',', '.'));
+      if (!isNaN(parsedDays) && parsedDays >= 0) {
+        if (!rawHistoryByMonth[monthKey]) {
+          rawHistoryByMonth[monthKey] = {};
+        }
+        rawHistoryByMonth[monthKey][skill.id] = Math.round(parsedDays * 10) / 10;
+        historyHasNumericValueByMonth[monthKey] = true;
+      } else {
+        rowHasWarnings = true;
+        rowDetails.push(
+          `Avertissement : Valeur historique invalide « ${rawVal} » pour ${monthKey} / « ${skill.name} » (ignorée).`
+        );
+      }
+    }
+
+    const importedHistory: Record<string, Record<string, number>> = {};
+    for (const [mKey, skillMap] of Object.entries(rawHistoryByMonth)) {
+      if (!historyHasNumericValueByMonth[mKey] || mKey < minAllowedMonthKey) continue;
+      const completedMonthMap: Record<string, number> = {};
+      for (const sk of skills) {
+        completedMonthMap[sk.id] = skillMap[sk.id] !== undefined ? skillMap[sk.id] : 0;
+      }
+      importedHistory[mKey] = completedMonthMap;
+    }
+
+    // 16e. Plan de staffing des 12 prochains mois (uniquement >= minAllowedMonthKey)
+    const importedStaffingPlan: Record<string, Record<string, number | null>> = {};
+    for (const { monthKey, skill, colIdx } of staffingColMap) {
+      if (monthKey < minAllowedMonthKey) continue;
+      const rawVal = row[colIdx]?.trim();
+      if (!rawVal) continue;
+      const parsedDays = parseFloat(rawVal.replace(',', '.'));
+      if (!isNaN(parsedDays) && parsedDays >= 0) {
+        if (!importedStaffingPlan[monthKey]) {
+          importedStaffingPlan[monthKey] = {};
+        }
+        importedStaffingPlan[monthKey][skill.id] = Math.round(parsedDays * 10) / 10;
+      } else {
+        rowHasWarnings = true;
+        rowDetails.push(
+          `Avertissement : Valeur de staffing invalide « ${rawVal} » pour ${monthKey} / « ${skill.name} » (ignorée).`
+        );
+      }
+    }
+
+    // Synchronisation entre Compétence (mois à venir) et Staffing Plan
+    if (importedStaffingPlan[nextMonthKey]) {
+      for (const [skillId, daysVal] of Object.entries(importedStaffingPlan[nextMonthKey])) {
+        if (
+          daysVal !== null &&
+          daysVal !== undefined &&
+          capacityDaysPerSkill[skillId] === undefined
+        ) {
+          capacityDaysPerSkill[skillId] = daysVal;
+        }
+      }
+      if (!capacityUpdatedMonth) {
+        capacityUpdatedMonth = nextMonthKey;
+      }
+    }
+    const targetSyncMonth = capacityUpdatedMonth || (Object.keys(capacityDaysPerSkill).length > 0 ? nextMonthKey : null);
+    if (targetSyncMonth && targetSyncMonth >= minAllowedMonthKey && Object.keys(capacityDaysPerSkill).length > 0) {
+      if (!importedStaffingPlan[targetSyncMonth]) {
+        importedStaffingPlan[targetSyncMonth] = {};
+      }
+      for (const [skillId, daysVal] of Object.entries(capacityDaysPerSkill)) {
+        if (
+          daysVal !== null &&
+          daysVal !== undefined &&
+          importedStaffingPlan[targetSyncMonth][skillId] === undefined
+        ) {
+          importedStaffingPlan[targetSyncMonth][skillId] = daysVal;
+        }
+      }
+    }
+
+    // Si le fichier a été exporté il y a plus d'un mois, les anciens mois du plan de staffing devenus passés
+    // (tout en restant >= ce mois-ci - 12 mois) doivent également alimenter l'historique s'ils n'y figurent pas déjà
+    for (const [mKey, skillMap] of Object.entries(importedStaffingPlan)) {
+      if (mKey >= minAllowedMonthKey && mKey < currentMonthKey && !importedHistory[mKey]) {
+        const hasPositiveDemand = Object.values(skillMap).some((v) => typeof v === 'number' && v > 0);
+        if (isStaffed !== false && (hasPositiveDemand || importedValidatedMonths[mKey])) {
+          const backfillMonth: Record<string, number> = {};
+          for (const sk of skills) {
+            const v = skillMap[sk.id];
+            backfillMonth[sk.id] = typeof v === 'number' && !isNaN(v) && v >= 0 ? v : 0;
+          }
+          importedHistory[mKey] = backfillMonth;
+        }
+      }
+    }
+
+    const importedHistoryCount = Object.keys(importedHistory).length;
+    const importedStaffingCount = Object.keys(importedStaffingPlan).length;
+    if (hasHistoryColumns || importedHistoryCount > 0) {
+      rowDetails.push(`Historique capacitaire importé : ${importedHistoryCount} mois (seuil >= ${minAllowedMonthKey})`);
+    }
+    if (hasStaffingColumns || importedStaffingCount > 0) {
+      rowDetails.push(`Plan de staffing importé : ${importedStaffingCount} mois (seuil >= ${minAllowedMonthKey})`);
+    }
+    if (ignoredRowObsoleteMonths.size > 0) {
+      const sortedIgnored = Array.from(ignoredRowObsoleteMonths).sort();
+      rowDetails.push(
+        `Mois antérieurs à ${minAllowedMonthKey} (ce mois-ci - 12 mois) ignorés : ${sortedIgnored.join(', ')}`
+      );
     }
 
     // 17. Calcul automatique du ROI
@@ -803,7 +1245,51 @@ export async function importProjectsFromCsv(
       bonusConfig?.isBonusActive ?? true
     );
 
-    // 18. Construction du payload de projet
+    // 18. Recherche d'un projet existant si mise à jour autorisée
+    let existingProj: Project | undefined = undefined;
+    if (mode === 'update_or_create' && parsedProjectNumber) {
+      existingProj = currentProjects.find((p) => p.projectNumber === parsedProjectNumber);
+    }
+
+    // Fusion prudente des structures capacitaires lors d'une mise à jour (ne pas écraser si CSV ancien format)
+    const finalCapacityHistory =
+      hasHistoryColumns || Object.keys(importedHistory).length > 0
+        ? {
+            ...(existingProj?.capacityHistory || {}),
+            ...importedHistory,
+          }
+        : existingProj
+        ? undefined
+        : {};
+
+    const finalStaffingPlan =
+      hasStaffingColumns || Object.keys(importedStaffingPlan).length > 0
+        ? {
+            ...(existingProj?.staffingPlan || {}),
+            ...importedStaffingPlan,
+          }
+        : existingProj
+        ? undefined
+        : {};
+
+    const finalRemainingToComplete = hasRatColumns
+      ? importedRat
+      : existingProj
+      ? undefined
+      : {};
+
+    const hasValidatedMetaColumns =
+      colIdxValidatedMonths !== -1 || colIdxRatValidated !== -1;
+    const finalStaffingPlanValidatedMonths = hasValidatedMetaColumns
+      ? {
+          ...(existingProj?.staffingPlanValidatedMonths || {}),
+          ...importedValidatedMonths,
+        }
+      : existingProj
+      ? undefined
+      : {};
+
+    // 19. Construction du payload de projet
     const formData: ProjectFormData = {
       name: projectName,
       stateId,
@@ -821,20 +1307,30 @@ export async function importProjectsFromCsv(
       customParamValues,
       capacityUpdatedMonth,
       capacityDaysPerSkill,
+      ...(finalCapacityHistory !== undefined ? { capacityHistory: finalCapacityHistory } : {}),
+      ...(finalStaffingPlan !== undefined ? { staffingPlan: finalStaffingPlan } : {}),
+      ...(finalRemainingToComplete !== undefined
+        ? { remainingToComplete: finalRemainingToComplete }
+        : {}),
+      ...(finalStaffingPlanValidatedMonths !== undefined
+        ? { staffingPlanValidatedMonths: finalStaffingPlanValidatedMonths }
+        : {}),
+      ...(importedIsRatValidated !== undefined
+        ? { isRatValidated: importedIsRatValidated }
+        : existingProj
+        ? {}
+        : { isRatValidated: false }),
+      ...(importedRatValidatedMonth !== undefined
+        ? { ratValidatedMonth: importedRatValidatedMonth }
+        : existingProj
+        ? {}
+        : { ratValidatedMonth: null }),
       isStaffed,
     };
 
-    // 19. Persistance Firestore : mise à jour ou création
+    // 20. Persistance Firestore : mise à jour ou création
     try {
-      let isUpdate = false;
-      let existingProj: Project | undefined = undefined;
-
-      if (mode === 'update_or_create' && parsedProjectNumber) {
-        existingProj = currentProjects.find((p) => p.projectNumber === parsedProjectNumber);
-      }
-
       if (existingProj) {
-        isUpdate = true;
         await updateProject(existingProj.id, formData);
         successCount++;
         if (rowHasWarnings) warningCount++;
