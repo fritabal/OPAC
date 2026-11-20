@@ -302,6 +302,8 @@ export const fr = {
       confidential_locked: 'Projet confidentiel — Visualisation et modification interdites',
       show_criteria_details: 'Afficher le détail de tous les critères',
       hide_criteria_details: 'Masquer le détail des critères de priorisation',
+      bonus_quotas_title: 'Quotas de bonus',
+      bonus_quotas_content: '• {{maxPerProject}} points max par projet\n• sur {{maxProjects}} projets au plus\n• pour un total de {{maxTotal}} points au total.',
     },
     import_export: {
       menu: 'Actions sur le portefeuille',
@@ -883,7 +885,7 @@ export const fr = {
       col_actions: 'ACTIONS',
       types: {
         text_short: 'Texte court (50 car.)',
-        text_long: 'Texte long (1000 car.)',
+        text_long: 'Texte long enrichi',
         date: 'Date',
         integer: 'Nombre entier',
         decimal: 'Décimal (2 déc.)',
@@ -1201,6 +1203,8 @@ export const fr = {
       name_label: 'Nom du paramètre (clé unique)',
       name_placeholder: 'Ex : Date de mise en production, Sponsor...',
       type_label: 'Type de champ',
+      max_length_label: 'Nombre max de caractères',
+      max_length_placeholder: 'Ex : 1000',
       description_label: 'Description (facultative)',
       description_placeholder: 'Saisissez une description...',
       required_title: 'Paramètre obligatoire',
@@ -1223,6 +1227,7 @@ export const fr = {
       error_name_required: 'Le nom du paramètre est obligatoire.',
       error_name_duplicate: 'Un paramètre nommé « {{name}} » existe déjà. Le nom doit être unique.',
       error_options_empty: 'Veuillez ajouter au moins une option pour ce paramètre de type liste.',
+      error_max_length_invalid: 'Le nombre maximum de caractères doit être un entier positif (entre 1 et 100 000).',
       error_save: "Erreur lors de l'enregistrement du paramètre personnalisé.",
     },
     project: {
@@ -1319,6 +1324,8 @@ export const fr = {
       error_pm_required: 'Veuillez désigner un chef de projet.',
       error_budget_line_required: 'Veuillez sélectionner une ligne budgétaire.',
       error_custom_param_required: 'Le paramètre « {{name}} » est obligatoire.',
+      error_custom_param_max_length: 'Le paramètre « {{name}} » dépasse la limite maximale de {{max}} caractères.',
+      long_text_over_limit_footer: 'Un champ texte long dépasse le nombre maximal de caractères autorisé.',
       error_save: "Erreur lors de l'enregistrement du projet.",
     },
   },

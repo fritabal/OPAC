@@ -776,7 +776,7 @@
   "settings.custom_params.col_desc": "DESCRIERE",
   "settings.custom_params.col_actions": "ACȚIUNI",
   "settings.custom_params.types.text_short": "Text scurt (50 car.)",
-  "settings.custom_params.types.text_long": "Text lung (1000 car.)",
+  "settings.custom_params.types.text_long": "Text lung formatat",
   "settings.custom_params.types.date": "Dată",
   "settings.custom_params.types.integer": "Număr întreg",
   "settings.custom_params.types.decimal": "Zecimal (2 zec.)",
@@ -1167,5 +1167,12 @@
   "modals.project.error_pm_required": "Desemnați un manager de proiect.",
   "modals.project.error_budget_line_required": "Selectați o linie bugetară.",
   "modals.project.error_custom_param_required": "Parametrul «{{name}}» este obligatoriu.",
-  "modals.project.error_save": "Eroare la salvarea proiectului."
+  "modals.project.error_save": "Eroare la salvarea proiectului.",
+  "modals.custom_param.max_length_label": "Număr max. de caractere",
+  "modals.custom_param.max_length_placeholder": "Ex.: 1000",
+  "modals.custom_param.error_max_length_invalid": "Numărul maxim de caractere trebuie să fie un întreg pozitiv (între 1 și 100.000).",
+  "modals.project.error_custom_param_max_length": "Parametrul « {{name}} » depășește limita maximă de {{max}} caractere.",
+  "modals.project.long_text_over_limit_footer": "Un câmp de text lung depășește numărul maxim de caractere permis.",
+  "projects.tooltips.bonus_quotas_title": "Cote de bonus",
+  "projects.tooltips.bonus_quotas_content": "• Max. {{maxPerProject}} puncte per proiect\n• pe cel mult {{maxProjects}} proiecte\n• pentru un total de {{maxTotal}} puncte."
 }

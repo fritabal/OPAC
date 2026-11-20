@@ -22,8 +22,7 @@ import {
 } from 'lucide-react';
 import {
   CustomProjectParam,
-  CustomParamType,
-  CUSTOM_PARAM_TYPE_LABELS,
+  getCustomParamMaxLength,
 } from '../types/customParam';
 import {
   deleteCustomParam,
@@ -116,13 +115,17 @@ export const CustomParamsTable: React.FC<CustomParamsTableProps> = ({
             <span>{t('settings.custom_params.types.text_short')}</span>
           </span>
         );
-      case 'texte long':
+      case 'texte long': {
+        const maxLen = getCustomParamMaxLength(param);
         return (
-          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-semibold bg-sky-50 text-sky-900 border border-sky-200">
-            <FileText className="w-3 h-3 text-sky-600" />
-            <span>{t('settings.custom_params.types.text_long')}</span>
-          </span>
+          <Tooltip content={`${maxLen} ${t('modals.project.editor_chars', 'car.')} max`}>
+            <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-semibold bg-sky-50 text-sky-900 border border-sky-200 cursor-default">
+              <FileText className="w-3 h-3 text-sky-600" />
+              <span>{t('settings.custom_params.types.text_long')}</span>
+            </span>
+          </Tooltip>
         );
+      }
       case 'date':
         return (
           <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-semibold bg-sky-50 text-sky-900 border border-sky-200">

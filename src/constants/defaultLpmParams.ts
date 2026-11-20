@@ -308,6 +308,7 @@ export const DEFAULT_CUSTOM_PARAMS_SEED: CustomProjectParamFormData[] = [
     name: 'Notes & Contexte stratégique',
     description: 'Contexte métier détaillé et hypothèses de faisabilité',
     type: 'texte long',
+    maxLength: 1000,
     order: 1,
     isRequired: false,
     allowMultiple: false,

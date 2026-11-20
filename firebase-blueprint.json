@@ -342,12 +342,32 @@
         "description": {
           "type": "string",
           "description": "Description du paramètre",
-          "maxLength": 100
+          "maxLength": 500
         },
         "type": {
           "type": "string",
           "description": "Type de donnée du paramètre",
-          "enum": ["texte court", "texte long", "date", "nombre entier", "nombre avec 2 décimales"]
+          "enum": ["texte court", "texte long", "date", "nombre entier", "nombre avec 2 décimales", "case à cocher", "liste de valeurs"]
+        },
+        "maxLength": {
+          "type": "number",
+          "description": "Nombre maximal de caractères autorisé pour les paramètres de type texte long (par défaut 1000)"
+        },
+        "options": {
+          "type": "array",
+          "description": "Liste des valeurs prédéfinies pour le type liste de valeurs"
+        },
+        "allowMultiple": {
+          "type": "boolean",
+          "description": "Autoriser la sélection multiple pour le type liste de valeurs"
+        },
+        "isRequired": {
+          "type": "boolean",
+          "description": "Indicateur si le paramètre est obligatoire"
+        },
+        "showInTable": {
+          "type": "boolean",
+          "description": "Indicateur si le paramètre est affiché dans le tableau des projets"
         },
         "order": {
           "type": "number",

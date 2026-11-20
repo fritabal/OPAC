@@ -776,7 +776,7 @@
   "settings.custom_params.col_desc": "POPIS",
   "settings.custom_params.col_actions": "AKCE",
   "settings.custom_params.types.text_short": "Krátký text (50 znaků)",
-  "settings.custom_params.types.text_long": "Dlouhý text (1000 znaků)",
+  "settings.custom_params.types.text_long": "Formátovaný dlouhý text",
   "settings.custom_params.types.date": "Datum",
   "settings.custom_params.types.integer": "Celé číslo",
   "settings.custom_params.types.decimal": "Desetinné číslo (2 des.)",
@@ -1167,5 +1167,12 @@
   "modals.project.error_pm_required": "Určete prosím projektového manažera.",
   "modals.project.error_budget_line_required": "Vyberte prosím rozpočtový řádek.",
   "modals.project.error_custom_param_required": "Parametr « {{name}} » je povinný.",
-  "modals.project.error_save": "Chyba při ukládání projektu."
+  "modals.project.error_save": "Chyba při ukládání projektu.",
+  "modals.custom_param.max_length_label": "Max. počet znaků",
+  "modals.custom_param.max_length_placeholder": "Např.: 1000",
+  "modals.custom_param.error_max_length_invalid": "Maximální počet znaků musí být kladné celé číslo (od 1 do 100 000).",
+  "modals.project.error_custom_param_max_length": "Parametr « {{name}} » překračuje maximální limit {{max}} znaků.",
+  "modals.project.long_text_over_limit_footer": "Pole dlouhého textu překračuje maximální povolený počet znaků.",
+  "projects.tooltips.bonus_quotas_title": "Kvóty bonusů",
+  "projects.tooltips.bonus_quotas_content": "• Max. {{maxPerProject}} bodů na projekt\n• nejvýše na {{maxProjects}} projektů\n• celkem nejvýše {{maxTotal}} bodů."
 }

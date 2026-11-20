@@ -776,7 +776,7 @@
   "settings.custom_params.col_desc": "DESCRIPCIÓN",
   "settings.custom_params.col_actions": "ACCIONES",
   "settings.custom_params.types.text_short": "Texto corto (50 car.)",
-  "settings.custom_params.types.text_long": "Texto largo (1000 car.)",
+  "settings.custom_params.types.text_long": "Texto largo enriquecido",
   "settings.custom_params.types.date": "Fecha",
   "settings.custom_params.types.integer": "Número entero",
   "settings.custom_params.types.decimal": "Decimal (2 dec.)",
@@ -1167,5 +1167,12 @@
   "modals.project.error_pm_required": "Por favor, designe un jefe de proyecto.",
   "modals.project.error_budget_line_required": "Por favor, seleccione una línea presupuestaria.",
   "modals.project.error_custom_param_required": "El parámetro «{{name}}» es obligatorio.",
-  "modals.project.error_save": "Error al guardar el proyecto."
+  "modals.project.error_save": "Error al guardar el proyecto.",
+  "modals.custom_param.max_length_label": "Número máx. de caracteres",
+  "modals.custom_param.max_length_placeholder": "Ej.: 1000",
+  "modals.custom_param.error_max_length_invalid": "El número máximo de caracteres debe ser un entero positivo (entre 1 y 100 000).",
+  "modals.project.error_custom_param_max_length": "El parámetro « {{name}} » supera el límite máximo de {{max}} caracteres.",
+  "modals.project.long_text_over_limit_footer": "Un campo de texto largo supera el número máximo de caracteres permitido.",
+  "projects.tooltips.bonus_quotas_title": "Cuotas de bonificación",
+  "projects.tooltips.bonus_quotas_content": "• {{maxPerProject}} puntos máx. por proyecto\n• en {{maxProjects}} proyectos como máximo\n• para un total de {{maxTotal}} puntos."
 }

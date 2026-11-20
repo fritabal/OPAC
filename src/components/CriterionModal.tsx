@@ -273,7 +273,7 @@ export const CriterionModal: React.FC<CriterionModalProps> = ({
                   {t('modals.criterion.description_label')}
                 </label>
                 <span className={`text-[11px] font-mono ${description.length > 500 ? 'text-red-600 font-bold' : 'text-slate-400'}`}>
-                  {description.length} / 500 car.
+                  {description.length} / 500 {t('modals.project.editor_chars', 'car.')}
                 </span>
               </div>
               <textarea

@@ -776,7 +776,7 @@
   "settings.custom_params.col_desc": "ОПИС",
   "settings.custom_params.col_actions": "ДІЇ",
   "settings.custom_params.types.text_short": "Короткий текст (50 симв.)",
-  "settings.custom_params.types.text_long": "Довгий текст (1000 симв.)",
+  "settings.custom_params.types.text_long": "Форматований довгий текст",
   "settings.custom_params.types.date": "Дата",
   "settings.custom_params.types.integer": "Ціле число",
   "settings.custom_params.types.decimal": "Десяткове число (2 зн.)",
@@ -1167,5 +1167,12 @@
   "modals.project.error_pm_required": "Призначте керівника проєкту.",
   "modals.project.error_budget_line_required": "Оберіть бюджетну статтю.",
   "modals.project.error_custom_param_required": "Параметр « {{name}} » є обов’язковим.",
-  "modals.project.error_save": "Помилка під час збереження проєкту."
+  "modals.project.error_save": "Помилка під час збереження проєкту.",
+  "modals.custom_param.max_length_label": "Макс. кількість символів",
+  "modals.custom_param.max_length_placeholder": "Напр.: 1000",
+  "modals.custom_param.error_max_length_invalid": "Максимальна кількість символів має бути додатним цілим числом (від 1 до 100 000).",
+  "modals.project.error_custom_param_max_length": "Параметр « {{name}} » перевищує максимальний ліміт у {{max}} символів.",
+  "modals.project.long_text_over_limit_footer": "Поле довгого тексту перевищує максимально допустиму кількість символів.",
+  "projects.tooltips.bonus_quotas_title": "Квоти бонусів",
+  "projects.tooltips.bonus_quotas_content": "• Макс. {{maxPerProject}} балів на проєкт\n• щонайбільше на {{maxProjects}} проєктів\n• загалом не більше {{maxTotal}} балів."
 }

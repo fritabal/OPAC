@@ -26,7 +26,8 @@ import { Project, ProjectFormData } from '../types/project';
 import { ProjectState } from '../types/lifecycle';
 import { BudgetLine } from '../types/budget';
 import { Criterion, CRITERION_POINTS } from '../types/criteria';
-import { CustomProjectParam } from '../types/customParam';
+import { CustomProjectParam, getCustomParamMaxLength } from '../types/customParam';
+import { getRichTextLength, normalizeEditableHtml } from '../utils/richText';
 import { AppUser } from '../types/user';
 import { BonusConfig, DEFAULT_BONUS_CONFIG } from '../types/bonus';
 import { createProject, updateProject } from '../services/projectService';
@@ -67,6 +68,99 @@ const SteeringWheelIcon: React.FC<{ className?: string }> = ({ className = 'w-3.
     <line x1="19.8" y1="16.5" x2="14.2" y2="13.2" />
   </svg>
 );
+
+interface InlineRichTextInputProps {
+  value: string;
+  isReadOnly: boolean;
+  isOverLimit: boolean;
+  placeholder: string;
+  readOnlyEmptyLabel: string;
+  doubleClickBadgeLabel: string;
+  readOnlyTitle: string;
+  onChange: (html: string, plainLength: number) => void;
+  onOpenModal: () => void;
+}
+
+const InlineRichTextInput: React.FC<InlineRichTextInputProps> = ({
+  value,
+  isReadOnly,
+  isOverLimit,
+  placeholder,
+  readOnlyEmptyLabel,
+  doubleClickBadgeLabel,
+  readOnlyTitle,
+  onChange,
+  onOpenModal,
+}) => {
+  const editorRef = useRef<HTMLDivElement>(null);
+  const lastHtmlRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (isReadOnly || !editorRef.current) return;
+    const normalizedProp = value || '';
+    if (lastHtmlRef.current !== normalizedProp) {
+      let formatted = normalizedProp;
+      if (formatted && !/<[a-z][\s\S]*>/i.test(formatted) && formatted.includes('\n')) {
+        formatted = formatted.replace(/\n/g, '<br/>');
+      }
+      editorRef.current.innerHTML = formatted;
+      lastHtmlRef.current = normalizedProp;
+    }
+  }, [value, isReadOnly]);
+
+  const handleInput = () => {
+    if (isReadOnly || !editorRef.current) return;
+    const { html, textLength } = normalizeEditableHtml(editorRef.current);
+    if (html === '' && editorRef.current.innerHTML !== '') {
+      editorRef.current.innerHTML = '';
+    }
+    lastHtmlRef.current = html;
+    onChange(html, textLength);
+  };
+
+  if (isReadOnly) {
+    return (
+      <div className="relative group/longtext w-full">
+        <div
+          onDoubleClick={onOpenModal}
+          title={readOnlyTitle}
+          className="w-full min-h-[58px] max-h-36 overflow-y-auto px-3 py-2 border rounded-lg text-xs leading-relaxed bg-slate-50 border-slate-300 text-slate-700 cursor-pointer select-text"
+        >
+          {value ? (
+            <div
+              className="break-words font-sans text-xs [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:my-1 [&_ol]:list-decimal [&_ol]:pl-5 [&_ol]:my-1 [&_li]:my-0.5"
+              dangerouslySetInnerHTML={{ __html: value }}
+            />
+          ) : (
+            <span className="text-slate-400 italic">{readOnlyEmptyLabel}</span>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="relative group/longtext w-full">
+      <div
+        ref={editorRef}
+        contentEditable
+        suppressContentEditableWarning
+        onInput={handleInput}
+        onBlur={handleInput}
+        onDoubleClick={onOpenModal}
+        data-placeholder={placeholder}
+        className={`w-full min-h-[58px] max-h-36 overflow-y-auto px-3 py-2 border rounded-lg text-xs leading-relaxed font-sans transition-colors cursor-text [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:my-1 [&_ol]:list-decimal [&_ol]:pl-5 [&_ol]:my-1 [&_li]:my-0.5 ${
+          isOverLimit
+            ? 'bg-red-50/20 border-red-500 text-slate-800'
+            : 'bg-white border-slate-300 hover:border-indigo-400 text-slate-800'
+        }`}
+      />
+      <div className="pointer-events-none absolute right-2.5 bottom-2 opacity-0 group-hover/longtext:opacity-100 transition-opacity text-[10px] text-indigo-600 bg-indigo-50/95 px-1.5 py-0.5 rounded border border-indigo-200">
+        {doubleClickBadgeLabel}
+      </div>
+    </div>
+  );
+};
 
 interface ProjectModalProps {
   isOpen: boolean;
@@ -117,6 +211,7 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
 
   // Encart d) "Autres" (Paramètres personnalisés)
   const [customParamValues, setCustomParamValues] = useState<Record<string, any>>({});
+  const [longTextLengths, setLongTextLengths] = useState<Record<string, number>>({});
 
   // Mini-fenêtre pour texte long
   const [longTextParamTarget, setLongTextParamTarget] = useState<CustomProjectParam | null>(null);
@@ -177,6 +272,7 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
 
       setCustomParamValues({});
     }
+    setLongTextLengths({});
     setError(null);
   }, [isOpen, projectToEdit, currentUserEmail, projectStates, budgetLines, criteria, users]);
 
@@ -198,6 +294,23 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
       bonusConfig?.isBonusActive ?? true
     );
   }, [criteriaValues, criteria, bonus, bonusConfig?.isBonusActive]);
+
+  const getParamTextLength = (paramId: string): number => {
+    if (longTextLengths[paramId] !== undefined) return longTextLengths[paramId];
+    return getRichTextLength(String(customParamValues[paramId] ?? ''));
+  };
+
+  // Vérifier si un champ texte long dépasse sa limite configurée
+  const hasLongTextOverLimit = useMemo(() => {
+    return customParams.some((param) => {
+      if (param.type !== 'texte long') return false;
+      const len =
+        longTextLengths[param.id] !== undefined
+          ? longTextLengths[param.id]
+          : getRichTextLength(String(customParamValues[param.id] ?? ''));
+      return len > getCustomParamMaxLength(param);
+    });
+  }, [customParams, customParamValues, longTextLengths]);
 
   // Nombre d'attributs obligatoires non renseignés
   const missingRequiredCount = useMemo(() => {
@@ -221,6 +334,12 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
           }
         } else if (param.type === 'nombre entier' || param.type === 'nombre avec 2 décimales') {
           isFilled = val !== null && val !== undefined && val !== '' && !isNaN(Number(val));
+        } else if (param.type === 'texte long') {
+          const len =
+            longTextLengths[param.id] !== undefined
+              ? longTextLengths[param.id]
+              : getRichTextLength(String(val ?? ''));
+          isFilled = len > 0;
         } else {
           isFilled = val !== null && val !== undefined && String(val).trim() !== '';
         }
@@ -228,7 +347,7 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
       }
     }
     return count;
-  }, [name, stateId, projectManagerEmail, budgetLineId, criteria, criteriaValues, customParams, customParamValues]);
+  }, [name, stateId, projectManagerEmail, budgetLineId, criteria, criteriaValues, customParams, customParamValues, longTextLengths]);
 
   if (!isOpen) return null;
 
@@ -242,6 +361,10 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
       setCustomParamValues((prev) => ({
         ...prev,
         [longTextParamTarget.id]: htmlContent,
+      }));
+      setLongTextLengths((prev) => ({
+        ...prev,
+        [longTextParamTarget.id]: getRichTextLength(htmlContent),
       }));
     }
     setLongTextParamTarget(null);
@@ -306,12 +429,29 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
           }
         } else if (param.type === 'nombre entier' || param.type === 'nombre avec 2 décimales') {
           isFilled = val !== null && val !== undefined && val !== '' && !isNaN(Number(val));
+        } else if (param.type === 'texte long') {
+          isFilled = getParamTextLength(param.id) > 0;
         } else {
           isFilled = val !== null && val !== undefined && String(val).trim() !== '';
         }
 
         if (!isFilled) {
           setError(t('modals.project.error_custom_param_required', { name: param.name }));
+          return;
+        }
+      }
+
+      if (param.type === 'texte long') {
+        const maxLen = getCustomParamMaxLength(param);
+        const charLen = getParamTextLength(param.id);
+        if (charLen > maxLen) {
+          setError(
+            t('modals.project.error_custom_param_max_length', {
+              name: param.name,
+              max: maxLen,
+              defaultValue: `Le paramètre « ${param.name} » dépasse la limite maximale de ${maxLen} caractères.`,
+            })
+          );
           return;
         }
       }
@@ -451,7 +591,7 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
                     {t('modals.project.name_label')} <span className="text-red-500">*</span>
                   </label>
                   <span className={`text-[10px] font-mono ${name.length > 30 ? 'text-red-600 font-bold' : 'text-slate-400'}`}>
-                    {name.length}/30
+                    {name.length} / 30 {t('modals.project.editor_chars', 'car.')}
                   </span>
                 </div>
                 <input
@@ -493,7 +633,7 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
                     {t('modals.project.description_label')}
                   </label>
                   <span className={`text-[10px] font-mono ${description.length > 500 ? 'text-red-600 font-bold' : 'text-slate-400'}`}>
-                    {description.length} / 500 car.
+                    {description.length} / 500 {t('modals.project.editor_chars', 'car.')}
                   </span>
                 </div>
                 <textarea
@@ -904,59 +1044,54 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
                                   [param.id]: e.target.value,
                                 }))
                               }
-                              placeholder="50 car. max"
-                              className="w-full px-3 py-1.5 border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-indigo-500 disabled:bg-slate-100"
+                              placeholder={`50 ${t('modals.project.editor_chars', 'car.')} max`}
+                              className="w-full pl-3 pr-24 py-1.5 border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-indigo-500 disabled:bg-slate-100"
                             />
-                            <span className="absolute right-2.5 top-2 text-[10px] text-slate-400 font-mono">
-                              {String(currentValue).length}/50
+                            <span className="absolute right-2.5 top-2 text-[10px] text-slate-400 font-mono pointer-events-none select-none">
+                              {String(currentValue).length} / 50 {t('modals.project.editor_chars', 'car.')}
                             </span>
                           </div>
                         )}
 
-                        {param.type === 'texte long' && (
-                          <div className="relative group/longtext w-full">
-                            <div
-                              role="button"
-                              tabIndex={0}
-                              onDoubleClick={() => handleOpenLongTextModal(param)}
-                              onKeyDown={(e) => {
-                                if (e.key === 'Enter' || e.key === ' ') {
-                                  e.preventDefault();
-                                  handleOpenLongTextModal(param);
-                                }
-                              }}
-                              title={
-                                isReadOnly
-                                  ? t('modals.project.double_click_view', 'Double-cliquer pour consulter en plein format')
-                                  : t('modals.project.double_click_edit', 'Double-cliquer pour agrandir et mettre en page (1000 car. max)')
-                              }
-                              className={`w-full min-h-[58px] max-h-36 overflow-y-auto px-3 py-2 border rounded-lg text-xs leading-relaxed transition-all cursor-pointer select-text ${
-                                isReadOnly
-                                  ? 'bg-slate-50 border-slate-300 text-slate-700'
-                                  : 'bg-white border-slate-300 hover:border-indigo-400 focus:border-2 focus:border-indigo-600 focus:outline-none text-slate-800'
-                              }`}
-                            >
-                              {currentValue ? (
-                                <div
-                                  className="break-words font-sans text-xs [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:my-1 [&_ol]:list-decimal [&_ol]:pl-5 [&_ol]:my-1 [&_li]:my-0.5"
-                                  dangerouslySetInnerHTML={{ __html: String(currentValue) }}
-                                />
-                              ) : (
-                                <div className="text-slate-400 italic flex items-center justify-between text-xs select-none">
-                                  <span>{t('modals.project.long_text_modal_placeholder', 'Saisissez ici le texte détaillé de ce paramètre...')}</span>
-                                  <span className="text-[10px] text-slate-400 not-italic ml-2 shrink-0">
-                                    ({t('modals.project.double_click_hint', 'Double-clic pour éditer')})
-                                  </span>
-                                </div>
-                              )}
-                            </div>
-                            {!isReadOnly && (
-                              <div className="pointer-events-none absolute right-2.5 bottom-2 opacity-0 group-hover/longtext:opacity-100 transition-opacity text-[10px] text-indigo-600 bg-indigo-50/95 px-1.5 py-0.5 rounded border border-indigo-200">
-                                {t('modals.project.double_click_badge', 'Double-clic pour mettre en page')}
+                        {param.type === 'texte long' && (() => {
+                          const maxLen = getCustomParamMaxLength(param);
+                          const charCount = getParamTextLength(param.id);
+                          const isOverLimit = charCount > maxLen;
+                          return (
+                            <div>
+                              <InlineRichTextInput
+                                value={String(currentValue ?? '')}
+                                isReadOnly={isReadOnly}
+                                isOverLimit={isOverLimit}
+                                placeholder={t('modals.project.long_text_modal_placeholder', 'Saisissez ici le texte détaillé de ce paramètre...')}
+                                readOnlyEmptyLabel={t('modals.project.not_filled', 'Non renseigné')}
+                                doubleClickBadgeLabel={t('modals.project.double_click_badge', 'Double-clic pour mettre en page')}
+                                readOnlyTitle={t('modals.project.double_click_view', 'Double-cliquer pour consulter en plein format')}
+                                onChange={(html, plainLength) => {
+                                  setCustomParamValues((prev) => ({
+                                    ...prev,
+                                    [param.id]: html,
+                                  }));
+                                  setLongTextLengths((prev) => ({
+                                    ...prev,
+                                    [param.id]: plainLength,
+                                  }));
+                                }}
+                                onOpenModal={() => handleOpenLongTextModal(param)}
+                              />
+                              <div className="flex items-center justify-end mt-1">
+                                <span
+                                  className={`text-[10px] font-mono ${
+                                    isOverLimit ? 'text-red-600 font-bold' : 'text-slate-400'
+                                  }`}
+                                >
+                                  {charCount} / {maxLen} {t('modals.project.editor_chars', 'car.')}
+                                  {isOverLimit && ` (${t('modals.project.editor_over_limit', 'dépassement !')})`}
+                                </span>
                               </div>
-                            )}
-                          </div>
-                        )}
+                            </div>
+                          );
+                        })()}
 
                         {param.type === 'date' && (
                           <input
@@ -1141,7 +1276,7 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
 
         {/* Pied de page modal fixe (toujours visible) */}
         <div className="shrink-0 px-6 py-4 border-t border-slate-200 bg-slate-50/80 flex items-center justify-between gap-3">
-          <div className="flex-1 min-w-0">
+          <div className="flex-1 min-w-0 space-y-1">
             {!isReadOnly && missingRequiredCount > 0 && (
               <div className="flex items-center gap-1.5 text-xs font-semibold text-red-600 animate-in fade-in">
                 <AlertCircle className="w-4 h-4 text-red-600 shrink-0" />
@@ -1149,6 +1284,17 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
                   {missingRequiredCount === 1
                     ? t('modals.common.missing_required_one')
                     : t('modals.common.missing_required_other', { count: missingRequiredCount })}
+                </span>
+              </div>
+            )}
+            {!isReadOnly && hasLongTextOverLimit && (
+              <div className="flex items-center gap-1.5 text-xs font-semibold text-red-600 animate-in fade-in">
+                <AlertCircle className="w-4 h-4 text-red-600 shrink-0" />
+                <span>
+                  {t(
+                    'modals.project.long_text_over_limit_footer',
+                    'Un champ texte long dépasse le nombre maximal de caractères autorisé.'
+                  )}
                 </span>
               </div>
             )}
@@ -1164,7 +1310,7 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
             {!isReadOnly && (
               <button
                 type="submit"
-                disabled={saving || missingRequiredCount > 0}
+                disabled={saving || missingRequiredCount > 0 || hasLongTextOverLimit}
                 className="px-5 py-2 text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors shadow-xs cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
               >
                 <Check className="w-4 h-4" />
@@ -1186,6 +1332,7 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
             initialValue={longTextDraft}
             paramName={longTextParamTarget.name}
             paramDescription={longTextParamTarget.description}
+            maxLength={getCustomParamMaxLength(longTextParamTarget)}
             isReadOnly={isReadOnly}
           />
         )}

@@ -13,7 +13,7 @@ import {
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { handleFirestoreError, OperationType } from '../lib/firestoreErrors';
-import { CustomProjectParam, CustomProjectParamFormData } from '../types/customParam';
+import { CustomProjectParam, CustomProjectParamFormData, DEFAULT_LONG_TEXT_MAX_LENGTH } from '../types/customParam';
 import { broadcastCollaborationChange } from './collaborationNotificationService';
 
 const COLLECTION_NAME = 'projectCustomParams';
@@ -37,6 +37,12 @@ export function subscribeToCustomParams(
           name: data.name || '',
           description: data.description || '',
           type: data.type || 'texte court',
+          maxLength:
+            typeof data.maxLength === 'number' && data.maxLength >= 1
+              ? Math.round(data.maxLength)
+              : data.type === 'texte long'
+              ? DEFAULT_LONG_TEXT_MAX_LENGTH
+              : undefined,
           order: typeof data.order === 'number' ? data.order : 0,
           options: Array.isArray(data.options) ? data.options : [],
           allowMultiple: Boolean(data.allowMultiple),
@@ -107,10 +113,16 @@ export async function addCustomParam(formData: CustomProjectParamFormData): Prom
       }
     });
 
+    const normalizedMaxLength =
+      formData.type === 'texte long'
+        ? Math.max(1, Math.round(Number(formData.maxLength) || DEFAULT_LONG_TEXT_MAX_LENGTH))
+        : null;
+
     const docRef = await addDoc(collection(db, COLLECTION_NAME), {
       name: trimmedName,
       description: trimmedDesc,
       type: formData.type,
+      ...(normalizedMaxLength !== null ? { maxLength: normalizedMaxLength } : {}),
       order: nextOrder,
       options: Array.isArray(formData.options) ? formData.options : [],
       allowMultiple: Boolean(formData.allowMultiple),
@@ -166,6 +178,13 @@ export async function updateCustomParam(
     if (formData.name !== undefined) payload.name = formData.name.trim();
     if (formData.description !== undefined) payload.description = formData.description.trim();
     if (formData.type !== undefined) payload.type = formData.type;
+    if (formData.type === 'texte long') {
+      payload.maxLength = Math.max(1, Math.round(Number(formData.maxLength) || DEFAULT_LONG_TEXT_MAX_LENGTH));
+    } else if (formData.type !== undefined) {
+      payload.maxLength = null;
+    } else if (formData.maxLength !== undefined) {
+      payload.maxLength = Math.max(1, Math.round(Number(formData.maxLength) || DEFAULT_LONG_TEXT_MAX_LENGTH));
+    }
     if (formData.order !== undefined) payload.order = formData.order;
     if (formData.options !== undefined) payload.options = Array.isArray(formData.options) ? formData.options : [];
     if (formData.allowMultiple !== undefined) payload.allowMultiple = Boolean(formData.allowMultiple);

@@ -776,7 +776,7 @@
   "settings.custom_params.col_desc": "ΠΕΡΙΓΡΑΦΗ",
   "settings.custom_params.col_actions": "ΕΝΕΡΓΕΙΕΣ",
   "settings.custom_params.types.text_short": "Σύντομο κείμενο (50 χαρ.)",
-  "settings.custom_params.types.text_long": "Μεγάλο κείμενο (1000 χαρ.)",
+  "settings.custom_params.types.text_long": "Μορφοποιημένο μεγάλο κείμενο",
   "settings.custom_params.types.date": "Ημερομηνία",
   "settings.custom_params.types.integer": "Ακέραιος αριθμός",
   "settings.custom_params.types.decimal": "Δεκαδικός (2 δεκ.)",
@@ -1167,5 +1167,12 @@
   "modals.project.error_pm_required": "Ορίστε έναν διαχειριστή έργου.",
   "modals.project.error_budget_line_required": "Επιλέξτε μια γραμμή προϋπολογισμού.",
   "modals.project.error_custom_param_required": "Η παράμετρος « {{name}} » είναι υποχρεωτική.",
-  "modals.project.error_save": "Σφάλμα κατά την αποθήκευση του έργου."
+  "modals.project.error_save": "Σφάλμα κατά την αποθήκευση του έργου.",
+  "modals.custom_param.max_length_label": "Μέγιστος αριθμός χαρακτήρων",
+  "modals.custom_param.max_length_placeholder": "Π.χ.: 1000",
+  "modals.custom_param.error_max_length_invalid": "Ο μέγιστος αριθμός χαρακτήρων πρέπει να είναι θετικός ακέραιος (από 1 έως 100.000).",
+  "modals.project.error_custom_param_max_length": "Η παράμετρος « {{name}} » υπερβαίνει το μέγιστο όριο των {{max}} χαρακτήρων.",
+  "modals.project.long_text_over_limit_footer": "Ένα πεδίο μεγάλου κειμένου υπερβαίνει τον μέγιστο επιτρεπόμενο αριθμό χαρακτήρων.",
+  "projects.tooltips.bonus_quotas_title": "Ποσοστώσεις μπόνους",
+  "projects.tooltips.bonus_quotas_content": "• Μέγ. {{maxPerProject}} βαθμοί ανά έργο\n• σε το πολύ {{maxProjects}} έργα\n• για σύνολο {{maxTotal}} βαθμών."
 }

@@ -776,7 +776,7 @@
   "settings.custom_params.col_desc": "KUVAUS",
   "settings.custom_params.col_actions": "TOIMINNOT",
   "settings.custom_params.types.text_short": "Lyhyt teksti (50 merkkiä)",
-  "settings.custom_params.types.text_long": "Pitkä teksti (1000 merkkiä)",
+  "settings.custom_params.types.text_long": "Muotoiltu pitkä teksti",
   "settings.custom_params.types.date": "Päivämäärä",
   "settings.custom_params.types.integer": "Kokonaisluku",
   "settings.custom_params.types.decimal": "Desimaaliluku (2 des.)",
@@ -1167,5 +1167,12 @@
   "modals.project.error_pm_required": "Nimeä projektipäällikkö.",
   "modals.project.error_budget_line_required": "Valitse budjettilinja.",
   "modals.project.error_custom_param_required": "Parametri « {{name}} » on pakollinen.",
-  "modals.project.error_save": "Virhe projektia tallennettaessa."
+  "modals.project.error_save": "Virhe projektia tallennettaessa.",
+  "modals.custom_param.max_length_label": "Enimmäismerkkimäärä",
+  "modals.custom_param.max_length_placeholder": "Esim. 1000",
+  "modals.custom_param.error_max_length_invalid": "Enimmäismerkkimäärän on oltava positiivinen kokonaisluku (1–100 000).",
+  "modals.project.error_custom_param_max_length": "Parametri « {{name}} » ylittää enimmäisrajan ({{max}} merkkiä).",
+  "modals.project.long_text_over_limit_footer": "Pitkä tekstikenttä ylittää sallitun enimmäismerkkimäärän.",
+  "projects.tooltips.bonus_quotas_title": "Bonuskiintiöt",
+  "projects.tooltips.bonus_quotas_content": "• Enintään {{maxPerProject}} pistettä per projekti\n• enintään {{maxProjects}} projektissa\n• yhteensä enintään {{maxTotal}} pistettä."
 }

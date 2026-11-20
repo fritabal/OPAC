@@ -302,6 +302,8 @@ export const en = {
       confidential_locked: 'Confidential project — Viewing and modification restricted',
       show_criteria_details: 'Show details of all criteria',
       hide_criteria_details: 'Hide prioritization criteria details',
+      bonus_quotas_title: 'Bonus quotas',
+      bonus_quotas_content: '• {{maxPerProject}} max points per project\n• across at most {{maxProjects}} projects\n• for a total of {{maxTotal}} points overall.',
     },
     import_export: {
       menu: 'Portfolio actions',
@@ -883,7 +885,7 @@ export const en = {
       col_actions: 'ACTIONS',
       types: {
         text_short: 'Short text (50 chars)',
-        text_long: 'Long text (1000 chars)',
+        text_long: 'Rich long text',
         date: 'Date',
         integer: 'Integer',
         decimal: 'Decimal (2 dec.)',
@@ -1201,6 +1203,8 @@ export const en = {
       name_label: 'Parameter name (unique key)',
       name_placeholder: 'e.g., Target Release Date, Sponsor...',
       type_label: 'Field type',
+      max_length_label: 'Max characters',
+      max_length_placeholder: 'e.g., 1000',
       description_label: 'Description (optional)',
       description_placeholder: 'Enter a description...',
       required_title: 'Mandatory parameter',
@@ -1223,6 +1227,7 @@ export const en = {
       error_name_required: 'Parameter name is required.',
       error_name_duplicate: 'A parameter named "{{name}}" already exists. Name must be unique.',
       error_options_empty: 'Please add at least one option for list type parameter.',
+      error_max_length_invalid: 'Maximum characters must be a positive integer (between 1 and 100,000).',
       error_save: 'Error saving custom parameter.',
     },
     project: {
@@ -1319,6 +1324,8 @@ export const en = {
       error_pm_required: 'Please designate a Project Manager.',
       error_budget_line_required: 'Please select a budget line.',
       error_custom_param_required: 'Parameter "{{name}}" is required.',
+      error_custom_param_max_length: 'Parameter "{{name}}" exceeds the maximum limit of {{max}} characters.',
+      long_text_over_limit_footer: 'A long text field exceeds the maximum allowed characters.',
       error_save: 'Error saving project.',
     },
   },

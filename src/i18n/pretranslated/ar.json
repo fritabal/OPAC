@@ -776,7 +776,7 @@
   "settings.custom_params.col_desc": "الوصف",
   "settings.custom_params.col_actions": "الإجراءات",
   "settings.custom_params.types.text_short": "نص قصير (50 حرفاً)",
-  "settings.custom_params.types.text_long": "نص طويل (1000 حرف)",
+  "settings.custom_params.types.text_long": "نص طويل منسق",
   "settings.custom_params.types.date": "تاريخ",
   "settings.custom_params.types.integer": "عدد صحيح",
   "settings.custom_params.types.decimal": "عدد عشري (منزلتان)",
@@ -1167,5 +1167,12 @@
   "modals.project.error_pm_required": "يرجى تعيين مدير مشروع.",
   "modals.project.error_budget_line_required": "يرجى اختيار بند ميزانية.",
   "modals.project.error_custom_param_required": "المعلمة « {{name}} » إلزامية.",
-  "modals.project.error_save": "خطأ أثناء حفظ المشروع."
+  "modals.project.error_save": "خطأ أثناء حفظ المشروع.",
+  "modals.custom_param.max_length_label": "الحد الأقصى للأحرف",
+  "modals.custom_param.max_length_placeholder": "مثال: 1000",
+  "modals.custom_param.error_max_length_invalid": "يجب أن يكون الحد الأقصى للأحرف عددًا صحيحًا موجبًا (بين 1 و 100000).",
+  "modals.project.error_custom_param_max_length": "المعلمة « {{name}} » تتجاوز الحد الأقصى البالغ {{max}} حرفًا.",
+  "modals.project.long_text_over_limit_footer": "يتجاوز أحد حقول النص الطويل الحد الأقصى المسموح به للأحرف.",
+  "projects.tooltips.bonus_quotas_title": "حصص المكافآت",
+  "projects.tooltips.bonus_quotas_content": "• بحد أقصى {{maxPerProject}} نقطة لكل مشروع\n• على {{maxProjects}} مشاريع كحد أقصى\n• بإجمالي {{maxTotal}} نقطة."
 }

@@ -21,7 +21,6 @@ import {
   ArrowUp,
   ArrowDown,
   AlertTriangle,
-  HelpCircle,
   ChevronDown,
   Menu,
   Download,
@@ -2064,13 +2063,18 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
                       <span>{t('projects.columns.bonus')}</span>
                       {renderSortIcon('bonus')}
                       <Tooltip
-                        title="Quotas de bonus"
-                        content={`• ${bonusConfig?.maxBonusPointsPerProject ?? DEFAULT_BONUS_CONFIG.maxBonusPointsPerProject} points max par projet\n• sur ${bonusConfig?.maxBonusedProjects ?? DEFAULT_BONUS_CONFIG.maxBonusedProjects} projets au plus\n• pour un total de ${bonusConfig?.maxTotalBonusPoints ?? DEFAULT_BONUS_CONFIG.maxTotalBonusPoints} points au total.`}
+                        title={t('projects.tooltips.bonus_quotas_title', 'Quotas de bonus')}
+                        content={t('projects.tooltips.bonus_quotas_content', {
+                          maxPerProject: bonusConfig?.maxBonusPointsPerProject ?? DEFAULT_BONUS_CONFIG.maxBonusPointsPerProject,
+                          maxProjects: bonusConfig?.maxBonusedProjects ?? DEFAULT_BONUS_CONFIG.maxBonusedProjects,
+                          maxTotal: bonusConfig?.maxTotalBonusPoints ?? DEFAULT_BONUS_CONFIG.maxTotalBonusPoints,
+                          defaultValue: `• ${bonusConfig?.maxBonusPointsPerProject ?? DEFAULT_BONUS_CONFIG.maxBonusPointsPerProject} points max par projet\n• sur ${bonusConfig?.maxBonusedProjects ?? DEFAULT_BONUS_CONFIG.maxBonusedProjects} projets au plus\n• pour un total de ${bonusConfig?.maxTotalBonusPoints ?? DEFAULT_BONUS_CONFIG.maxTotalBonusPoints} points au total.`,
+                        })}
                         placement="bottom"
                         maxWidthClass={TOOLTIP_MAX_WIDTH_CLASS}
                         className="inline-flex items-center cursor-default"
                       >
-                        <HelpCircle className="w-3.5 h-3.5 text-slate-400 hover:text-slate-600 transition-colors ml-0.5" />
+                        <AlertTriangle className="w-3.5 h-3.5 text-slate-400 hover:text-slate-600 transition-colors ml-0.5" />
                       </Tooltip>
                     </div>
                   </th>
@@ -2402,7 +2406,12 @@ export const ProjectsTable: React.FC<ProjectsTableProps> = ({
                                     ? 'bg-amber-100 text-amber-950 border-amber-400 focus:ring-2 focus:ring-amber-500'
                                     : 'bg-white text-slate-900 border-slate-300 hover:border-slate-400 focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20'
                                 }`}
-                                title={`• ${bonusConfig?.maxBonusPointsPerProject ?? DEFAULT_BONUS_CONFIG.maxBonusPointsPerProject} points max par projet\n• sur ${bonusConfig?.maxBonusedProjects ?? DEFAULT_BONUS_CONFIG.maxBonusedProjects} projets au plus\n• pour un total de ${bonusConfig?.maxTotalBonusPoints ?? DEFAULT_BONUS_CONFIG.maxTotalBonusPoints} points au total.`}
+                                title={t('projects.tooltips.bonus_quotas_content', {
+                                  maxPerProject: bonusConfig?.maxBonusPointsPerProject ?? DEFAULT_BONUS_CONFIG.maxBonusPointsPerProject,
+                                  maxProjects: bonusConfig?.maxBonusedProjects ?? DEFAULT_BONUS_CONFIG.maxBonusedProjects,
+                                  maxTotal: bonusConfig?.maxTotalBonusPoints ?? DEFAULT_BONUS_CONFIG.maxTotalBonusPoints,
+                                  defaultValue: `• ${bonusConfig?.maxBonusPointsPerProject ?? DEFAULT_BONUS_CONFIG.maxBonusPointsPerProject} points max par projet\n• sur ${bonusConfig?.maxBonusedProjects ?? DEFAULT_BONUS_CONFIG.maxBonusedProjects} projets au plus\n• pour un total de ${bonusConfig?.maxTotalBonusPoints ?? DEFAULT_BONUS_CONFIG.maxTotalBonusPoints} points au total.`,
+                                })}
                               />
                               {isBreaching && (
                                 <span

@@ -16,6 +16,8 @@ import {
   Check,
 } from 'lucide-react';
 import { MODAL_CANCEL_BUTTON_CLASS } from '../constants/ui';
+import { DEFAULT_LONG_TEXT_MAX_LENGTH } from '../types/customParam';
+import { getElementTextLength } from '../utils/richText';
 
 // Palette de couleurs de texte prédéfinies
 const TEXT_COLORS = [
@@ -36,6 +38,7 @@ interface RichTextEditorModalProps {
   initialValue: string;
   paramName: string;
   paramDescription?: string;
+  maxLength?: number;
   isReadOnly?: boolean;
 }
 
@@ -46,8 +49,13 @@ export const RichTextEditorModal: React.FC<RichTextEditorModalProps> = ({
   initialValue,
   paramName,
   paramDescription,
+  maxLength = DEFAULT_LONG_TEXT_MAX_LENGTH,
   isReadOnly = false,
 }) => {
+  const effectiveMaxLength =
+    maxLength && Number.isFinite(maxLength) && maxLength >= 1
+      ? Math.round(maxLength)
+      : DEFAULT_LONG_TEXT_MAX_LENGTH;
   const { t } = useTranslation();
   const editorRef = useRef<HTMLDivElement>(null);
 
@@ -79,9 +87,7 @@ export const RichTextEditorModal: React.FC<RichTextEditorModalProps> = ({
 
   // Calcule la longueur de texte réel (hors balises HTML)
   const computeTextLength = useCallback(() => {
-    if (!editorRef.current) return 0;
-    const rawText = editorRef.current.innerText || '';
-    return rawText.replace(/\r?\n+$/, '').length;
+    return getElementTextLength(editorRef.current);
   }, []);
 
   // Détecte les styles actifs au point d'insertion ou sur la sélection
@@ -351,17 +357,17 @@ export const RichTextEditorModal: React.FC<RichTextEditorModalProps> = ({
   const handleSave = () => {
     if (isReadOnly || !editorRef.current) return;
     const length = computeTextLength();
-    if (length > 1000) return;
+    if (length > effectiveMaxLength) return;
 
     let html = editorRef.current.innerHTML.trim();
     // Normalisation si vide
-    if (html === '<br>' || html === '<p><br></p>' || length === 0) {
+    if (html === '<br>' || html === '<p><br></p>' || html === '<div><br></div>' || length === 0) {
       html = '';
     }
     onSave(html);
   };
 
-  const isOverLimit = charCount > 1000;
+  const isOverLimit = charCount > effectiveMaxLength;
 
   return (
     <div
@@ -382,11 +388,8 @@ export const RichTextEditorModal: React.FC<RichTextEditorModalProps> = ({
             </div>
             <div>
               <h5 className="font-bold text-base text-slate-900 leading-tight">
-                {t('modals.project.long_text_modal_title', { name: paramName })}
+                {paramName}
               </h5>
-              <p className="text-xs text-slate-500">
-                {t('modals.project.long_text_modal_sub', 'Texte enrichi et mise en page (1000 car. max)')}
-              </p>
             </div>
           </div>
           <button
@@ -401,8 +404,8 @@ export const RichTextEditorModal: React.FC<RichTextEditorModalProps> = ({
 
         {/* Description optionnelle */}
         {paramDescription && (
-          <div className="p-2.5 bg-indigo-50/70 border border-indigo-200 rounded-lg text-indigo-900 text-xs mb-3 flex items-start gap-2 shrink-0">
-            <HelpCircle className="w-4 h-4 text-indigo-600 shrink-0 mt-0.5" />
+          <div className="p-2.5 bg-sky-50/80 border border-sky-200 rounded-lg text-sky-900 text-xs mb-3 flex items-start gap-2 shrink-0">
+            <HelpCircle className="w-4 h-4 text-sky-600 shrink-0 mt-0.5" />
             <span>{paramDescription}</span>
           </div>
         )}
@@ -668,7 +671,7 @@ export const RichTextEditorModal: React.FC<RichTextEditorModalProps> = ({
                 isOverLimit ? 'text-red-600 font-bold' : 'text-slate-400'
               }`}
             >
-              {charCount} / 1000 {t('modals.project.editor_chars', 'car.')}
+              {charCount} / {effectiveMaxLength} {t('modals.project.editor_chars', 'car.')}
               {isOverLimit && ` (${t('modals.project.editor_over_limit', 'dépassement !')})`}
             </span>
           </div>

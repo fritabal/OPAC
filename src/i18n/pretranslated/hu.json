@@ -776,7 +776,7 @@
   "settings.custom_params.col_desc": "LEÍRÁS",
   "settings.custom_params.col_actions": "MŰVELETEK",
   "settings.custom_params.types.text_short": "Rövid szöveg (50 kar.)",
-  "settings.custom_params.types.text_long": "Hosszú szöveg (1000 kar.)",
+  "settings.custom_params.types.text_long": "Formázott hosszú szöveg",
   "settings.custom_params.types.date": "Dátum",
   "settings.custom_params.types.integer": "Egész szám",
   "settings.custom_params.types.decimal": "Tizedes szám (2 tizedes)",
@@ -1167,5 +1167,12 @@
   "modals.project.error_pm_required": "Jelöljön ki egy projektmenedzsert.",
   "modals.project.error_budget_line_required": "Válasszon ki egy költségvetési sort.",
   "modals.project.error_custom_param_required": "A(z) « {{name}} » paraméter kötelező.",
-  "modals.project.error_save": "Hiba a projekt mentésekor."
+  "modals.project.error_save": "Hiba a projekt mentésekor.",
+  "modals.custom_param.max_length_label": "Max. karakterszám",
+  "modals.custom_param.max_length_placeholder": "Pl.: 1000",
+  "modals.custom_param.error_max_length_invalid": "A maximális karakterszámnak pozitív egész számnak kell lennie (1 és 100 000 között).",
+  "modals.project.error_custom_param_max_length": "A(z) « {{name}} » paraméter túllépi a maximális {{max}} karakteres korlátot.",
+  "modals.project.long_text_over_limit_footer": "Egy hosszú szöveges mező túllépi a megengedett maximális karakterszámot.",
+  "projects.tooltips.bonus_quotas_title": "Bónuszkvóták",
+  "projects.tooltips.bonus_quotas_content": "• Projektenként legfeljebb {{maxPerProject}} pont\n• legfeljebb {{maxProjects}} projektre\n• összesen legfeljebb {{maxTotal}} pont."
 }

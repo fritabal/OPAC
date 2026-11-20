@@ -776,7 +776,7 @@
   "settings.custom_params.col_desc": "BESKRIVNING",
   "settings.custom_params.col_actions": "ÅTGÄRDER",
   "settings.custom_params.types.text_short": "Kort text (50 tkn)",
-  "settings.custom_params.types.text_long": "Lång text (1000 tkn)",
+  "settings.custom_params.types.text_long": "Formaterad lång text",
   "settings.custom_params.types.date": "Datum",
   "settings.custom_params.types.integer": "Heltal",
   "settings.custom_params.types.decimal": "Decimaltal (2 dec.)",
@@ -1167,5 +1167,12 @@
   "modals.project.error_pm_required": "Utse en projektledare.",
   "modals.project.error_budget_line_required": "Välj en budgetlinje.",
   "modals.project.error_custom_param_required": "Parametern «{{name}}» är obligatorisk.",
-  "modals.project.error_save": "Fel vid lagring av projektet."
+  "modals.project.error_save": "Fel vid lagring av projektet.",
+  "modals.custom_param.max_length_label": "Max antal tecken",
+  "modals.custom_param.max_length_placeholder": "T.ex.: 1000",
+  "modals.custom_param.error_max_length_invalid": "Maximalt antal tecken måste vara ett positivt heltal (mellan 1 och 100 000).",
+  "modals.project.error_custom_param_max_length": "Parametern « {{name}} » överskrider maxgränsen på {{max}} tecken.",
+  "modals.project.long_text_over_limit_footer": "Ett långt textfält överskrider maximalt tillåtet antal tecken.",
+  "projects.tooltips.bonus_quotas_title": "Bonuskvoter",
+  "projects.tooltips.bonus_quotas_content": "• Max {{maxPerProject}} poäng per projekt\n• för högst {{maxProjects}} projekt\n• totalt {{maxTotal}} poäng."
 }

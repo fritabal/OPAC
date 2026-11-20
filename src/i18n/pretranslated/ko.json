@@ -776,7 +776,7 @@
   "settings.custom_params.col_desc": "설명",
   "settings.custom_params.col_actions": "작업",
   "settings.custom_params.types.text_short": "짧은 텍스트 (50자)",
-  "settings.custom_params.types.text_long": "긴 텍스트 (1000자)",
+  "settings.custom_params.types.text_long": "서식 있는 긴 텍스트",
   "settings.custom_params.types.date": "날짜",
   "settings.custom_params.types.integer": "정수",
   "settings.custom_params.types.decimal": "소수 (소수점 2자리)",
@@ -1167,5 +1167,12 @@
   "modals.project.error_pm_required": "프로젝트 관리자를 지정해 주세요.",
   "modals.project.error_budget_line_required": "예산 항목을 선택해 주세요.",
   "modals.project.error_custom_param_required": "매개변수 « {{name}} »은(는) 필수입니다.",
-  "modals.project.error_save": "프로젝트 저장 중 오류가 발생했습니다."
+  "modals.project.error_save": "프로젝트 저장 중 오류가 발생했습니다.",
+  "modals.custom_param.max_length_label": "최대 문자 수",
+  "modals.custom_param.max_length_placeholder": "예: 1000",
+  "modals.custom_param.error_max_length_invalid": "최대 문자 수는 양의 정수여야 합니다 (1 ~ 100,000).",
+  "modals.project.error_custom_param_max_length": "매개변수 « {{name}} »이(가) 최대 제한인 {{max}}자를 초과했습니다.",
+  "modals.project.long_text_over_limit_footer": "긴 텍스트 필드가 허용된 최대 문자 수를 초과했습니다.",
+  "projects.tooltips.bonus_quotas_title": "보너스 할당량",
+  "projects.tooltips.bonus_quotas_content": "• 프로젝트당 최대 {{maxPerProject}}점\n• 최대 {{maxProjects}}개 프로젝트\n• 총 {{maxTotal}}점 한도"
 }

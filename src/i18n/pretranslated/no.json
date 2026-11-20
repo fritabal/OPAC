@@ -776,7 +776,7 @@
   "settings.custom_params.col_desc": "BESKRIVELSE",
   "settings.custom_params.col_actions": "HANDLINGER",
   "settings.custom_params.types.text_short": "Kort tekst (50 tegn)",
-  "settings.custom_params.types.text_long": "Lang tekst (1000 tegn)",
+  "settings.custom_params.types.text_long": "Formatert lang tekst",
   "settings.custom_params.types.date": "Dato",
   "settings.custom_params.types.integer": "Heltall",
   "settings.custom_params.types.decimal": "Desimaltall (2 des.)",
@@ -1167,5 +1167,12 @@
   "modals.project.error_pm_required": "Vennligst utpek en prosjektleder.",
   "modals.project.error_budget_line_required": "Vennligst velg en budsjettlinje.",
   "modals.project.error_custom_param_required": "Parameteret «{{name}}» er obligatorisk.",
-  "modals.project.error_save": "Feil ved lagring av prosjektet."
+  "modals.project.error_save": "Feil ved lagring av prosjektet.",
+  "modals.custom_param.max_length_label": "Maks antall tegn",
+  "modals.custom_param.max_length_placeholder": "F.eks.: 1000",
+  "modals.custom_param.error_max_length_invalid": "Maksimalt antall tegn må være et positivt heltall (mellom 1 og 100 000).",
+  "modals.project.error_custom_param_max_length": "Parameteren « {{name}} » overskrider maksimumsgrensen på {{max}} tegn.",
+  "modals.project.long_text_over_limit_footer": "Et langt tekstfelt overskrider maksimalt tillatt antall tegn.",
+  "projects.tooltips.bonus_quotas_title": "Bonuskvoter",
+  "projects.tooltips.bonus_quotas_content": "• Maks {{maxPerProject}} poeng per prosjekt\n• på høyst {{maxProjects}} prosjekter\n• totalt {{maxTotal}} poeng."
 }
