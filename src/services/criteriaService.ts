@@ -10,12 +10,12 @@ import {
   serverTimestamp,
   writeBatch,
 } from 'firebase/firestore';
-import { db } from '../lib/firebase';
+import { db, getEnvCollectionName } from '../lib/firebase';
 import { handleFirestoreError, OperationType } from '../lib/firestoreErrors';
 import { Criterion, CriterionFormData, CriterionWeight, CRITERION_WEIGHTS } from '../types/criteria';
 import { broadcastCollaborationChange } from './collaborationNotificationService';
 
-const COLLECTION_NAME = 'criteria';
+const COLLECTION_NAME = getEnvCollectionName('criteria');
 
 export function subscribeToCriteria(
   onData: (criteria: Criterion[]) => void,

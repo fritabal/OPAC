@@ -10,12 +10,12 @@ import {
   serverTimestamp,
   writeBatch,
 } from 'firebase/firestore';
-import { db } from '../lib/firebase';
+import { db, getEnvCollectionName } from '../lib/firebase';
 import { handleFirestoreError, OperationType } from '../lib/firestoreErrors';
 import { KeySkill, KeySkillFormData, SkillBudgetAllocation } from '../types/skill';
 import { broadcastCollaborationChange } from './collaborationNotificationService';
 
-const COLLECTION_NAME = 'keySkills';
+const COLLECTION_NAME = getEnvCollectionName('keySkills');
 
 export function subscribeToKeySkills(
   onData: (skills: KeySkill[]) => void,

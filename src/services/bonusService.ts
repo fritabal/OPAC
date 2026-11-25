@@ -1,12 +1,12 @@
 import { doc, onSnapshot, setDoc, serverTimestamp } from 'firebase/firestore';
-import { db } from '../lib/firebase';
+import { db, getEnvCollectionName, getEnvStorageKey } from '../lib/firebase';
 import { handleFirestoreError, OperationType } from '../lib/firestoreErrors';
 import { BonusConfig, DEFAULT_BONUS_CONFIG } from '../types/bonus';
 import { broadcastCollaborationChange } from './collaborationNotificationService';
 
-export const SETTINGS_COLLECTION = 'settings';
+export const SETTINGS_COLLECTION = getEnvCollectionName('settings');
 export const BONUS_DOC_ID = 'prioritization_bonus';
-export const LOCAL_STORAGE_KEY = 'opac_bonus_config';
+export const LOCAL_STORAGE_KEY = getEnvStorageKey('opac_bonus_config');
 
 /**
  * Récupère la configuration depuis le cache local pour affichage instantané

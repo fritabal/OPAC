@@ -1,12 +1,12 @@
 import { doc, onSnapshot, setDoc, serverTimestamp } from 'firebase/firestore';
-import { db } from '../lib/firebase';
+import { db, getEnvCollectionName, getEnvStorageKey } from '../lib/firebase';
 import { handleFirestoreError, OperationType } from '../lib/firestoreErrors';
 import { CriteriaAlertConfig, DEFAULT_CRITERIA_ALERT_CONFIG } from '../types/criteriaAlert';
 import { broadcastCollaborationChange } from './collaborationNotificationService';
 
-export const SETTINGS_COLLECTION = 'settings';
+export const SETTINGS_COLLECTION = getEnvCollectionName('settings');
 export const CRITERIA_ALERT_DOC_ID = 'criteria_alert_config';
-export const LOCAL_STORAGE_KEY = 'opac_criteria_alert_config';
+export const LOCAL_STORAGE_KEY = getEnvStorageKey('opac_criteria_alert_config');
 
 /**
  * Récupère la configuration depuis le cache local pour un affichage instantané

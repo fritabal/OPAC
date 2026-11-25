@@ -1,12 +1,12 @@
 import { doc, onSnapshot, setDoc, serverTimestamp } from 'firebase/firestore';
-import { db } from '../lib/firebase';
+import { db, getEnvCollectionName, getEnvStorageKey } from '../lib/firebase';
 import { handleFirestoreError, OperationType } from '../lib/firestoreErrors';
 import { TranslationOverridesMap } from '../types/translation';
 import i18n from '../i18n';
 
-export const SETTINGS_COLLECTION = 'settings';
+export const SETTINGS_COLLECTION = getEnvCollectionName('settings');
 export const TRANSLATIONS_DOC_ID = 'translations';
-export const LOCAL_STORAGE_OVERRIDES_KEY = 'opac_i18n_overrides';
+export const LOCAL_STORAGE_OVERRIDES_KEY = getEnvStorageKey('opac_i18n_overrides');
 
 /**
  * Récupère les surcharges de traductions depuis le cache localStorage

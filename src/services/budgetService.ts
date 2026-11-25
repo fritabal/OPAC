@@ -10,13 +10,13 @@ import {
   serverTimestamp,
   writeBatch,
 } from 'firebase/firestore';
-import { db } from '../lib/firebase';
+import { db, getEnvCollectionName } from '../lib/firebase';
 import { handleFirestoreError, OperationType } from '../lib/firestoreErrors';
 import { BudgetLine, BudgetLineFormData } from '../types/budget';
 import { BUDGET_PALETTE_32, getFirstAvailableColor } from '../constants/colors';
 import { broadcastCollaborationChange } from './collaborationNotificationService';
 
-const COLLECTION_NAME = 'budgetLines';
+const COLLECTION_NAME = getEnvCollectionName('budgetLines');
 
 export function subscribeToBudgetLines(
   onData: (lines: BudgetLine[]) => void,

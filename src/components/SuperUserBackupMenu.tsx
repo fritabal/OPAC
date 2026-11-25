@@ -15,6 +15,7 @@ import {
   Trash2,
   ShieldCheck,
   X,
+  Sparkles,
 } from 'lucide-react';
 import {
   exportAllApplicationData,
@@ -25,6 +26,13 @@ import {
   ImportResult,
   EraseResult,
 } from '../services/backupService';
+import { IS_DEV_DB_ENV } from '../lib/firebase';
+import {
+  previewDevRupDemoSeed,
+  applyDevRupDemoSeed,
+  DevDemoSeedPreview,
+  DevDemoSeedResult,
+} from '../services/devDemoSeedService';
 import {
   CHECKBOX_INPUT_CLASS,
   CHECKBOX_TITLE_CLASS,
@@ -63,6 +71,14 @@ export const SuperUserBackupMenu: React.FC<SuperUserBackupMenuProps> = ({
   const [erasing, setErasing] = useState(false);
   const [eraseResult, setEraseResult] = useState<EraseResult | null>(null);
   const [eraseError, setEraseError] = useState<string | null>(null);
+
+  // Gestion du générateur de données de démo RUP (strictement réservé à l'environnement DEV)
+  const [rupModalOpen, setRupModalOpen] = useState(false);
+  const [rupPreviewLoading, setRupPreviewLoading] = useState(false);
+  const [rupPreview, setRupPreview] = useState<DevDemoSeedPreview | null>(null);
+  const [rupApplying, setRupApplying] = useState(false);
+  const [rupResult, setRupResult] = useState<DevDemoSeedResult | null>(null);
+  const [rupError, setRupError] = useState<string | null>(null);
 
   const menuRef = useRef<HTMLDivElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -234,6 +250,47 @@ export const SuperUserBackupMenu: React.FC<SuperUserBackupMenuProps> = ({
     setEraseError(null);
   };
 
+  // Ouverture et prévisualisation du générateur RUP (Dev uniquement)
+  const handleOpenRupModal = async () => {
+    if (!IS_DEV_DB_ENV) return;
+    setIsOpen(false);
+    setRupModalOpen(true);
+    setRupPreview(null);
+    setRupResult(null);
+    setRupError(null);
+    setRupPreviewLoading(true);
+    try {
+      const preview = await previewDevRupDemoSeed();
+      setRupPreview(preview);
+    } catch (err: any) {
+      setRupError(err?.message || "Erreur lors de l'analyse de la base de développement.");
+    } finally {
+      setRupPreviewLoading(false);
+    }
+  };
+
+  const handleApplyRupSeed = async () => {
+    if (!IS_DEV_DB_ENV) return;
+    setRupApplying(true);
+    setRupError(null);
+    try {
+      const res = await applyDevRupDemoSeed();
+      setRupResult(res);
+    } catch (err: any) {
+      setRupError(err?.message || 'Erreur lors du peuplement RUP des projets.');
+    } finally {
+      setRupApplying(false);
+    }
+  };
+
+  const closeRupModal = () => {
+    if (rupApplying) return;
+    setRupModalOpen(false);
+    setRupPreview(null);
+    setRupResult(null);
+    setRupError(null);
+  };
+
   return (
     <div className="relative inline-flex items-center self-center" ref={menuRef}>
       {/* Input fichier masqué */}
@@ -337,6 +394,32 @@ export const SuperUserBackupMenu: React.FC<SuperUserBackupMenuProps> = ({
                 </div>
               </button>
 
+
+              {/* Option DEV uniquement : Enrichissement RUP des projets existants */}
+              {IS_DEV_DB_ENV && (
+                <div className="pt-1 border-t border-slate-100 mt-1">
+                  <button
+                    type="button"
+                    onClick={handleOpenRupModal}
+                    className="w-full text-left px-3 py-2.5 rounded-lg hover:bg-teal-50 text-teal-900 transition-colors flex items-start gap-2.5 group cursor-pointer"
+                  >
+                    <div className="p-1.5 rounded-md bg-teal-100 text-teal-700 group-hover:bg-teal-200 transition-colors shrink-0 mt-0.5">
+                      <Sparkles className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <div className="text-xs font-bold text-teal-900 group-hover:text-teal-700 transition-colors flex items-center gap-1.5">
+                        <span>Enrichir projets (Démo RUP)</span>
+                        <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-teal-100 text-teal-800 border border-teal-200">
+                          DEV
+                        </span>
+                      </div>
+                      <div className="text-[11px] text-teal-700/80 mt-0.5 leading-tight">
+                        Remplit critères, historique 12m, staffing 12m, RAT et budgets sur les projets existants
+                      </div>
+                    </div>
+                  </button>
+                </div>
+              )}
 
               {/* Option 3 : Effacer toutes les données */}
               <div className="pt-1 border-t border-slate-100 mt-1">
@@ -719,6 +802,227 @@ export const SuperUserBackupMenu: React.FC<SuperUserBackupMenuProps> = ({
                       <>
                         <Trash2 className="w-3.5 h-3.5" />
                         <span>{t('superuser_backup.erase.confirm_button')}</span>
+                      </>
+                    )}
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* MODAL DE GÉNÉRATION DE DONNÉES DE DÉMO RUP (ENVIRONNEMENT DEV UNIQUEMENT) */}
+      {/* ========================================================================= */}
+      {IS_DEV_DB_ENV && rupModalOpen && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 max-w-3xl w-full max-h-[90vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95">
+            {/* En-tête */}
+            <div className="px-6 py-4 bg-teal-50/70 border-b border-teal-200 flex items-center justify-between shrink-0">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 bg-teal-100 text-teal-800 rounded-xl">
+                  <Sparkles className="w-5 h-5 text-teal-700" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-slate-900 text-base flex items-center gap-2">
+                    <span>Enrichissement RUP des projets existants</span>
+                    <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded bg-teal-100 text-teal-800 border border-teal-300">
+                      Base DEV (dev__*)
+                    </span>
+                  </h3>
+                  <p className="text-xs text-slate-600">
+                    Critères aléatoires, répartition RUP 12m passés / 12m à venir, RAT et budgets marché (aucun projet créé)
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={closeRupModal}
+                disabled={rupApplying}
+                className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Corps */}
+            <div className="p-6 space-y-4 overflow-y-auto flex-1 text-xs">
+              {rupPreviewLoading ? (
+                <div className="py-12 flex flex-col items-center justify-center gap-3 text-slate-600">
+                  <Loader2 className="w-6 h-6 animate-spin text-teal-600" />
+                  <span>Analyse des projets, critères, états et compétences dans dev__*...</span>
+                </div>
+              ) : rupError ? (
+                <div className="p-4 bg-red-50 border border-red-200 rounded-xl flex items-start gap-3 text-red-700">
+                  <AlertCircle className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
+                  <div>
+                    <strong className="block font-bold">Erreur</strong>
+                    <span>{rupError}</span>
+                  </div>
+                </div>
+              ) : rupResult ? (
+                <div className="space-y-4">
+                  <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-xl flex items-start gap-3 text-emerald-900">
+                    <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
+                    <div>
+                      <strong className="block font-bold text-sm">
+                        {rupResult.updatedCount} projets existants mis à jour avec succès dans la base DEV !
+                      </strong>
+                      <p className="mt-1 text-emerald-800">
+                        Critère de charge utilisé : <strong>{rupResult.primaryCostCriterionName}</strong>.
+                        {rupResult.sapProjects.length > 0 && (
+                          <> Expertise SAP affectée à : <strong>{rupResult.sapProjects.join(', ')}</strong>.</>
+                        )}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="border border-slate-200 rounded-xl overflow-hidden">
+                    <div className="max-h-72 overflow-y-auto">
+                      <table className="w-full text-left border-collapse text-[11px]">
+                        <thead className="bg-slate-50 border-b border-slate-200 sticky top-0 text-slate-600">
+                          <tr>
+                            <th className="py-2 px-3 font-semibold">Projet</th>
+                            <th className="py-2 px-2 font-semibold">État</th>
+                            <th className="py-2 px-2 font-semibold text-right">Charge (jh)</th>
+                            <th className="py-2 px-2 font-semibold text-right">Budget (K€)</th>
+                            <th className="py-2 px-2 font-semibold text-right">ROI</th>
+                            <th className="py-2 px-2 font-semibold text-right">Passé 12m</th>
+                            <th className="py-2 px-2 font-semibold text-right">Futur 12m</th>
+                            <th className="py-2 px-3 font-semibold text-right">RAT</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                          {rupResult.projects.map((p) => (
+                            <tr key={p.id} className="hover:bg-slate-50/60">
+                              <td className="py-1.5 px-3 font-medium text-slate-900">
+                                #{p.projectNumber} {p.name}
+                                {p.hasSap && (
+                                  <span className="ml-1.5 text-[9px] font-bold px-1.5 py-0.5 rounded bg-indigo-100 text-indigo-800">
+                                    SAP
+                                  </span>
+                                )}
+                              </td>
+                              <td className="py-1.5 px-2 text-slate-600">
+                                {p.stateName}
+                                {p.completedMonthsAgo !== undefined && (
+                                  <span className="ml-1 text-[10px] text-slate-400">
+                                    ({p.completedMonthsAgo === 0 ? 'ce mois' : `-${p.completedMonthsAgo}m`})
+                                  </span>
+                                )}
+                              </td>
+                              <td className="py-1.5 px-2 text-right font-mono">{p.totalWorkloadDays}</td>
+                              <td className="py-1.5 px-2 text-right font-mono">{p.estimatedBudgetKe}</td>
+                              <td className="py-1.5 px-2 text-right font-mono">{p.roi ?? '-'}</td>
+                              <td className="py-1.5 px-2 text-right font-mono text-slate-600">{p.sumPast12mDays} j</td>
+                              <td className="py-1.5 px-2 text-right font-mono text-indigo-700">{p.sumNext12mDays} j</td>
+                              <td className="py-1.5 px-3 text-right font-mono font-bold text-slate-900">{p.ratDays} j</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              ) : rupPreview ? (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-1.5">
+                      <div className="font-bold text-slate-800">
+                        Périmètre détecté ({rupPreview.projectCount} projets existants)
+                      </div>
+                      <div className="space-y-1 text-[11px] text-slate-600">
+                        {rupPreview.statesBreakdown.map((st, idx) => (
+                          <div key={idx} className="flex items-center justify-between">
+                            <span>{st.stateName}</span>
+                            <span className="font-mono font-semibold text-slate-800">{st.count}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-1.5">
+                      <div className="font-bold text-slate-800">
+                        Tranches détectées — {rupPreview.primaryCostCriterionName || 'Critère coût manquant'}
+                      </div>
+                      <div className="space-y-1 text-[11px] text-slate-600">
+                        {rupPreview.parsedCostRanges.map((r) => (
+                          <div key={r.coefficient} className="flex items-center justify-between gap-2">
+                            <span className="truncate">Coeff {r.coefficient} ({r.label})</span>
+                            <span className="font-mono font-semibold text-slate-800 shrink-0">
+                              {r.minDays}–{r.maxDays} jh
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
+                    <div className="font-bold text-slate-800">
+                      Compétences & TJM marché appliqués ({rupPreview.skillsDetected.length})
+                    </div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {rupPreview.skillsDetected.map((sk) => (
+                        <span
+                          key={sk.id}
+                          className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-white border border-slate-200 text-[11px] text-slate-700"
+                        >
+                          <span className="font-medium">{sk.name}</span>
+                          <span className="font-mono text-teal-700 font-semibold">{sk.marketTjmEur} €/j</span>
+                        </span>
+                      ))}
+                    </div>
+                    {rupPreview.sapCandidateProjects.length > 0 && (
+                      <p className="text-[11px] text-slate-600 pt-1">
+                        Expertise SAP ciblée sur : <strong>{rupPreview.sapCandidateProjects.join(', ')}</strong> (0 sur les autres projets ; SEO & Data présents sur tous les projets).
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-[11px] text-amber-900">
+                    Cette action écrase les valorisations de critères, budgets estimés, historiques 12 mois, plans de staffing 12 mois et RAT des <strong>{rupPreview.projectCount} projets existants</strong> de la base DEV uniquement (aucun nouveau projet ne sera créé).
+                  </div>
+                </div>
+              ) : null}
+            </div>
+
+            {/* Pied de modal */}
+            <div className="px-6 py-4 bg-slate-50 border-t border-slate-200 flex items-center justify-end gap-2.5 shrink-0">
+              {rupResult ? (
+                <button
+                  type="button"
+                  onClick={closeRupModal}
+                  className={MODAL_CLOSE_BUTTON_CLASS}
+                >
+                  {t('common.close', { defaultValue: 'Fermer' })}
+                </button>
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    onClick={closeRupModal}
+                    disabled={rupApplying}
+                    className={MODAL_CANCEL_BUTTON_CLASS}
+                  >
+                    {t('common.cancel', { defaultValue: 'Annuler' })}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleApplyRupSeed}
+                    disabled={rupApplying || rupPreviewLoading || !rupPreview || rupPreview.projectCount === 0}
+                    className="px-4 py-2 text-xs font-semibold bg-teal-600 hover:bg-teal-700 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg transition-colors shadow-xs flex items-center gap-2 cursor-pointer"
+                  >
+                    {rupApplying ? (
+                      <>
+                        <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                        <span>Mise à jour en cours...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="w-3.5 h-3.5" />
+                        <span>Appliquer sur la base DEV</span>
                       </>
                     )}
                   </button>

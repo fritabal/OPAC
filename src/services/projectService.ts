@@ -11,20 +11,21 @@ import {
   runTransaction,
   serverTimestamp,
 } from 'firebase/firestore';
-import { db } from '../lib/firebase';
+import { db, getEnvCollectionName } from '../lib/firebase';
 import { handleFirestoreError, OperationType } from '../lib/firestoreErrors';
 import { Project, ProjectFormData } from '../types/project';
 import { broadcastCollaborationChange } from './collaborationNotificationService';
 
-const COLLECTION_NAME = 'projects';
-const COUNTER_DOC_PATH = 'counters/projects';
+const COLLECTION_NAME = getEnvCollectionName('projects');
+const COUNTERS_COLLECTION = getEnvCollectionName('counters');
+const COUNTER_DOC_PATH = `${COUNTERS_COLLECTION}/projects`;
 
 /**
  * Obtient le prochain identifiant entier séquentiel unique pour un nouveau projet.
  * Cet identifiant ne sera JAMAIS réutilisé, même si le projet est supprimé ou archivé.
  */
 async function getNextProjectNumber(): Promise<number> {
-  const counterRef = doc(db, 'counters', 'projects');
+  const counterRef = doc(db, COUNTERS_COLLECTION, 'projects');
 
   try {
     return await runTransaction(db, async (transaction) => {

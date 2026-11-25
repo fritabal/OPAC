@@ -7,8 +7,10 @@ import {
   onSnapshot,
   serverTimestamp,
 } from 'firebase/firestore';
-import { db } from '../lib/firebase';
+import { db, getEnvCollectionName } from '../lib/firebase';
 import { AppUser } from '../types/user';
+
+const ACTIVITY_EVENTS_COLLECTION = getEnvCollectionName('activity_events');
 
 export type NotificationCategory =
   | 'project_prioritization'
@@ -94,7 +96,7 @@ export async function broadcastCollaborationChange(params: {
       createdAt: serverTimestamp(),
     };
 
-    await addDoc(collection(db, 'activity_events'), payload);
+    await addDoc(collection(db, ACTIVITY_EVENTS_COLLECTION), payload);
   } catch (error) {
     // Ne jamais bloquer l'action utilisateur en cas d'erreur de journalisation
     console.warn('Erreur lors de la diffusion de la notification collaborative:', error);
@@ -111,7 +113,7 @@ export function subscribeToCollaborationNotifications(
   const shownNotificationIds = new Set<string>();
 
   const q = query(
-    collection(db, 'activity_events'),
+    collection(db, ACTIVITY_EVENTS_COLLECTION),
     orderBy('timestamp', 'desc'),
     limit(15)
   );

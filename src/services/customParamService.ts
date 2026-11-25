@@ -11,12 +11,12 @@ import {
   serverTimestamp,
   writeBatch,
 } from 'firebase/firestore';
-import { db } from '../lib/firebase';
+import { db, getEnvCollectionName } from '../lib/firebase';
 import { handleFirestoreError, OperationType } from '../lib/firestoreErrors';
 import { CustomProjectParam, CustomProjectParamFormData, DEFAULT_LONG_TEXT_MAX_LENGTH } from '../types/customParam';
 import { broadcastCollaborationChange } from './collaborationNotificationService';
 
-const COLLECTION_NAME = 'projectCustomParams';
+const COLLECTION_NAME = getEnvCollectionName('projectCustomParams');
 
 /**
  * Souscription en temps réel aux paramètres personnalisés des projets, triés par ordre séquentiel.

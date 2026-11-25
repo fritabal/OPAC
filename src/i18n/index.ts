@@ -10,6 +10,7 @@ import {
   getActiveLanguageItems,
   getSavedActiveLanguageCodes,
 } from './languages';
+import { getEnvStorageKey } from '../lib/firebase';
 
 export {
   AVAILABLE_LANGUAGES_CATALOG,
@@ -60,7 +61,7 @@ i18n.use(initReactI18next).init({
 
 // Application immédiate des surcharges de traductions enregistrées dans localStorage
 try {
-  const cachedRaw = localStorage.getItem('opac_i18n_overrides');
+  const cachedRaw = localStorage.getItem(getEnvStorageKey('opac_i18n_overrides'));
   if (cachedRaw) {
     const cachedOverrides = JSON.parse(cachedRaw);
     if (cachedOverrides && typeof cachedOverrides === 'object') {

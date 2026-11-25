@@ -2,6 +2,8 @@
  * Catalogue et gestion dynamique des langues de l'application
  */
 
+import { getEnvStorageKey } from '../lib/firebase';
+
 export interface LanguageItem {
   code: string;
   label: string;
@@ -41,7 +43,7 @@ export const AVAILABLE_LANGUAGES_CATALOG: LanguageItem[] = [
 ];
 
 export const DEFAULT_LANGUAGE_CODES = ['fr', 'en', 'it', 'de'];
-export const LOCAL_STORAGE_ACTIVE_LANGUAGES_KEY = 'opac_active_languages';
+export const LOCAL_STORAGE_ACTIVE_LANGUAGES_KEY = getEnvStorageKey('opac_active_languages');
 export const LANGUAGES_CHANGED_EVENT = 'opac_active_languages_changed';
 
 /**

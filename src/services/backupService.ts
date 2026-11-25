@@ -8,8 +8,9 @@ import {
   addDoc,
   serverTimestamp,
 } from 'firebase/firestore';
-import { db } from '../lib/firebase';
+import { db, getEnvCollectionName } from '../lib/firebase';
 import { LOCAL_STORAGE_KEY as BONUS_CACHE_KEY } from './bonusService';
+import { LOCAL_STORAGE_KEY as BRANDING_CACHE_KEY } from './brandingService';
 import { SUPER_ADMIN_EMAIL } from './userService';
 import { fr } from '../i18n/locales/fr';
 import { en } from '../i18n/locales/en';
@@ -221,7 +222,7 @@ export async function exportAllApplicationData(currentUserEmail: string): Promis
   // 1. Extraction de toutes les collections Firestore
   for (const colName of BACKUP_COLLECTIONS) {
     try {
-      const snap = await getDocs(collection(db, colName));
+      const snap = await getDocs(collection(db, getEnvCollectionName(colName)));
       const items: Record<string, any>[] = [];
       snap.forEach((d) => {
         items.push({
@@ -413,7 +414,7 @@ export async function importAllApplicationData(
   if (options.clearExisting) {
     for (const colName of BACKUP_COLLECTIONS) {
       try {
-        const snap = await getDocs(collection(db, colName));
+        const snap = await getDocs(collection(db, getEnvCollectionName(colName)));
         // Protection du compte Super User : ne jamais le supprimer lors du nettoyage
         const docsToDelete = snap.docs.filter((d) => {
           if (colName === 'users') {
@@ -457,8 +458,9 @@ export async function importAllApplicationData(
           continue;
         }
 
-        const docId = id || docData.id || doc(collection(db, colName)).id;
-        const targetRef = doc(db, colName, String(docId));
+        const targetColName = getEnvCollectionName(colName);
+        const docId = id || docData.id || doc(collection(db, targetColName)).id;
+        const targetRef = doc(db, targetColName, String(docId));
 
         batch.set(targetRef, docData);
         (resultCounts as any)[colName] = ((resultCounts as any)[colName] || 0) + 1;
@@ -474,16 +476,16 @@ export async function importAllApplicationData(
         if (colName === 'settings') {
           if (docId === 'prioritization_bonus') {
             try {
-              localStorage.setItem('opac_bonus_config', JSON.stringify(docData));
+              localStorage.setItem(BONUS_CACHE_KEY, JSON.stringify(docData));
             } catch {
               // ignore
             }
           } else if (docId === 'branding') {
             try {
               if (docData.logoUrl) {
-                localStorage.setItem('opac_custom_logo', docData.logoUrl);
+                localStorage.setItem(BRANDING_CACHE_KEY, docData.logoUrl);
               } else {
-                localStorage.removeItem('opac_custom_logo');
+                localStorage.removeItem(BRANDING_CACHE_KEY);
               }
             } catch {
               // ignore
@@ -512,7 +514,7 @@ export async function importAllApplicationData(
   // 3. S'assurer que le compteur de projet est à jour (au moins au numéro max des projets importés)
   if (highestProjectNumber > 0) {
     try {
-      await setDoc(doc(db, 'counters', 'projects'), {
+      await setDoc(doc(db, getEnvCollectionName('counters'), 'projects'), {
         lastProjectNumber: highestProjectNumber,
         updatedAt: new Date().toISOString(),
         updatedBy: options.currentUserEmail || 'system',
@@ -578,7 +580,7 @@ export async function eraseAllApplicationData(currentUserEmail: string): Promise
 
   for (const colName of BACKUP_COLLECTIONS) {
     try {
-      const snap = await getDocs(collection(db, colName));
+      const snap = await getDocs(collection(db, getEnvCollectionName(colName)));
       // Si c'est la collection 'users', on préserve impérativement le compte Super User
       const docsToDelete = snap.docs.filter((d) => {
         if (colName === 'users') {
@@ -603,7 +605,7 @@ export async function eraseAllApplicationData(currentUserEmail: string): Promise
 
   // Réinitialisation du compteur séquentiel de projet à 0
   try {
-    await setDoc(doc(db, 'counters', 'projects'), {
+    await setDoc(doc(db, getEnvCollectionName('counters'), 'projects'), {
       lastProjectNumber: 0,
       updatedAt: new Date().toISOString(),
       updatedBy: currentUserEmail || 'super-user',
@@ -615,7 +617,7 @@ export async function eraseAllApplicationData(currentUserEmail: string): Promise
   // Nettoyage des caches locaux
   try {
     localStorage.removeItem(BONUS_CACHE_KEY);
-    localStorage.removeItem('opac_custom_logo');
+    localStorage.removeItem(BRANDING_CACHE_KEY);
     localStorage.removeItem(LOCAL_STORAGE_OVERRIDES_KEY);
     applyOverridesToI18n({});
   } catch {
@@ -624,10 +626,11 @@ export async function eraseAllApplicationData(currentUserEmail: string): Promise
 
   // S'assurer qu'au moins un compte Super User reste présent dans la collection users
   try {
-    const usersSnap = await getDocs(collection(db, 'users'));
+    const usersColName = getEnvCollectionName('users');
+    const usersSnap = await getDocs(collection(db, usersColName));
     const hasSuper = usersSnap.docs.some((d) => isSuperUserAccount(d.data(), currentUserEmail));
     if (!hasSuper) {
-      await addDoc(collection(db, 'users'), {
+      await addDoc(collection(db, usersColName), {
         email: currentUserEmail || SUPER_ADMIN_EMAIL,
         displayName: 'Super User',
         role: 'super user',

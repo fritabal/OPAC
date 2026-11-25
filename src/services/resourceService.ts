@@ -9,12 +9,12 @@ import {
   orderBy,
   serverTimestamp,
 } from 'firebase/firestore';
-import { db } from '../lib/firebase';
+import { db, getEnvCollectionName } from '../lib/firebase';
 import { handleFirestoreError, OperationType } from '../lib/firestoreErrors';
 import { Resource, ResourceFormData, cleanObsoleteMonths, getRolling12Months } from '../types/resource';
 import { broadcastCollaborationChange } from './collaborationNotificationService';
 
-const COLLECTION_NAME = 'resources';
+const COLLECTION_NAME = getEnvCollectionName('resources');
 
 export function subscribeToResources(
   onData: (resources: Resource[]) => void,

@@ -11,12 +11,12 @@ import {
   serverTimestamp,
   writeBatch,
 } from 'firebase/firestore';
-import { db } from '../lib/firebase';
+import { db, getEnvCollectionName } from '../lib/firebase';
 import { handleFirestoreError, OperationType } from '../lib/firestoreErrors';
 import { ProjectState, ProjectStateFormData } from '../types/lifecycle';
 import { broadcastCollaborationChange } from './collaborationNotificationService';
 
-const COLLECTION_NAME = 'projectStates';
+const COLLECTION_NAME = getEnvCollectionName('projectStates');
 
 /**
  * Souscription en temps réel aux états du cycle de vie des projets, triés par ordre séquentiel.

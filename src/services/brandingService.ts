@@ -1,8 +1,8 @@
 import { doc, onSnapshot, setDoc, deleteDoc } from 'firebase/firestore';
-import { db } from '../lib/firebase';
+import { db, getEnvCollectionName, getEnvStorageKey } from '../lib/firebase';
 
-const BRANDING_DOC_PATH = 'settings/branding';
-const LOCAL_STORAGE_KEY = 'opac_custom_logo';
+const SETTINGS_COLLECTION = getEnvCollectionName('settings');
+export const LOCAL_STORAGE_KEY = getEnvStorageKey('opac_custom_logo');
 
 export interface BrandingConfig {
   logoUrl?: string | null;
@@ -25,7 +25,7 @@ export function getCachedAppLogo(): string | null {
  * Écoute en temps réel les changements de configuration de marque / logo
  */
 export function subscribeToBranding(callback: (config: BrandingConfig | null) => void) {
-  const brandingDocRef = doc(db, 'settings', 'branding');
+  const brandingDocRef = doc(db, SETTINGS_COLLECTION, 'branding');
   
   return onSnapshot(
     brandingDocRef,
@@ -122,7 +122,7 @@ export async function resizeImageToDataUrl(file: File): Promise<string> {
  * Met à jour le logo de l'application dans Firestore
  */
 export async function updateAppLogo(dataUrl: string, updatedBy: string): Promise<void> {
-  const brandingDocRef = doc(db, 'settings', 'branding');
+  const brandingDocRef = doc(db, SETTINGS_COLLECTION, 'branding');
   await setDoc(
     brandingDocRef,
     {
@@ -144,7 +144,7 @@ export async function updateAppLogo(dataUrl: string, updatedBy: string): Promise
  * Réinitialise le logo de l'application au logo par défaut
  */
 export async function resetAppLogo(): Promise<void> {
-  const brandingDocRef = doc(db, 'settings', 'branding');
+  const brandingDocRef = doc(db, SETTINGS_COLLECTION, 'branding');
   await deleteDoc(brandingDocRef);
 
   try {

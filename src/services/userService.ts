@@ -13,12 +13,12 @@ import {
   limit,
 } from 'firebase/firestore';
 import { sendPasswordResetEmail } from 'firebase/auth';
-import { auth, db } from '../lib/firebase';
+import { auth, db, getEnvCollectionName } from '../lib/firebase';
 import { handleFirestoreError, OperationType } from '../lib/firestoreErrors';
 import { AppUser, AppUserFormData, UserRole } from '../types/user';
 import { hashPassword, validatePassword } from '../utils/passwordSecurity';
 
-const COLLECTION_NAME = 'users';
+const COLLECTION_NAME = getEnvCollectionName('users');
 export const SUPER_ADMIN_EMAIL = 'stephane.labati@goood.com';
 export const SUPER_ADMIN_EMAILS = ['stephane.labati@goood.com'];
 
